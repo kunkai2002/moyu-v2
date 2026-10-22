@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="zh-Hant" data-theme="claude-code">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>~/work/api-server — node — 120×36</title>
+<link rel="stylesheet" href="theme.css">
+</head>
+<body>
+
+<!-- VS Code 主題才會顯示的活動列 -->
+<div class="rail" aria-hidden="true">
+  <div class="rail-item on"><svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15 3v5h5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
+  <div class="rail-item"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.6"/></svg></div>
+  <div class="rail-item"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6"/></svg></div>
+  <div class="rail-item"><svg viewBox="0 0 24 24"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="1.6"/></svg></div>
+  <div class="rail-spacer"></div>
+  <div class="rail-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" stroke="currentColor" stroke-width="1.6"/></svg></div>
+</div>
+
+<div class="app">
+  <!-- ══ 側欄 ══ -->
+  <aside class="side">
+    <div class="side-head">
+      <span class="side-title" id="sideTitle">工作區</span>
+      <span class="side-count" id="sideCount">611</span>
+      <button class="ghost icon" id="themeBtn" title="切換主題">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+      </button>
+    </div>
+
+    <div class="proj">
+      <span class="proj-ico"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></span>
+      <span class="proj-name" id="bookName">停尸房兼职，搬出了前女友？</span>
+    </div>
+
+    <div class="tree" id="tree"><!-- 章節由 app.js 灌入 --></div>
+
+    <div class="side-foot">
+      <div class="find">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span class="find-ph">grep 章節…</span>
+        <kbd>Ctrl+K</kbd>
+      </div>
+      <div class="me">
+        <span class="av" id="av">姜</span>
+        <span class="me-txt" id="meTxt">第 3 / 611 章</span>
+        <span class="me-pct" id="mePct">1.2%</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ══ 主欄 ══ -->
+  <main class="main">
+    <div class="tabs" id="tabs"></div>
+
+    <div class="topbar">
+      <span class="crumb" id="crumb">停尸房兼职，搬出了前女友？ / <b>第 3 章 信手拈来</b></span>
+      <span class="topbar-r">
+        <span class="pill">context 611</span>
+        <span class="pill">段評 12</span>
+        <button class="ghost icon" id="bossBtn" title="老闆鍵 Alt+Q">
+          <svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V7z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        </button>
+      </span>
+    </div>
+
+    <div class="stream" id="stream"><!-- 對話由 app.js 灌入 --></div>
+
+    <div class="composer">
+      <div class="box">
+        <div class="box-line"><span class="prompt">&gt;</span><textarea id="input" rows="1" spellcheck="false" placeholder="回覆…  （貼上書號或網址開書）"></textarea></div>
+        <div class="box-foot">
+          <span><kbd>⏎</kbd> 送出</span><span><kbd>⇧⏎</kbd> 換行</span><span><kbd>Alt</kbd>+<kbd>N</kbd> 下一章</span>
+          <span class="box-foot-r" id="modelTag">opus 4.5 · 中</span>
+        </div>
+      </div>
+      <div class="hintline">
+        <span>? 輸入 <kbd>/</kbd> 看指令</span>
+        <span class="hintline-r" id="modeTag">⏵⏵ auto-read on</span>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span class="sb-item branch">main*</span>
+      <span class="sb-item"><span class="add">+1683</span> <span class="del">−0</span></span>
+      <span class="sb-item" id="sbTime">⏱ 03:12</span>
+      <span class="sb-item" id="sbTok">▍ 42 tok/s</span>
+      <span class="sb-r">
+        <span class="sb-item" id="sbChapter">第 3 / 611 章</span>
+        <span class="sb-item">UTF-8</span>
+        <span class="sb-item" id="sbCpu">CPU 12%</span>
+        <span class="sb-item" id="sbNet">↑ 8ms ↓ 3ms</span>
+      </span>
+    </div>
+  </main>
+</div>
+
+<!-- 主題選單 -->
+<div class="theme-menu" id="themeMenu">
+  <div class="tm-title">主題</div>
+  <div class="tm-list" id="tmList"></div>
+</div>
+
+<script src="bridge-http.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

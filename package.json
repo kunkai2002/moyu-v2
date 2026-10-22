@@ -1,0 +1,19 @@
+{
+  "name": "moyu",
+  "productName": "魔芋一夏",
+  "version": "0.1.0",
+  "description": "長得像 Claude Code 的番茄小說桌面閱讀器",
+  "main": "main.js",
+  "author": "jojo",
+  "license": "MIT",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "shots": "node tools/shots.js"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0"
+  }
+}

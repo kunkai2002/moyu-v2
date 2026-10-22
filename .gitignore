@@ -1,0 +1,18 @@
+# 執行時資料（書架、進度、章節快取、登入態）—— 絕不進版控
+data/
+*.log
+
+# 探針與截圖產物
+_probe/
+_shot/
+ui/_shot/
+
+# 建置產物
+companion/bin/
+companion/obj/
+dist_moyu_companion/
+node_modules/
+
+# 系統
+Thumbs.db
+desktop.ini
