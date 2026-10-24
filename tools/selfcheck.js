@@ -121,6 +121,22 @@ const call = (method, p, body) => new Promise((resolve, reject) => {
   if (qr?.ok && qr.image) ok('掃碼 QR 產生');
   else bad('掃碼失敗');
 
+  /* ── 7. 打包完整性：server 的 require 在 dist 裡都要有 ── */
+  console.log('\n[7] 打包完整性');
+  {
+    const dist = path.join(ROOT, 'dist', '魔芋一夏');
+    const srvSrc = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+    const reqs = [...srvSrc.matchAll(/require\('\.\/([^']+)'\)/g)].map((m) => m[1]);
+    const missing = reqs.filter((r) => !fs.existsSync(path.join(dist, r)) && !fs.existsSync(path.join(dist, r + '.js')));
+    if (missing.length) bad('dist 缺少: ' + missing.join(', '));
+    else ok('server.js 的 ' + reqs.length + ' 個 require 在 dist 都在');
+    const uiSrc = fs.readFileSync(path.join(ROOT, 'ui', 'index.html'), 'utf8');
+    const scripts = [...uiSrc.matchAll(/<script src="([^"]+)"/g)].map((m) => m[1]);
+    const uiMiss = scripts.filter((f) => !fs.existsSync(path.join(dist, 'ui', f)));
+    if (uiMiss.length) bad('dist/ui 缺少: ' + uiMiss.join(', '));
+    else ok('index.html 的 ' + scripts.length + ' 個 script 在 dist 都在');
+  }
+
   srv.kill();
   await sleep(300);
   console.log(`\n${fail ? '❌ ' + fail + ' 個問題' : '✅ 全部通過'}`);

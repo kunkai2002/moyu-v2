@@ -52,6 +52,12 @@
       get: () => api('/api/cookie'),
     },
     version: () => api('/api/version'),
+    sync: {
+      status: () => api('/api/sync/status'),
+      config: (c) => post('/api/sync/config', c),
+      push: () => post('/api/sync/push', {}),
+      pull: () => post('/api/sync/pull', {}),
+    },
     stats: {
       get: () => api('/api/stats'),
       add: (d) => post('/api/stats', d),
