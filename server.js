@@ -489,6 +489,15 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (p === '/api/tunnel') {
+      let url = '';
+      try { url = fs.readFileSync(path.join(DATA_DIR, 'tunnel-url.txt'), 'utf8').trim(); } catch {}
+      const running = (() => {
+        try { return fs.existsSync(path.join(DATA_DIR, 'tunnel-url.txt')); } catch { return false; }
+      })();
+      return json(res, 200, { ok: true, url, running });
+    }
+
     if (p === '/api/health') {
       return json(res, 200, { ok: true, port: PORT, data: DATA_DIR });
     }

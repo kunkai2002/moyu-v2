@@ -57,6 +57,7 @@
       status: () => api('/api/prefetch/status'),
       stop: () => post('/api/prefetch/stop', {}),
     },
+    tunnel: () => api('/api/tunnel'),
     update: { check: () => api('/api/update'), apply: () => post('/api/update/apply', {}) },
     sync: {
       status: () => api('/api/sync/status'),
