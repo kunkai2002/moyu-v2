@@ -19,3 +19,6 @@ desktop.ini
 
 # 同步金鑰（絕不進版控）
 sync/.token
+
+# cloudflared 二進位（用 tools/get-cloudflared.js 下載）
+tools/bin/
