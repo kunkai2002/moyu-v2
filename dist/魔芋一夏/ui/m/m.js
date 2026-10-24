@@ -33,18 +33,47 @@
   /* ── 書架 ── */
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+  const ART = {
+    login: "<circle cx='32' cy='26' r='9'/><path d='M14 54c0-10 8-16 18-16s18 6 18 16'/>",
+    book: "<path d='M12 10h24a6 6 0 0 1 6 6v38H18a6 6 0 0 0-6 6z'/><path d='M12 10v50'/>",
+    wifi: "<path d='M10 40a30 30 0 0 1 44 0'/><path d='M20 49a18 18 0 0 1 24 0'/><circle cx='32' cy='57' r='2'/>",
+  };
+  function emptyState(stateEl, gridEl, kind) {
+    gridEl.innerHTML = '';
+    const conf = {
+      login:   { art: 'login', t: '還沒有登入', d: '用抖音或番茄 App 掃一下，書架就會出現在這裡', btn: '立即登入', run: () => $('#btnLogin').click() },
+      empty:   { art: 'book',  t: '書架是空的', d: '在番茄裡收藏幾本，這裡就會同步過來',     btn: '重新整理', run: loadShelf },
+      offline: { art: 'wifi',  t: '連不上電腦', d: '請確認電腦端的魔芋一夏還開著，兩台在同一個 Wi-Fi', btn: '重試', run: loadShelf },
+    }[kind] || { art: 'book', t: kind, d: '', btn: '重試', run: loadShelf };
+
+    stateEl.innerHTML = `
+      <div class="empty">
+        <svg viewBox="0 0 64 64" class="empty-art">${ART[conf.art]}</svg>
+        <b>${conf.t}</b>
+        <span>${conf.d}</span>
+        <button class="empty-btn">${conf.btn}</button>
+        <button class="empty-link">或貼上書號開書</button>
+      </div>`;
+    stateEl.querySelector('.empty-btn').addEventListener('click', conf.run);
+    stateEl.querySelector('.empty-link').addEventListener('click', () => {
+      document.querySelector('.tab[data-tab="search"]').click();
+      setTimeout(() => $('#q').focus(), 120);
+    });
+  }
+
   async function loadShelf() {
     const grid = $('#shelfGrid'), state = $('#shelfState');
     state.textContent = '讀取中…';
     try {
       const r = await api('/api/shelf');
       if (!r.ok) {
-        state.textContent = r.error || '書架是空的';
-        grid.innerHTML = '';
+        const offline = /連線|fetch|network|timeout/i.test(r.error || '');
+        emptyState(state, grid, offline ? 'offline' : 'login');
         return;
       }
       st.shelf = r.books || [];
-      state.textContent = st.shelf.length ? '' : '書架是空的';
+      if (!st.shelf.length) { emptyState(state, grid, 'empty'); return; }
+      state.textContent = '';
       grid.innerHTML = st.shelf.map((b, i) => `
         <div class="bk" data-i="${i}">
           <div class="cv">
@@ -57,10 +86,7 @@
         el.addEventListener('click', () => openBook(st.shelf[+el.dataset.i]));
       });
     } catch (e) {
-      state.innerHTML = '連不上本機服務（請確認電腦端的魔芋一夏有開著）'
-        + '<button id="mRetry" style="margin-left:8px;color:#ff6b35">重試</button>';
-      grid.innerHTML = '';
-      document.getElementById('mRetry')?.addEventListener('click', loadShelf);
+      emptyState(state, grid, 'offline');
     }
   }
 
