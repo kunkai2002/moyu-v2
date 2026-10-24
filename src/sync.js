@@ -30,7 +30,10 @@ function configured() { return !!(state.url && state.token); }
 
 function configure({ url, token }) {
   if (url !== undefined) state.url = String(url).replace(/\/+$/, '');
-  if (token !== undefined) state.token = String(token);
+  // 空的 token 不要覆蓋掉已存的（面板忘記填金鑰就按儲存時會把同步弄死）。
+  // 要清除請明確傳 token: null。
+  if (token === null) state.token = '';
+  else if (token !== undefined && String(token).trim()) state.token = String(token).trim();
   save();
   return { url: state.url, hasToken: !!state.token, deviceId: state.deviceId };
 }

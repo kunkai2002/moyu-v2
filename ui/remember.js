@@ -1,5 +1,5 @@
-/* 記住進度：段落 hover 出現小圓球，右鍵也有選單。
-   寫入本機進度 + 一筆位置標記，並立即推上雲端（有設定的話）。 */
+/* 記住進度：只在段落右鍵選單裡（不再有小圓球）。
+   寫入本機進度（含段落位置）+ 一筆位置標記，並立即推上雲端（有設定的話）。 */
 (function () {
   'use strict';
   var D = window.__moyuDebug;
@@ -10,34 +10,26 @@
 
   var css = document.createElement('style');
   css.textContent = [
-    '.rm-ball{position:fixed;z-index:60;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;',
-    '  background:var(--bg-elev);border:1px solid var(--line-strong);color:var(--fg2);cursor:pointer;',
-    '  box-shadow:0 6px 18px rgba(0,0,0,.45);opacity:0;transform:scale(.9);pointer-events:none;',
-    '  transition:opacity 140ms cubic-bezier(.2,.7,.3,1),transform 140ms cubic-bezier(.2,.7,.3,1),color 140ms}',
-    '.rm-ball.on{opacity:1;transform:scale(1);pointer-events:auto}',
-    '.rm-ball:hover{color:var(--acc);border-color:var(--acc)}',
-    '.rm-ball svg{width:14px;height:14px}',
-    '.rm-menu{position:fixed;z-index:61;min-width:132px;background:var(--bg-elev);border:1px solid var(--line-strong);',
-    '  border-radius:8px;padding:4px;box-shadow:0 18px 50px rgba(0,0,0,.5);font-size:12px}',
-    '.rm-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;border-radius:5px;',
-    '  color:var(--fg2);text-align:left}',
+    '.rm-menu{position:fixed;z-index:61;min-width:150px;background:var(--bg-elev);',
+    '  border:1px solid var(--line-strong);border-radius:8px;padding:4px;',
+    '  box-shadow:0 18px 46px rgba(0,0,0,.5);font-size:12px}',
+    '.rm-menu[hidden]{display:none}',
+    '.rm-menu .rm-head{padding:5px 8px 4px;color:var(--fg3);font-size:10.5px;',
+    '  border-bottom:1px solid var(--line);margin-bottom:3px;overflow:hidden;',
+    '  text-overflow:ellipsis;white-space:nowrap;max-width:230px}',
+    '.rm-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;',
+    '  border-radius:5px;color:var(--fg2);text-align:left}',
     '.rm-menu button:hover{background:var(--sel);color:var(--fg)}',
     '.rm-menu svg{width:14px;height:14px;flex:none}',
     '.rm-toast{position:fixed;left:50%;bottom:74px;transform:translate(-50%,8px);z-index:70;',
-    '  background:var(--bg-elev);border:1px solid var(--line-strong);color:var(--fg2);border-radius:999px;',
-    '  padding:6px 14px;font-size:12px;opacity:0;pointer-events:none;',
+    '  background:var(--bg-elev);border:1px solid var(--line-strong);color:var(--fg2);',
+    '  border-radius:999px;padding:6px 14px;font-size:12px;opacity:0;pointer-events:none;',
     '  transition:opacity 160ms ease,transform 160ms cubic-bezier(.2,.7,.3,1)}',
     '.rm-toast.on{opacity:1;transform:translate(-50%,0)}',
   ].join('\n');
   document.head.appendChild(css);
 
   var icon = (window.MOYU_ICONS && window.MOYU_ICONS.svg) ? window.MOYU_ICONS.svg : function () { return ''; };
-
-  var ball = document.createElement('button');
-  ball.className = 'rm-ball';
-  ball.title = '記住進度（本機 + 雲端）';
-  ball.innerHTML = icon('bookmark', 14);
-  document.body.appendChild(ball);
 
   var toast = document.createElement('div');
   toast.className = 'rm-toast';
@@ -53,46 +45,30 @@
 
   var currentPara = null;
 
-  function paraAt(el) {
-    return el && el.closest ? el.closest('#stream .p') : null;
-  }
-
-  /* ── 小圓球跟著游標所在的段落 ── */
-  stream.addEventListener('mousemove', function (e) {
-    var p = paraAt(e.target);
-    if (!p) return;
-    currentPara = p;
-    var r = p.getBoundingClientRect();
-    var left = Math.min(r.right + 8, window.innerWidth - 34);
-    ball.style.left = left + 'px';
-    ball.style.top = Math.min(Math.max(r.top + 2, 8), window.innerHeight - 34) + 'px';
-    ball.classList.add('on');
-  }, { passive: true });
-
-  stream.addEventListener('mouseleave', function () {
-    ball.classList.remove('on');
-    currentPara = null;
-  });
-
   /* ── 右鍵選單 ── */
   var menu = document.createElement('div');
   menu.className = 'rm-menu';
   menu.hidden = true;
-  menu.innerHTML = '<button id="rmMenuSave">' + icon('bookmark', 14) + '<span>記住進度</span></button>';
+  menu.innerHTML = '<div class="rm-head" id="rmHead"></div>'
+    + '<button id="rmMenuSave">' + icon('bookmark', 14) + '<span>記住進度</span></button>';
   document.body.appendChild(menu);
+
+  var head = menu.querySelector('#rmHead');
 
   function closeMenu() { menu.hidden = true; }
 
   stream.addEventListener('contextmenu', function (e) {
-    var p = paraAt(e.target);
-    if (!p) return;
-    if (!st.book) return;
+    var p = e.target && e.target.closest ? e.target.closest('#stream .p') : null;
+    if (!p || !st.book || !st.chapters || !st.chapters.length) return;
     e.preventDefault();
     currentPara = p;
+    var ch = st.chapters[st.index];
+    head.textContent = ch ? ('第 ' + ch.no + ' 章 · ' + ch.title) : '記住這一段';
     menu.hidden = false;
-    var w = menu.offsetWidth || 140;
-    menu.style.left = Math.min(e.clientX, window.innerWidth - w - 10) + 'px';
-    menu.style.top = Math.min(e.clientY, window.innerHeight - 54) + 'px';
+    var w = menu.offsetWidth || 160;
+    var h = menu.offsetHeight || 60;
+    menu.style.left = Math.max(8, Math.min(e.clientX, window.innerWidth - w - 10)) + 'px';
+    menu.style.top = Math.max(8, Math.min(e.clientY, window.innerHeight - h - 10)) + 'px';
   });
 
   document.addEventListener('click', function (e) {
@@ -100,6 +76,7 @@
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
   window.addEventListener('scroll', closeMenu, true);
+  window.addEventListener('resize', closeMenu);
 
   async function remember(para) {
     if (!st.book || !st.chapters || !st.chapters.length) { say('先開一本書'); return; }
@@ -140,13 +117,7 @@
     } catch (e) { cloud = '雲端失敗：' + e.message; }
 
     say('進度已記住 · ' + cloud);
-    ball.classList.add('on');
   }
-
-  ball.addEventListener('click', function (e) {
-    e.stopPropagation();
-    if (currentPara) remember(currentPara);
-  });
 
   menu.querySelector('#rmMenuSave').addEventListener('click', function (e) {
     e.stopPropagation();
@@ -157,5 +128,6 @@
   window.__moyuRemember = {
     save: function () { return currentPara ? remember(currentPara) : Promise.resolve(); },
     setPara: function (el) { currentPara = el; },
+    get menuOpen() { return !menu.hidden; },
   };
 })();

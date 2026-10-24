@@ -66,6 +66,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   mods.flow ? ok('模組：flow.js 已載入') : bad('模組：flow.js 沒載入');
   mods.remember ? ok('模組：remember.js 已載入') : bad('模組：remember.js 沒載入');
 
+  const balls = await page.evaluate(() => document.querySelectorAll('.rm-ball').length);
+  balls === 0 ? ok('UI：小圓球已移除（只剩右鍵選單）') : bad('UI：小圓球還在', String(balls));
+
   /* 滾到底 3 次，看會不會自動接章 */
   for (let round = 0; round < 5; round++) {
     await page.evaluate(() => {
@@ -85,13 +88,23 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   flow.seps >= 1 ? ok(`連讀：章間細線 ${flow.seps} 條`) : bad('連讀：沒有細線');
   flow.chars > 1500 ? ok(`連讀：累積 ${flow.chars} 字`) : bad('連讀：內容太少', String(flow.chars));
 
-  /* 記住進度 */
+  /* 記住進度：走真正的右鍵路徑 */
   const toastBefore = await page.evaluate(() => document.querySelector('.rm-toast')?.textContent || '');
-  await page.evaluate(async () => {
+  const menuOpened = await page.evaluate(() => {
     const para = document.querySelector('#stream .pb .p');
-    window.__moyuRemember.setPara(para);
-    await window.__moyuRemember.save();
+    const r = para.getBoundingClientRect();
+    para.dispatchEvent(new MouseEvent('contextmenu', {
+      bubbles: true, cancelable: true,
+      clientX: Math.round(r.left + 40), clientY: Math.round(r.top + 8),
+    }));
+    return window.__moyuRemember.menuOpen;
   });
+  menuOpened ? ok('右鍵：段落上按右鍵出選單') : bad('右鍵：選單沒出來');
+
+  const menuText = await page.evaluate(() => document.querySelector('.rm-menu')?.innerText || '');
+  /記住進度/.test(menuText) ? ok(`右鍵：選單有「記住進度」（${menuText.replace(/\n+/g, ' / ').slice(0, 40)}）`) : bad('右鍵：選單沒有記住進度', menuText);
+
+  await page.evaluate(() => document.querySelector('#rmMenuSave').click());
   await sleep(900);
   const after = await page.evaluate(() => document.querySelector('.rm-toast')?.textContent || '');
   /記住/.test(after) ? ok(`記住進度：提示「${after}」`) : bad('記住進度：沒有提示', after || toastBefore);
