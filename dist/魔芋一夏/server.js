@@ -12,6 +12,7 @@
    ══════════════════════════════════════════════════════════════ */
 
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
@@ -56,6 +57,7 @@ let settings = { ...DEFAULTS, ...store.readJson(settingsPath, {}) };
 const cookiePath = path.join(DATA_DIR, 'cookie.txt');
 const progressPath = path.join(DATA_DIR, 'progress.json');
 const commentCache = new Map();
+const updateCache = { at: 0, local: "", remote: "", err: "" };
 
 /* ── 老闆鍵：SSE 廣播 ───────────────────────────────────────── */
 let bossState = false;
@@ -412,6 +414,46 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         return json(res, 200, { ok: false, error: e.message });
       }
+    }
+
+    if (p === '/api/update') {
+      const now = Date.now();
+      if (!updateCache.at || now - updateCache.at > 600000) {
+        let sha = 'unknown';
+        try {
+          const head = fs.readFileSync(path.join(ROOT, '.git', 'HEAD'), 'utf8').trim();
+          if (head.startsWith('ref:')) {
+            const br = head.slice(5).trim().split('/').pop();
+            const rf = path.join(ROOT, '.git', 'refs', 'heads', br);
+            if (fs.existsSync(rf)) sha = fs.readFileSync(rf, 'utf8').trim().slice(0, 7);
+          } else sha = head.slice(0, 7);
+        } catch {}
+        updateCache.local = sha;
+        try {
+          const body = await new Promise((resolve, reject) => {
+            const req2 = https.get('https://api.github.com/repos/kunkai2002/moyu-v2/commits?per_page=1', {
+              headers: { 'User-Agent': 'moyu-update' },
+            }, (r) => {
+              let d = '';
+              r.on('data', (c) => { d += c; });
+              r.on('end', () => resolve(d));
+            });
+            req2.on('error', reject);
+            req2.setTimeout(8000, () => req2.destroy(new Error('timeout')));
+          });
+          const j = JSON.parse(body);
+          updateCache.remote = j?.[0]?.sha ? j[0].sha.slice(0, 7) : '';
+        } catch (e) { updateCache.remote = ''; updateCache.err = e.message; }
+        updateCache.at = now;
+      }
+      const upToDate = !!updateCache.remote && updateCache.remote === updateCache.local;
+      return json(res, 200, {
+        ok: !!updateCache.remote,
+        local: updateCache.local,
+        remote: updateCache.remote,
+        upToDate,
+        error: updateCache.err || '',
+      });
     }
 
     if (p === '/api/health') {

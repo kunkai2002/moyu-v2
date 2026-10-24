@@ -57,6 +57,7 @@
       status: () => api('/api/prefetch/status'),
       stop: () => post('/api/prefetch/stop', {}),
     },
+    update: { check: () => api('/api/update') },
     sync: {
       status: () => api('/api/sync/status'),
       config: (c) => post('/api/sync/config', c),
