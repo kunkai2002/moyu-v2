@@ -748,10 +748,21 @@ document.addEventListener('DOMContentLoaded', boot);
 
 /* 除錯／快照用的鉤子 */
 window.__moyuDebug = {
-  openBook: (id) => openBook(id),
-  goChapter: (i) => goChapter(i, { announce: true }),
+  openBook,
+  openShelf,
   setTheme,
   state,
-  showCookiePrompt,
+  login: showCookiePrompt,
+  goChapter: (i) => goChapter(i, { announce: true }),
   boss: (on) => document.body.classList.toggle('bossing', !!on),
+  showReviewsInStream() {
+    const b = addAssistant();
+    const d = el('div', 'pb');
+    b.appendChild(d);
+    showReviews(d);
+  },
+  toggleHelp() {
+    const p = document.getElementById('helpPanel');
+    if (p) p.hidden = !p.hidden;
+  },
 };

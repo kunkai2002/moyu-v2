@@ -29,7 +29,7 @@
       </button>
     </div>
 
-    <div class="proj">
+    <div class="proj" id="projRow" role="button" tabindex="0" title="回到書架">
       <span class="proj-ico"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></span>
       <span class="proj-name" id="bookName">停尸房兼职，搬出了前女友？</span>
     </div>
@@ -39,14 +39,14 @@
     <div class="side-foot">
       <div class="find">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8"/></svg>
-        <span class="find-ph">grep 章節…</span>
+        <input id="chFilter" placeholder="篩選章節…" spellcheck="false" autocomplete="off">
         <kbd>Ctrl+K</kbd>
       </div>
-      <div class="me">
+      <button class="me" id="meRow" title="設定">
         <span class="av" id="av">姜</span>
         <span class="me-txt" id="meTxt">第 3 / 611 章</span>
         <span class="me-pct" id="mePct">1.2%</span>
-      </div>
+      </button>
     </div>
   </aside>
 
@@ -57,8 +57,8 @@
     <div class="topbar">
       <span class="crumb" id="crumb">停尸房兼职，搬出了前女友？ / <b>第 3 章 信手拈来</b></span>
       <span class="topbar-r">
-        <span class="pill">context 611</span>
-        <span class="pill">段評 12</span>
+        <button class="pill" id="pillChapters" title="章節總數">章節 0</button>
+        <button class="pill" id="pillReviews" title="開啟書評">書評</button>
         <button class="ghost icon" id="bossBtn" title="老闆鍵 Alt+Q">
           <svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V7z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
@@ -76,9 +76,51 @@
         </div>
       </div>
       <div class="hintline">
-        <span>? 輸入 <kbd>/</kbd> 看指令</span>
-        <span class="hintline-r" id="modeTag">⏵⏵ auto-read on</span>
+        <button class="hint-btn" id="helpBtn">? 指令表（<kbd>/help</kbd>）</button>
+        <button class="hint-btn" id="modeTag">auto-read off</button>
       </div>
+    </div>
+
+    <div class="panel" id="panel" hidden>
+      <div class="panel-head">
+        <b>設定</b>
+        <button class="ghost icon" id="panelClose" title="關閉">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+      <div class="panel-body">
+        <label class="row"><span>主題</span>
+          <select id="setTheme"></select>
+        </label>
+        <label class="row"><span>字級</span>
+          <input type="range" id="setFont" min="12" max="20" step="0.5">
+          <b id="setFontV"></b>
+        </label>
+        <label class="row"><span>行距</span>
+          <input type="range" id="setLh" min="1.5" max="2.6" step="0.05">
+          <b id="setLhV"></b>
+        </label>
+        <label class="row"><span>串流速度</span>
+          <input type="range" id="setSpeed" min="10" max="200" step="5">
+          <b id="setSpeedV"></b>
+        </label>
+        <div class="row"><span>登入</span>
+          <button class="btn" id="setLogin">掃碼登入</button>
+          <button class="btn" id="setLogout">登出</button>
+        </div>
+        <div class="row"><span>狀態</span><span id="setLoginState" class="muted">—</span></div>
+        <div class="row"><span>資料夾</span><span id="setData" class="muted">—</span></div>
+      </div>
+    </div>
+
+    <div class="panel" id="helpPanel" hidden>
+      <div class="panel-head">
+        <b>指令</b>
+        <button class="ghost icon" id="helpClose" title="關閉">
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+      <div class="panel-body" id="helpList"></div>
     </div>
 
     <div class="statusbar">
@@ -104,5 +146,6 @@
 
 <script src="bridge-http.js"></script>
 <script src="app.js"></script>
+<script src="wiring.js"></script>
 </body>
 </html>
