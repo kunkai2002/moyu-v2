@@ -294,14 +294,17 @@ async function goChapter(i, { announce = false } = {}) {
   if (r.previewOnly) {
     body.innerHTML = '';
     body.appendChild(el('div', 'meta',
-      `<span class="warn">⚠</span>這一章網頁端只給 ${r.chars} 字預覽`));
+      `<span class="warn">·</span>本章只取到 ${r.chars} 字試讀`));
+    for (const para of (r.paragraphs || [])) {
+      const d = el('div', 'p');
+      d.textContent = para;
+      body.appendChild(d);
+    }
     body.insertAdjacentHTML('beforeend',
-      `<div class="toolres"><div class="ln"><span class="bar">⎿</span><div>
-        番茄網頁版沒有 SVIP 只給一小段。三條路：<br>
-        　· 貼 <code>/login</code> 用有 SVIP 的帳號 cookie<br>
-        　· 在手機 APP 上看這本（APP 是免費的）<br>
-        　· 這本書的前幾章通常可以完整讀
-      </div></div></div>`);
+      '<div class="toolres"><div class="ln"><span class="bar">⎿</span><div>' +
+        '這一章在免費範圍外，只給試讀片段。<br>' +
+        '免費章節可以完整讀；付費章節目前取不到全文。' +
+      '</div></div></div>');
     body.appendChild(el('div', 'next', `<span class="k">⏎</span><span>繼續下一章</span>`));
     $('#sbChapter').textContent = `第 ${ch.no} / ${state.chapters.length} 章`;
     updateCrumb();

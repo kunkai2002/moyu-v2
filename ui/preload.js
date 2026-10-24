@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('moyu', {
     poll: (token) => ipcRenderer.invoke('qr:poll', token),
   },
   shelf: {
+    raw: () => ipcRenderer.invoke('shelf:raw'),
     list: () => ipcRenderer.invoke('shelf:list'),
     cached: () => ipcRenderer.invoke('shelf:cached'),
   },

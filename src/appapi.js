@@ -48,6 +48,21 @@ function saveDevice(dir, d) {
 
 function setDevice(d) { device = d; }
 
+/* 任何入口（伺服器 / Electron / 測試）都能先宣告資料目錄；
+   沒宣告也不會壞，會用內建的匿名裝置。 */
+function useDataDir(dir) {
+  if (!dir) return device;
+  try { fs.mkdirSync(dir, { recursive: true }); } catch {}
+  loadDevice(dir);
+  saveDevice(dir, device);
+  return device;
+}
+
+function ensureDevice() {
+  if (!device) loadDevice(process.cwd());
+  return device;
+}
+
 /* ── 限速 ──────────────────────────────────────────────────── */
 const MIN_INTERVAL = 350;
 let lastCall = 0;
@@ -60,6 +75,7 @@ async function throttle() {
 
 /* ── 查詢參數 ───────────────────────────────────────────────── */
 function buildQuery(extra, versionCode = '70132') {
+  ensureDevice();
   const base = {
     iid: device.install_id,
     device_id: device.device_id,
@@ -109,8 +125,9 @@ async function appGet(pathname, query) {
   const res = await httpRequest(url, { method: 'GET', headers });
   const text = res.body.toString('utf8');
   if (!text.trim()) {
-    const e = new Error('網關回空（裝置可能被作廢）');
+    const e = new Error(`網關回空（裝置可能被作廢）HTTP ${res.statusCode}`);
     e.empty = true;
+    e.status = res.status;
     throw e;
   }
   let json;
@@ -162,6 +179,7 @@ async function appRootPost(pathname, bodyObj) {
 let keyInfo = { key: null, keyver: 0 };
 
 async function registerKey() {
+  ensureDevice();
   // device_id → 16 bytes 大端 → 反轉，用固定密鑰 AES-CBC 加密
   const idBytes = Buffer.alloc(16);
   let id = BigInt(device.device_id);
@@ -242,6 +260,7 @@ async function getChapter(itemId, retry = 0) {
 }
 
 module.exports = {
+  useDataDir, ensureDevice,
   loadDevice, saveDevice, setDevice, registerKey, getChapter, appGet, appRootPost,
   get keyInfo() { return keyInfo; },
 };

@@ -8,7 +8,7 @@ require('electron').app.disableHardwareAcceleration();
 
 const {
   app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage,
-  clipboard,
+  clipboard, session,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -16,6 +16,8 @@ const fs = require('fs');
 const fanqie = require('./src/fanqie');
 const store = require('./src/store');
 const qrLogin = require('./src/login');
+const bookstore = require('./src/shelf');
+const appapi = require('./src/appapi');
 
 /* ── 設定 ───────────────────────────────────────────────────── */
 const DEFAULT_SETTINGS = {
@@ -180,6 +182,23 @@ function loadSessionCookies() {
   return sessionCookies;
 }
 
+/* 登入後把 cookie 同步進網頁分區，網頁版備援才有登入態 */
+async function syncWebSession() {
+  try {
+    const ses = session.fromPartition('persist:fanqie');
+    const exp = Math.floor(Date.now() / 1000) + 86400 * 60;
+    for (const c of sessionCookies) {
+      if (!c || !c.name || !c.value) continue;
+      try {
+        await ses.cookies.set({
+          url: 'https://fanqienovel.com/', name: c.name, value: c.value,
+          domain: '.fanqienovel.com', path: '/', secure: true, httpOnly: false, expirationDate: exp,
+        });
+      } catch {}
+    }
+  } catch {}
+}
+
 function cookieHeader() {
   if (!sessionCookies.length) loadSessionCookies();
   return sessionCookies.map((c) => `${c.name}=${c.value}`).join('; ');
@@ -269,11 +288,37 @@ function registerIpc() {
           cookies.map((c) => c.name + '=' + c.value).join('; '), 'utf8');
       }
       qrJar.delete(token);
+        await syncWebSession();
     }
     return { status: r.status, message: r.message || '', ok: !!r.sessionId };
   });
 
+ipcMain.handle('shelf:raw', async () => {
+    const cookie = cookieHeader();
+    if (!cookie) return { ok: false, books: [], total: 0, error: '還沒登入（打 /login 掃碼）' };
+    try {
+      const r = await bookstore.getShelf(cookie);
+      if (r.books && r.books.length) store.writeJson(path.join(DATA_DIR, 'shelf.json'), r.books);
+      return { ok: true, books: r.books || [], total: r.total || (r.books || []).length };
+    } catch (e) {
+      // 官方 API 不通時，用已登入的網頁視窗再試一次
+      const list = await fetchShelf();
+      if (list.length) {
+        store.writeJson(path.join(DATA_DIR, 'shelf.json'), list);
+        return { ok: true, books: list, total: list.length };
+      }
+      return { ok: false, books: [], total: 0, error: e.message };
+    }
+  });
+
   ipcMain.handle('shelf:list', async () => {
+    const cookie = cookieHeader();
+    if (cookie) {
+      try {
+        const r = await bookstore.getShelf(cookie);
+        if (r.books.length) { store.writeJson(path.join(DATA_DIR, 'shelf.json'), r.books); return r.books; }
+      } catch {}
+    }
     const list = await fetchShelf();
     store.writeJson(path.join(DATA_DIR, 'shelf.json'), list);
     return list;
@@ -292,7 +337,8 @@ function registerIpc() {
     const cached = store.readJson(path.join(DATA_DIR, 'chapters', `${chapterId}.json`), null);
     if (cached) return cached;
     const r = await fanqie.loadChapter(bookId, chapterId, cookieHeader());
-    store.writeJson(path.join(DATA_DIR, 'chapters', `${chapterId}.json`), r);
+    // 只有試讀的結果不要存，之後有完整正文才有機會補上
+    if (!r.previewOnly) store.writeJson(path.join(DATA_DIR, 'chapters', `${chapterId}.json`), r);
     return r;
   });
 
@@ -302,7 +348,7 @@ function registerIpc() {
     return true;
   });
 
-  ipcMain.handle('cookie:set', (_e, v) => {
+  ipcMain.handle('cookie:set', async (_e, v) => {
     if (v && String(v).trim()) {
       const c = String(v).trim();
       fs.writeFileSync(path.join(DATA_DIR, 'cookie.txt'), c, 'utf8');
@@ -316,6 +362,7 @@ function registerIpc() {
       fs.rmSync(path.join(DATA_DIR, 'cookie.txt'), { force: true });
       sessionCookies = [];
     }
+    await syncWebSession();
     return { ok: true };
   });
 
@@ -364,8 +411,11 @@ if (!gotLock) {
       try { settings = { ...DEFAULT_SETTINGS, ...store.readJson(sp, {}) }; } catch {}
     }
     loadSessionCookies();
+    syncWebSession();
 
     fanqie.setCharsetPath(path.join(__dirname, 'src', 'charset.json'));
+    // 匿名裝置（跟帳號無關）：沒有它 APP 網關拿不到完整正文，只能退回網頁預覽
+    appapi.useDataDir(DATA_DIR);
     registerIpc();
     createWindow();
     createTray();
