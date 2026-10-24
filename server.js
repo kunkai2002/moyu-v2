@@ -349,6 +349,24 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, today, last7, total, days: keys.length });
     }
 
+    if (p === '/api/version') {
+      let sha = 'unknown', branch = 'main';
+      try {
+        const head = fs.readFileSync(path.join(ROOT, '.git', 'HEAD'), 'utf8').trim();
+        if (head.startsWith('ref:')) {
+          branch = head.slice(5).trim().split('/').pop();
+          const refFile = path.join(ROOT, '.git', 'refs', 'heads', branch);
+          if (fs.existsSync(refFile)) sha = fs.readFileSync(refFile, 'utf8').trim().slice(0, 7);
+          else {
+            const packed = fs.readFileSync(path.join(ROOT, '.git', 'packed-refs'), 'utf8');
+            const line = packed.split('\n').find((l) => l.endsWith('refs/heads/' + branch));
+            if (line) sha = line.split(' ')[0].slice(0, 7);
+          }
+        } else sha = head.slice(0, 7);
+      } catch {}
+      return json(res, 200, { ok: true, sha, branch, dataDir: DATA_DIR });
+    }
+
     if (p === '/api/health') {
       return json(res, 200, { ok: true, port: PORT, data: DATA_DIR });
     }

@@ -51,6 +51,7 @@
       set: (value) => post('/api/cookie', { value }),
       get: () => api('/api/cookie'),
     },
+    version: () => api('/api/version'),
     stats: {
       get: () => api('/api/stats'),
       add: (d) => post('/api/stats', d),
