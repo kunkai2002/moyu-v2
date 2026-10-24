@@ -57,7 +57,7 @@ function call(method, urlStr, body) {
         let j = null;
         try { j = JSON.parse(t); } catch {}
         if (res.statusCode === 401) return reject(new Error('同步金鑰不對（401）'));
-        if (!res.ok) return reject(new Error(`同步失敗 HTTP ${res.statusCode}`));
+        if (res.statusCode >= 400) return reject(new Error(`同步失敗 HTTP ${res.statusCode}`));
         resolve(j);
       });
     });

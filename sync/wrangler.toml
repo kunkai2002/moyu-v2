@@ -2,12 +2,9 @@ name = "moyu-sync"
 main = "worker.mjs"
 compatibility_date = "2026-01-01"
 
-# 1) npx wrangler d1 create moyu-sync
-# 2) 把 database_id 貼到下面
 [[d1_databases]]
 binding = "DB"
 database_name = "moyu-sync"
-database_id = "REPLACE_WITH_YOUR_DATABASE_ID"
+database_id = "aa84c9b2-4cfb-4a22-abde-061863f35ad9"
 
-# 3) npx wrangler secret put SYNC_TOKEN
-#    （不要在 wrangler.toml 裡寫明文）
+# SYNC_TOKEN 用 secret 設定，不要寫在這裡
