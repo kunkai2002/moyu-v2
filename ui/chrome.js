@@ -23,7 +23,8 @@
   .tb-btn:hover{background:var(--sel);color:var(--fg)}
   .tb-btn:disabled{opacity:.28;cursor:default;background:none}
   .tb-btn.accent{color:var(--acc)}
-  .crumb{font-size:12px;padding-left:6px}
+  .crumb{font-size:12px;padding-left:6px;flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .topbar-r{flex:none}
   .overflow{position:absolute;right:10px;top:44px;width:210px;z-index:60;
     background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:9px;
     box-shadow:0 16px 44px rgba(0,0,0,.5);padding:5px}
