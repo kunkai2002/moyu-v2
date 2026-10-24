@@ -26,5 +26,10 @@ contextBridge.exposeInMainWorld('moyu', {
   boss: (on) => ipcRenderer.invoke('app:boss', on),
   hide: () => ipcRenderer.invoke('app:hide'),
   quit: () => ipcRenderer.invoke('app:quit'),
+  win: {
+    min: () => ipcRenderer.invoke('win:min'),
+    max: () => ipcRenderer.invoke('win:max'),
+    close: () => ipcRenderer.invoke('win:close'),
+  },
   onBoss: (cb) => ipcRenderer.on('boss', (_e, on) => cb(on)),
 });

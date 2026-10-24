@@ -11,7 +11,7 @@ const FILES = [
   'src/login.js', 'src/shelf.js', 'src/charset.json',
   'src/sign/index.js', 'src/sign/sm3.js', 'src/sign/cipher.js', 'src/sign/protobuf.js',
   'ui/index.html', 'ui/theme.css', 'ui/app.js', 'ui/bridge-http.js',
-  'ui/wiring.js', 'ui/wiring2.js',
+  'ui/wiring.js', 'ui/wiring2.js', 'ui/wiring3.js',
   'tools/start.vbs',
 ];
 

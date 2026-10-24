@@ -54,6 +54,8 @@ function createWindow() {
     minWidth: 960,
     minHeight: 620,
     backgroundColor: '#1a1915',
+    frame: false,
+    titleBarStyle: 'hidden',
     title: settings.windowTitle,
     show: false,
     autoHideMenuBar: true,
@@ -290,6 +292,19 @@ function registerIpc() {
   ipcMain.handle('app:boss', (_e, on) => { setBoss(!!on); return isBoss; });
   ipcMain.handle('app:hide', () => { if (win) win.hide(); return true; });
   ipcMain.handle('app:quit', () => { app.isQuitting = true; app.quit(); });
+
+  /* 自訂標題列用的視窗控制 */
+  ipcMain.handle('win:min', () => { win?.minimize(); return true; });
+  ipcMain.handle('win:max', () => {
+    if (!win) return false;
+    if (win.isMaximized()) win.unmaximize(); else win.maximize();
+    return win.isMaximized();
+  });
+  ipcMain.handle('win:close', () => {
+    if (!win) return true;
+    if (settings.closeToTray) win.hide(); else { app.isQuitting = true; win.close(); }
+    return true;
+  });
 }
 
 /* ── 啟動 ───────────────────────────────────────────────────── */
