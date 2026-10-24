@@ -35,6 +35,7 @@ const arg = (name, def) => {
 };
 
 const PORT = Number(arg('port', 47821));
+const HOST = arg('host', '0.0.0.0');
 const DATA_DIR = arg('data', process.env.MOYU_DATA || path.join(ROOT, 'data'));
 const OPEN = process.argv.includes('--open');
 
@@ -85,10 +86,13 @@ const MIME = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
+  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 
 function serveStatic(req, res, urlPath) {
   let p = urlPath === '/' ? '/index.html' : urlPath;
+  if (p === '/m' || p === '/m/') p = '/m/index.html';
+  if (p.endsWith('/')) p += 'index.html';
   p = decodeURIComponent(p.split('?')[0]);
   const full = path.normalize(path.join(UI, p));
   if (!full.startsWith(UI)) { res.writeHead(403); return res.end('forbidden'); }
@@ -527,10 +531,20 @@ server.on('error', (e) => {
   }
 });
 
-server.listen(PORT, '127.0.0.1', () => {
+server.listen(PORT, HOST, () => {
   console.log('魔芋一夏 · 服務已啟動');
   console.log(`  http://127.0.0.1:${PORT}`);
   console.log(`  資料目錄 ${DATA_DIR}`);
+  try {
+    const nets = require('os').networkInterfaces();
+    for (const list of Object.values(nets)) {
+      for (const n of list || []) {
+        if (n.family === 'IPv4' && !n.internal) {
+          console.log(`  手機版 http://${n.address}:${PORT}/m/`);
+        }
+      }
+    }
+  } catch {}
   if (OPEN) openAppWindow();
 });
 
