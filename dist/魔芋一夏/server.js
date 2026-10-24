@@ -276,6 +276,32 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, status: r.status, message: r.message || '' });
     }
 
+    if (p === '/api/search' && req.method === 'GET') {
+      const q = (u.searchParams.get('q') || '').trim();
+      if (!q) return json(res, 400, { error: '缺 q' });
+      const dir = path.join(DATA_DIR, 'chapters');
+      let files = [];
+      try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')); } catch {}
+      const hits = [];
+      for (const f of files) {
+        const ch = store.readJson(path.join(dir, f), null);
+        if (!ch || !Array.isArray(ch.paragraphs)) continue;
+        ch.paragraphs.forEach((t, i) => {
+          const at = t.indexOf(q);
+          if (at >= 0 && hits.length < 100) {
+            hits.push({
+              chapterId: ch.chapterId,
+              title: ch.title || '',
+              para: i + 1,
+              text: t.slice(Math.max(0, at - 16), at + q.length + 16),
+            });
+          }
+        });
+        if (hits.length >= 100) break;
+      }
+      return json(res, 200, { ok: true, q, hits, searched: files.length });
+    }
+
     if (p === '/api/health') {
       return json(res, 200, { ok: true, port: PORT, data: DATA_DIR });
     }

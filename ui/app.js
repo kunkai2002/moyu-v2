@@ -437,6 +437,7 @@ async function handleInput(raw) {
     else addError('沒有這個主題。可用：' + THEMES.map((t) => t.id).join('、'));
     return;
   }
+  if (/^\/grep\s+/i.test(text)) { searchInBook(text.replace(/^\/grep\s+/i, '').trim()); return; }
   if (/^\/boss$/i.test(text)) { bridge?.boss(true); return; }
   if (/^\/hide$/i.test(text)) { bridge?.hide(); return; }
   if (/^\/login$/i.test(text)) { showCookiePrompt(); return; }

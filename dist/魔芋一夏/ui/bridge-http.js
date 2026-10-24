@@ -35,6 +35,7 @@
       cached: async () => [],
     },
     openBook: (input) => post('/api/open', { input }),
+    search: (bookId, q) => api(`/api/search?book=${encodeURIComponent(bookId)}&q=${encodeURIComponent(q)}`),
     lastBook: () => api('/api/last-book'),
     exportBook: (bookId, limit) =>
       api(`/api/export?book=${encodeURIComponent(bookId)}&limit=${limit || 50}`),
