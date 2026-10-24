@@ -176,3 +176,9 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 .empty-btn:active{transform:scale(.97);transition:transform .12s var(--ease)}
 .empty-link{margin-top:10px;color:var(--t3);font-size:12.5px}
 .empty-link:active{color:var(--orange)}
+
+/* 搜尋結果 */
+.li-sub{font-size:11.5px;color:var(--t3);margin-top:2px}
+.li-sum{font-size:11.5px;color:#b0b0b8;margin-top:3px;line-height:1.5;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sr:active{background:#00000006}

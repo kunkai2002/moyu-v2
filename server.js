@@ -24,6 +24,7 @@ const login = require('./src/login');
 const { getShelf } = require('./src/shelf');
 const sync = require('./src/sync');
 const prefetch = require('./src/prefetch');
+const { searchBooks } = require('./src/booksearch');
 const { getBookComments } = require('./src/comments');
 
 const ROOT = __dirname;
@@ -473,6 +474,19 @@ const server = http.createServer(async (req, res) => {
           ? '請關掉程式，然後執行 ' + repo + '\\更新.cmd，完成後重新啟動'
           : '請重新解壓最新版覆蓋安裝目錄',
       });
+    }
+
+    if (p === '/api/book/search' && req.method === 'GET') {
+      const q = (u.searchParams.get('q') || '').trim();
+      const tab = Number(u.searchParams.get('tab') || 1);
+      const passback = Number(u.searchParams.get('passback') || 0);
+      if (!q) return json(res, 400, { error: '缺關鍵字' });
+      try {
+        const r = await searchBooks(q, tab, passback);
+        return json(res, 200, { ok: true, ...r });
+      } catch (e) {
+        return json(res, 200, { ok: false, error: e.message, books: [] });
+      }
     }
 
     if (p === '/api/health') {

@@ -236,9 +236,34 @@
       } catch (err) { state.textContent = '失敗：' + err.message; }
       return;
     }
-    state.textContent = '書名搜尋還沒接上，請貼書號或書頁網址。';
+    state.textContent = '搜尋中…';
     list.innerHTML = '';
+    try {
+      const r = await api('/api/book/search?q=' + encodeURIComponent(v));
+      if (!r.ok) { state.textContent = r.error || '搜尋失敗'; return; }
+      if (!r.books.length) { state.textContent = '找不到「' + v + '」'; return; }
+      state.textContent = '找到 ' + r.books.length + ' 本';
+      renderSearch(r.books);
+    } catch (err) { state.textContent = '搜尋失敗：' + err.message; }
   });
+
+  function renderSearch(books) {
+    const list = $('#searchList');
+    list.innerHTML = books.map((b, i) => `
+      <div class="li sr" data-i="${i}" style="flex-direction:row;gap:12px;align-items:center">
+        <div style="width:52px;height:70px;flex:none;border-radius:6px;overflow:hidden;background:#f0e6dc">
+          ${b.cover ? `<img src="${esc(b.cover)}" style="width:100%;height:100%;object-fit:cover" loading="lazy">` : ''}
+        </div>
+        <div style="flex:1;min-width:0">
+          <b>${esc(b.title)}</b>
+          <div class="li-sub">${esc(b.author || '')}${b.sub ? ' · ' + esc(b.sub) : ''}</div>
+          <div class="li-sum">${esc((b.summary || '').slice(0, 46))}</div>
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('.sr').forEach((el) => {
+      el.addEventListener('click', () => openBook(books[+el.dataset.i]));
+    });
+  }
 
   /* ── 掃碼登入 ── */
   $('#btnLogin').addEventListener('click', async () => {
