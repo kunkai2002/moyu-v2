@@ -11,7 +11,7 @@ const FILES = [
   'src/login.js', 'src/shelf.js', 'src/sync.js', 'src/prefetch.js', 'src/charset.json',
   'src/sign/index.js', 'src/sign/sm3.js', 'src/sign/cipher.js', 'src/sign/protobuf.js',
   'ui/index.html', 'ui/theme.css', 'ui/app.js', 'ui/bridge-http.js',
-  'ui/wiring.js', 'ui/wiring2.js', 'ui/wiring3.js', 'ui/wiring4.js', 'ui/wiring5.js', 'ui/wiring6.js', 'ui/wiring7.js', 'ui/wiring8.js', 'ui/wiring9.js', 'ui/wiring10.js',
+  'ui/wiring.js', 'ui/wiring2.js', 'ui/wiring3.js', 'ui/wiring4.js', 'ui/wiring5.js', 'ui/wiring6.js', 'ui/wiring7.js', 'ui/wiring8.js', 'ui/wiring9.js', 'ui/wiring10.js', 'ui/wiring11.js',
   'tools/start.vbs',
 ];
 
