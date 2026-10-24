@@ -51,6 +51,10 @@
       set: (value) => post('/api/cookie', { value }),
       get: () => api('/api/cookie'),
     },
+    stats: {
+      get: () => api('/api/stats'),
+      add: (d) => post('/api/stats', d),
+    },
     marks: {
       list: (bookId) => api('/api/marks?book=' + encodeURIComponent(bookId)),
       save: (m) => post('/api/marks', m),
