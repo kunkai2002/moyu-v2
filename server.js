@@ -20,6 +20,7 @@ const fanqie = require('./src/fanqie');
 const store = require('./src/store');
 const appapi = require('./src/appapi');
 const login = require('./src/login');
+const { getShelf } = require('./src/shelf');
 const { getBookComments } = require('./src/comments');
 
 const ROOT = __dirname;
@@ -180,18 +181,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/shelf' && req.method === 'GET') {
-      const r = await fanqie.request('https://fanqienovel.com/bookshelf', cookie());
-      if (r.status !== 200) return json(res, 200, { ok: false, list: [], reason: `HTTP ${r.status}` });
-      const list = [];
-      const seen = new Set();
-      for (const m of r.body.matchAll(/<a[^>]+href="\/page\/(\d+)"[^>]*>([\s\S]{0,200}?)<\/a>/g)) {
-        if (seen.has(m[1])) continue;
-        seen.add(m[1]);
-        const t = m[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-        list.push({ id: m[1], title: t.slice(0, 40) });
+      try {
+        const r = await getShelf(cookie());
+        store.writeJson(path.join(DATA_DIR, 'shelf.json'), r.books);
+        return json(res, 200, { ok: true, ...r });
+      } catch (e) {
+        return json(res, 200, { ok: false, books: [], total: 0, error: e.message });
       }
-      store.writeJson(path.join(DATA_DIR, 'shelf.json'), list);
-      return json(res, 200, { ok: true, list });
     }
 
     if (p === '/api/export' && req.method === 'GET') {

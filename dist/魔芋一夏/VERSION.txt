@@ -1,0 +1,9 @@
+魔芋一夏 v2
+build 2026-10-24
+
+啟動：雙擊「啟動.cmd」
+需求：Windows 10/11 + Node.js 18+ + Chrome 或 Edge
+      ＋ .NET 8 桌面執行階段（搭檔程式用；Win10/11 多數已內建）
+
+不需要安裝任何 npm 套件。
+全域 Alt+Q 與防截圖由 companion\MoyuCompanion.exe 提供。

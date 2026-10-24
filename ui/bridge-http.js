@@ -30,7 +30,8 @@
       set: (on) => post('/api/boss', { on }),
     },
     shelf: {
-      list: async () => (await api('/api/shelf')).list || [],
+      list: async () => (await api('/api/shelf')).books || [],
+      raw: () => api('/api/shelf'),
       cached: async () => [],
     },
     openBook: (input) => post('/api/open', { input }),

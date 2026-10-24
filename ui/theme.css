@@ -332,15 +332,18 @@ kbd{
 /* ══════════════════════════════════════════════════════════════
    書架卡片
    ══════════════════════════════════════════════════════════════ */
-.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;margin:10px 0 18px}
+.shelf{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin:10px 0 18px}
 .shelf-card{
-  display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;
+  display:flex;flex-direction:row;gap:10px;align-items:stretch;text-align:left;
   border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:var(--bg-elev);
   color:var(--fg2);font-family:var(--ui-font);font-size:12.5px;overflow:hidden;
 }
 .shelf-card:hover{border-color:var(--acc);color:var(--fg)}
+.sc-cover{width:46px;height:62px;flex:none;border-radius:3px;object-fit:cover;background:var(--sel);display:block}
+.sc-body{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1;justify-content:center}
 .shelf-card .sc-t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
-.shelf-card .sc-id{font-size:10.5px;color:var(--fg3)}
+.shelf-card .sc-a{font-size:10.5px;color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shelf-card .sc-p{font-size:10.5px;color:var(--acc2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* ══════════════════════════════════════════════════════════════
    老闆畫面：假的 git diff

@@ -486,17 +486,30 @@ async function openShelf() {
     `<div class="tool">⏺ <span class="fn">read_shelf</span></div>
      <div class="toolres"><div class="ln"><span class="bar">⎿</span><div>讀取官方書架…</div></div></div>`);
 
-  const list = await bridge.shelf.list();
+  let list = [];
+  let errMsg = '';
+  try {
+    const r = await bridge.shelf.raw();
+    list = r.books || [];
+    errMsg = r.error || '';
+  } catch (e) { errMsg = e.message; }
+
   const res = b.querySelector('.toolres');
   if (!list.length) {
-    res.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>書架是空的，或還沒登入。按左下「登入」用抖音掃碼。</div></div>`;
+    res.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${escapeHtml(errMsg || '書架是空的。先打 /login 掃碼登入。')}</div></div>`;
     return;
   }
   res.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${list.length} 本</div></div>`;
   const wrap = el('div', 'shelf');
-  for (const it of list.slice(0, 60)) {
+  for (const it of list) {
     const card = el('button', 'shelf-card');
-    card.innerHTML = `<span class="sc-t">${escapeHtml(it.title || it.id)}</span><span class="sc-id">${it.id}</span>`;
+    card.innerHTML = `
+      ${it.cover ? `<img class="sc-cover" src="${escapeHtml(it.cover)}" loading="lazy" alt="">` : '<span class="sc-cover sc-noimg"></span>'}
+      <span class="sc-body">
+        <span class="sc-t">${escapeHtml(it.title || it.id)}</span>
+        <span class="sc-a">${escapeHtml(it.author || '')}</span>
+        <span class="sc-p">${it.chapterTitle ? '讀到 ' + escapeHtml(it.chapterTitle) : (it.chapterOrder ? '第 ' + it.chapterOrder + ' 章' : '未開始')}</span>
+      </span>`;
     card.addEventListener('click', () => openBook(it.id));
     wrap.appendChild(card);
   }
