@@ -19,5 +19,5 @@ Else
 End If
 
 If fso.FileExists(base & "\companion\MoyuCompanion.exe") Then
-  sh.Run """" & base & "\companion\MoyuCompanion.exe"" --title=api-server --port=47821", 0, False
+  sh.Run """" & base & "\companion\MoyuCompanion.exe"" --title=api-server --port=47821 --no-protect", 0, False
 End If

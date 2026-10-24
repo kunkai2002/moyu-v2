@@ -16,7 +16,7 @@ const DEFAULT_SETTINGS = {
   windowTitle: 'api-server — node — 120×36',
   bossKey: 'Alt+Q',
   hideKey: 'Ctrl+Shift+Q',
-  protectScreen: true,      // 防截圖（WDA_EXCLUDEFROMCAPTION）
+  // 防截圖已移除
   closeToTray: true,
   streamSpeed: 45,          // 字/秒
   fontSize: 13.5,
@@ -71,7 +71,6 @@ function createWindow() {
   win.loadFile(path.join(__dirname, 'ui', 'index.html'));
 
   win.once('ready-to-show', () => {
-    if (settings.protectScreen) win.setContentProtection(true);
     win.show();
   });
 
@@ -223,7 +222,6 @@ function registerIpc() {
     store.writeJson(path.join(DATA_DIR, 'settings.json'), settings);
     if (win && !win.isDestroyed() && patch.windowTitle) win.setTitle(patch.windowTitle);
     if (patch.bossKey || patch.hideKey) registerHotkeys();
-    if (patch.protectScreen !== undefined && win) win.setContentProtection(!!patch.protectScreen);
     return settings;
   });
 
