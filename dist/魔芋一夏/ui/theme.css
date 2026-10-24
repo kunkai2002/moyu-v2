@@ -390,5 +390,48 @@ body.bossing .bosscreen{display:block}
 .qr-status.good{color:var(--ok)}
 .qr-status.bad{color:var(--acc)}
 
+/* ── 互動修正：讓每個看起來能點的東西真的能點 ─────────────── */
+.find input{
+  flex:1;min-width:0;border:0;outline:0;background:transparent;
+  font:inherit;font-size:12px;color:var(--fg);padding:0;
+}
+.find input::placeholder{color:var(--fg3)}
+.find:focus-within{border-color:var(--acc)}
+.proj{cursor:pointer;border-radius:6px}
+.proj:hover{background:var(--sel)}
+.me{width:100%;border:0;background:none;cursor:pointer;text-align:left;border-radius:6px;padding:4px 2px}
+.me:hover{background:var(--sel)}
+.hint-btn{
+  border:0;background:none;color:var(--fg3);font:inherit;font-size:10.5px;
+  cursor:pointer;padding:2px 4px;border-radius:4px;
+}
+.hint-btn:hover{color:var(--fg);background:var(--sel)}
+.pill{cursor:pointer}
+.pill:hover{color:var(--fg);border-color:var(--acc2)}
+
+/* 面板（設定 / 指令表） */
+.panel{
+  position:absolute;right:18px;top:44px;bottom:34px;width:340px;z-index:40;
+  background:var(--bg-elev);border:1px solid var(--line-strong);border-radius:10px;
+  box-shadow:0 18px 50px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;
+}
+.main{position:relative}
+.panel-head{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
+.panel-body{padding:10px 12px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.panel .row{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--fg2)}
+.panel .row > span:first-child{width:64px;flex:none;color:var(--fg3)}
+.panel .row input[type=range]{flex:1;accent-color:var(--acc)}
+.panel .row b{width:38px;text-align:right;color:var(--fg2);font-weight:400;font-variant-numeric:tabular-nums}
+.panel select,.panel .btn{
+  flex:1;background:var(--bg);color:var(--fg);border:1px solid var(--line-strong);
+  border-radius:5px;padding:5px 7px;font:inherit;font-size:12px;cursor:pointer;
+}
+.panel .btn:hover{background:var(--sel)}
+.panel .muted{color:var(--fg3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.help-row{display:flex;gap:10px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)}
+.help-row code{color:var(--acc2);min-width:96px;flex:none;font-family:var(--mono)}
+.help-row span{color:var(--fg2)}
+
+
 
 

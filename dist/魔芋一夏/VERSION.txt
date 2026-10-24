@@ -1,5 +1,0 @@
-魔芋一夏 v2
-build 2026-10-24
-
-啟動：雙擊「啟動.cmd」
-需求：Windows 10/11 + Node.js 18+ + Chrome/Edge + .NET 8 桌面執行階段
