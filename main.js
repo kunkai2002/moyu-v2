@@ -18,6 +18,7 @@ const store = require('./src/store');
 const qrLogin = require('./src/login');
 const bookstore = require('./src/shelf');
 const appapi = require('./src/appapi');
+const syncer = require('./src/sync');
 
 /* ── 設定 ───────────────────────────────────────────────────── */
 const DEFAULT_SETTINGS = {
@@ -342,6 +343,76 @@ ipcMain.handle('shelf:raw', async () => {
     return r;
   });
 
+  /* 標記：跟伺服器版同一份 marks.json */
+  const marksPath = () => path.join(DATA_DIR, 'marks.json');
+
+  ipcMain.handle('marks:list', (_e, bookId) => {
+    const all = store.readJson(marksPath(), {});
+    return bookId ? (all[bookId] || []) : all;
+  });
+
+  ipcMain.handle('marks:save', (_e, m) => {
+    if (!m || !m.bookId) return { ok: false, error: '缺少 bookId' };
+    const all = store.readJson(marksPath(), {});
+    const list = all[m.bookId] || [];
+    const id = m.id || (m.chapterId + '-' + m.para + '-' + m.type);
+    const i = list.findIndex((x) => x.id === id);
+    const rec = { ...m, id, at: Date.now() };
+    if (i >= 0) list[i] = rec; else list.push(rec);
+    all[m.bookId] = list;
+    store.writeJson(marksPath(), all);
+    return { ok: true, id };
+  });
+
+  ipcMain.handle('marks:remove', (_e, { bookId, id }) => {
+    const all = store.readJson(marksPath(), {});
+    all[bookId] = (all[bookId] || []).filter((x) => x.id !== id);
+    store.writeJson(marksPath(), all);
+    return { ok: true };
+  });
+
+  /* 雲端同步（Cloudflare Worker） */
+/* 閱讀統計：跟伺服器版同一份 stats.json */
+  ipcMain.handle('stats:get', () => {
+    const db = store.readJson(path.join(DATA_DIR, 'stats.json'), { days: {} });
+    const keys = Object.keys(db.days).sort();
+    const today = db.days[new Date().toISOString().slice(0, 10)] || { chars: 0, chapters: 0, seconds: 0 };
+    const last7 = keys.slice(-7).map((k) => ({ date: k, ...db.days[k] }));
+    const total = keys.reduce((a, k) => ({
+      chars: a.chars + db.days[k].chars,
+      chapters: a.chapters + db.days[k].chapters,
+      seconds: a.seconds + db.days[k].seconds,
+    }), { chars: 0, chapters: 0, seconds: 0 });
+    return { ok: true, today, last7, total, days: keys.length };
+  });
+
+  ipcMain.handle('stats:add', (_e, r) => {
+    const fpath = path.join(DATA_DIR, 'stats.json');
+    const db = store.readJson(fpath, { days: {} });
+    const d = new Date().toISOString().slice(0, 10);
+    const day = db.days[d] || { chars: 0, chapters: 0, seconds: 0 };
+    day.chars += Number(r && r.chars) || 0;
+    day.chapters += 1;
+    day.seconds += Number(r && r.seconds) || 0;
+    db.days[d] = day;
+    store.writeJson(fpath, db);
+    return { ok: true, today: day };
+  });
+
+  ipcMain.handle('sync:status', () => syncer.status());
+  ipcMain.handle('sync:config', (_e, cfg) => {
+    try { syncer.configure(cfg || {}); return { ok: true, ...syncer.status() }; }
+    catch (e) { return { ok: false, error: e.message, ...syncer.status() }; }
+  });
+  ipcMain.handle('sync:push', async () => {
+    try { const r = await syncer.push(DATA_DIR); return { ok: true, ...r, status: syncer.status() }; }
+    catch (e) { return { ok: false, error: e.message, status: syncer.status() }; }
+  });
+  ipcMain.handle('sync:pull', async () => {
+    try { const r = await syncer.pull(DATA_DIR); return { ok: true, ...r, status: syncer.status() }; }
+    catch (e) { return { ok: false, error: e.message, status: syncer.status() }; }
+  });
+
   ipcMain.handle('progress:get', () => store.readJson(path.join(DATA_DIR, 'progress.json'), {}));
   ipcMain.handle('progress:set', (_e, p) => {
     store.writeJson(path.join(DATA_DIR, 'progress.json'), p);
@@ -416,6 +487,7 @@ if (!gotLock) {
     fanqie.setCharsetPath(path.join(__dirname, 'src', 'charset.json'));
     // 匿名裝置（跟帳號無關）：沒有它 APP 網關拿不到完整正文，只能退回網頁預覽
     appapi.useDataDir(DATA_DIR);
+    syncer.init(DATA_DIR);
     registerIpc();
     createWindow();
     createTray();

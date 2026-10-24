@@ -95,7 +95,7 @@
     for (const m of list) {
       const row = document.createElement('div');
       row.className = 'mk-row';
-      row.innerHTML = `<span class="m-t">${esc(m.chapterTitle || '')} ${m.type === 'bookmark' ? '· 書籤' : ''}</span>
+      row.innerHTML = `<span class="m-t">${esc(m.chapterTitle || '')} ${m.type === 'bookmark' ? '· 書籤' : (m.type === 'pos' ? '· 位置' : '')}</span>
         <span class="m-x">${esc(m.text || '')}</span>
         ${m.note ? `<span class="m-n">✎ ${esc(m.note)}</span>` : ''}`;
       row.addEventListener('click', () => {
