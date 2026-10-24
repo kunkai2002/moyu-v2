@@ -462,6 +462,7 @@ async function handleInput(raw) {
 
   if (/^\/auto$/i.test(text)) {
     state.autoRead = !state.autoRead;
+    if (!state.autoRead && state.autoTimer) { clearTimeout(state.autoTimer); state.autoTimer = null; }
     addAssistant().insertAdjacentHTML('beforeend',
       `<div class="p">自動閱讀${state.autoRead ? '開' : '關'}了。${state.autoRead ? '讀完會自己接下一章。' : ''}</div>`);
     $('#modeTag').textContent = state.autoRead ? '⏵⏵ auto-read on' : '⏸ auto-read off';
@@ -663,7 +664,7 @@ async function boot() {
       if (cfg.theme) document.documentElement.dataset.theme = cfg.theme;
       buildThemeMenu();
       state.progress = (await bridge.progress.get()) || { books: {} };
-      $('#modelTag').textContent = cfg.modelName || 'opus 4.5 · 中';
+      const mt = $('#modelTag'); if (mt) mt.textContent = cfg.modelName || 'opus 4.5 · 中';
     } catch (e) { /* 開發模式沒有橋 */ }
   }
 
@@ -688,14 +689,14 @@ async function boot() {
   }
 
   // 事件
-  $('#themeBtn').addEventListener('click', (e) => {
+  $('#themeBtn')?.addEventListener('click', (e) => {
     e.stopPropagation();
     $('#themeMenu').classList.toggle('open');
   });
   document.addEventListener('click', (e) => {
     if (!$('#themeMenu').contains(e.target)) $('#themeMenu').classList.remove('open');
   });
-  $('#bossBtn').addEventListener('click', () => {
+  $('#bossBtn')?.addEventListener('click', () => {
     document.body.classList.toggle('bossing');
     bridge?.boss(document.body.classList.contains('bossing'));
   });

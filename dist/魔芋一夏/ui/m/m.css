@@ -18,9 +18,9 @@ body{
   overscroll-behavior:none;
 }
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
-.ic{width:38px;height:38px;display:grid;place-items:center;border-radius:50%;color:var(--t2)}
+.ic{width:34px;height:34px;display:grid;place-items:center;border-radius:50%;color:var(--t2)}
 .ic:active{background:#00000008}
-.ic svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ic svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 
 /* ── 頁面 ── */
 .page{min-height:100%;padding-bottom:var(--tabh)}
@@ -48,7 +48,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 /* ── 搜尋 ── */
 .searchbar{display:flex;align-items:center;gap:8px;margin:0 16px 7px;padding:9px 12px;
   background:var(--card);border-radius:12px;border:1px solid var(--line)}
-.searchbar svg{width:17px;height:17px;fill:none;stroke:var(--t3);stroke-width:1.8;stroke-linecap:round}
+.searchbar svg{width:16px;height:16px;fill:none;stroke:var(--t3);stroke-width:1.8;stroke-linecap:round}
 .searchbar input{flex:1;border:0;outline:0;background:none;font:inherit;font-size:14px;color:var(--t1)}
 .searchbar input::placeholder{color:var(--t3)}
 .list{padding:0 16px}
@@ -74,7 +74,7 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 }
 .tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
   color:var(--t3);font-size:10.5px}
-.tab svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
+.tab svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
   transition:transform .18s var(--ease)}
 .tab.on{color:var(--orange)}
 .tab.on svg{transform:translateY(-1px)}

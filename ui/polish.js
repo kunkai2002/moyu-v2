@@ -12,7 +12,7 @@
   const css = document.createElement('style');
   css.textContent = `
   /* 翻章列：只留兩個箭頭 */
-  .cn-btn{padding:0;width:30px;height:30px;border-radius:50%;justify-content:center;gap:0}
+  .cn-btn{padding:0;width:28px;height:28px;border-radius:50%;justify-content:center;gap:0}
   .cn-btn span{display:none}
   .cn-pos{min-width:auto;padding:0 6px;font-size:11.5px}
   .chapter-nav{gap:10px}
@@ -239,6 +239,42 @@
   // 設定面板「檢查更新」按鈕沿用
   document.addEventListener('click', (e) => {
     if (e.target?.id === 'updCheck') checkUpdate(true);
+  });
+
+
+  /* ── 6. 自動閱讀（獨立實作，不依賴 app.js 內部排程）── */
+  let autoTimer = null;
+  let autoLastKey = '';
+  function autoAdvance() {
+    const stream = $('#stream');
+    if (!stream) return;
+    new MutationObserver(() => {
+      if (!D.state.autoRead) return;
+      const metas = stream.querySelectorAll('.meta');
+      const m = metas[metas.length - 1];
+      if (!m) return;
+      const key = (m.textContent || '').trim();
+      if (!key || key === autoLastKey) return;
+      autoLastKey = key;
+      if (autoTimer) clearTimeout(autoTimer);
+      autoTimer = setTimeout(() => {
+        if (!D.state.autoRead) return;
+        const n = (D.state.chapters || []).length;
+        const i = D.state.index || 0;
+        if (i < n - 1) {
+          const g = (window.__moyuDebug.goChapter) || null;
+          if (g) g(i + 1);
+        }
+      }, 1500);
+    }).observe(stream, { childList: true, subtree: true });
+  }
+  autoAdvance();
+
+  /* 切換時同步狀態文字，並在關閉時取消排程 */
+  document.addEventListener('click', (e) => {
+    if (e.target?.id !== 'modeTag') return;
+    if (!D.state.autoRead && autoTimer) { clearTimeout(autoTimer); autoTimer = null; }
+    autoLastKey = '';
   });
 
   window.__moyuPolish = { showDetail, checkUpdate };

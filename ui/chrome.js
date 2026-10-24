@@ -18,7 +18,7 @@
   css.textContent = `
   .topbar{height:42px;gap:4px;padding:0 10px}
   .tb-nav{display:flex;gap:2px;flex:none}
-  .tb-btn{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;
+  .tb-btn{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;
     color:var(--fg3);border:0;background:none;cursor:pointer;flex:none}
   .tb-btn:hover{background:var(--sel);color:var(--fg)}
   .tb-btn:disabled{opacity:.28;cursor:default;background:none}
@@ -34,8 +34,8 @@
   .ov-row svg{flex:none;color:var(--fg3)}
   .chapter-nav{display:flex;align-items:center;justify-content:center;gap:14px;
     padding:6px 0 8px;flex:none}
-  .cn-btn{display:flex;align-items:center;gap:5px;white-space:nowrap;border:1px solid var(--line);
-    border-radius:16px;padding:5px 12px;background:var(--bg-elev);color:var(--fg2);
+  .cn-btn{display:flex;align-items:center;justify-content:center;white-space:nowrap;border:1px solid var(--line);
+    border-radius:14px;padding:0;width:28px;height:28px;background:var(--bg-elev);color:var(--fg2);
     font:inherit;font-size:12px;cursor:pointer}
   .cn-btn:hover{border-color:var(--acc);color:var(--fg)}
   .cn-btn:disabled{opacity:.35;cursor:default}
@@ -123,7 +123,7 @@
     b.className = 'tb-btn';
     b.id = id;
     b.title = title;
-    b.innerHTML = I.svg(icon, 18);
+    b.innerHTML = I.svg(icon, 16);
     return b;
   };
 
@@ -217,9 +217,9 @@
     const nav = document.createElement('div');
     nav.className = 'chapter-nav';
     nav.innerHTML = `
-      <button class="cn-btn" id="cnPrev">${I.svg('back', 15)}<span>上一章</span></button>
+      <button class="cn-btn" id="cnPrev">${I.svg('back', 14)}<span>上一章</span></button>
       <span class="cn-pos" id="cnPos">— / —</span>
-      <button class="cn-btn" id="cnNext"><span>下一章</span>${I.svg('forward', 15)}</button>`;
+      <button class="cn-btn" id="cnNext"><span>下一章</span>${I.svg('forward', 14)}</button>`;
     composer.parentNode.insertBefore(nav, composer);
 
     const prev = nav.querySelector('#cnPrev');
