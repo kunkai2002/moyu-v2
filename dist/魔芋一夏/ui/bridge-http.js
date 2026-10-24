@@ -51,6 +51,11 @@
       set: (value) => post('/api/cookie', { value }),
       get: () => api('/api/cookie'),
     },
+    marks: {
+      list: (bookId) => api('/api/marks?book=' + encodeURIComponent(bookId)),
+      save: (m) => post('/api/marks', m),
+      remove: (bookId, id) => post('/api/marks', { action: 'remove', bookId, id }),
+    },
     copy: async (text) => {
       const prefixed = String(text).split('\n').map((l) => '// ' + l).join('\n');
       try { await navigator.clipboard.writeText(prefixed); return true; } catch { return false; }

@@ -302,6 +302,28 @@ const server = http.createServer(async (req, res) => {
       return json(res, 200, { ok: true, q, hits, searched: files.length });
     }
 
+    if (p === '/api/marks') {
+      const f = path.join(DATA_DIR, 'marks.json');
+      const all = store.readJson(f, {});
+      if (req.method === 'GET') {
+        const bookId = u.searchParams.get('book');
+        return json(res, 200, { ok: true, marks: bookId ? (all[bookId] || []) : all });
+      }
+      const m = await readBody(req);
+      const list = all[m.bookId] || [];
+      if (m.action === 'remove') {
+        all[m.bookId] = list.filter((x) => x.id !== m.id);
+      } else {
+        const id = m.id || (m.chapterId + '-' + m.para + '-' + m.type);
+        const i = list.findIndex((x) => x.id === id);
+        const rec = { ...m, id, at: Date.now() };
+        if (i >= 0) list[i] = rec; else list.push(rec);
+        all[m.bookId] = list;
+      }
+      store.writeJson(f, all);
+      return json(res, 200, { ok: true });
+    }
+
     if (p === '/api/health') {
       return json(res, 200, { ok: true, port: PORT, data: DATA_DIR });
     }
