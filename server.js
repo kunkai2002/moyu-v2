@@ -22,6 +22,7 @@ const appapi = require('./src/appapi');
 const login = require('./src/login');
 const { getShelf } = require('./src/shelf');
 const sync = require('./src/sync');
+const prefetch = require('./src/prefetch');
 const { getBookComments } = require('./src/comments');
 
 const ROOT = __dirname;
@@ -386,6 +387,31 @@ const server = http.createServer(async (req, res) => {
     if (p === '/api/sync/pull') {
       try { return json(res, 200, { ok: true, ...(await sync.pull(DATA_DIR)) }); }
       catch (e) { return json(res, 200, { ok: false, error: e.message }); }
+    }
+
+    if (p === '/api/prefetch/status') {
+      return json(res, 200, { ok: true, job: prefetch.status() });
+    }
+
+    if (p === '/api/prefetch/stop') {
+      return json(res, 200, { ok: true, job: prefetch.stop() });
+    }
+
+    if (p === '/api/prefetch' && req.method === 'POST') {
+      const b = await readBody(req);
+      const bookId = String(b.bookId || '');
+      if (!bookId) return json(res, 400, { error: '缺 bookId' });
+      try {
+        let book = store.readJson(path.join(DATA_DIR, 'book-' + bookId + '.json'), null);
+        if (!book) {
+          const r0 = await fanqie.openBook(bookId, cookie());
+          book = r0.book;
+          store.writeJson(path.join(DATA_DIR, 'book-' + bookId + '.json'), book);
+        }
+        return json(res, 200, { ok: true, job: prefetch.start(DATA_DIR, book, cookie()) });
+      } catch (e) {
+        return json(res, 200, { ok: false, error: e.message });
+      }
     }
 
     if (p === '/api/health') {

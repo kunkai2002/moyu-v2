@@ -52,6 +52,11 @@
       get: () => api('/api/cookie'),
     },
     version: () => api('/api/version'),
+    prefetch: {
+      start: (bookId) => post('/api/prefetch', { bookId }),
+      status: () => api('/api/prefetch/status'),
+      stop: () => post('/api/prefetch/stop', {}),
+    },
     sync: {
       status: () => api('/api/sync/status'),
       config: (c) => post('/api/sync/config', c),
