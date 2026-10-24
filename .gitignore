@@ -22,3 +22,6 @@ sync/.token
 
 # cloudflared 二進位（用 tools/get-cloudflared.js 下載）
 tools/bin/
+
+# 打包產物（含 Electron 二進位，不入版控）
+dist/

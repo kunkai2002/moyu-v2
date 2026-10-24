@@ -6,7 +6,7 @@ const ROOT = path.join(__dirname, '..');
 const OUT = path.join(ROOT, 'dist', '魔芋一夏');
 
 const FILES = [
-  'server.js', 'README.md', '啟動.cmd',
+  'server.js', 'main.js', 'package.json', 'ui/preload.js', 'README.md', '啟動.cmd',
   'src/fanqie.js', 'src/store.js', 'src/appapi.js', 'src/comments.js',
   'src/login.js', 'src/shelf.js', 'src/sync.js', 'src/prefetch.js', 'src/booksearch.js', 'src/charset.json',
   'src/sign/index.js', 'src/sign/sm3.js', 'src/sign/cipher.js', 'src/sign/protobuf.js',
@@ -41,4 +41,17 @@ if (fs.existsSync(path.join(COMP, 'MoyuCompanion.exe'))) {
 
 fs.mkdirSync(path.join(OUT, 'data', 'chapters'), { recursive: true });
 fs.writeFileSync(path.join(OUT, 'data', '.gitkeep'), '');
+// 帶上 Electron 執行檔（不入版控，但安裝包需要）
+{
+  const SRC = path.join(ROOT, 'node_modules', 'electron', 'dist');
+  const DST = path.join(OUT, 'electron');
+  if (fs.existsSync(path.join(SRC, 'electron.exe'))) {
+    fs.mkdirSync(DST, { recursive: true });
+    fs.cpSync(SRC, DST, { recursive: true });
+    console.log('  + electron/');
+  } else {
+    console.log('  ! 找不到 node_modules/electron/dist（略過 Electron）');
+  }
+}
+
 console.log(`完成 ${n} 個檔案 → ${OUT}`);
