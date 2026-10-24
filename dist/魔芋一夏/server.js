@@ -21,6 +21,7 @@ const store = require('./src/store');
 const appapi = require('./src/appapi');
 const login = require('./src/login');
 const { getShelf } = require('./src/shelf');
+const sync = require('./src/sync');
 const { getBookComments } = require('./src/comments');
 
 const ROOT = __dirname;
@@ -38,6 +39,7 @@ const OPEN = process.argv.includes('--open');
 fs.mkdirSync(path.join(DATA_DIR, 'chapters'), { recursive: true });
 fanqie.setCharsetPath(path.join(ROOT, 'src', 'charset.json'));
 appapi.loadDevice(DATA_DIR);
+sync.init(DATA_DIR);
 
 /* ── 設定 ───────────────────────────────────────────────────── */
 const DEFAULTS = {
@@ -365,6 +367,25 @@ const server = http.createServer(async (req, res) => {
         } else sha = head.slice(0, 7);
       } catch {}
       return json(res, 200, { ok: true, sha, branch, dataDir: DATA_DIR });
+    }
+
+    if (p === '/api/sync/status') {
+      return json(res, 200, { ok: true, ...sync.status() });
+    }
+
+    if (p === '/api/sync/config' && req.method === 'POST') {
+      const b = await readBody(req);
+      return json(res, 200, { ok: true, ...sync.configure(b) });
+    }
+
+    if (p === '/api/sync/push') {
+      try { return json(res, 200, { ok: true, ...(await sync.push(DATA_DIR)) }); }
+      catch (e) { return json(res, 200, { ok: false, error: e.message }); }
+    }
+
+    if (p === '/api/sync/pull') {
+      try { return json(res, 200, { ok: true, ...(await sync.pull(DATA_DIR)) }); }
+      catch (e) { return json(res, 200, { ok: false, error: e.message }); }
     }
 
     if (p === '/api/health') {
