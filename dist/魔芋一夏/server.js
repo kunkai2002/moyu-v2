@@ -456,6 +456,21 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
+    if (p === '/api/update/apply') {
+      // 安裝版沒有原始碼庫，無法自我更新；告知使用者跑更新腳本
+      const repo = process.env.MOYU_SRC || 'D:\\kun-workspace\\moyu-v2';
+      const hasRepo = fs.existsSync(path.join(repo, 'server.js')) && fs.existsSync(path.join(repo, '更新.cmd'));
+      return json(res, 200, {
+        ok: true,
+        applied: false,
+        needReinstall: true,
+        repo,
+        message: hasRepo
+          ? '請關掉程式，然後執行 ' + repo + '\\更新.cmd，完成後重新啟動'
+          : '請重新解壓最新版覆蓋安裝目錄',
+      });
+    }
+
     if (p === '/api/health') {
       return json(res, 200, { ok: true, port: PORT, data: DATA_DIR });
     }
