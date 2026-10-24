@@ -258,8 +258,23 @@
       row.addEventListener('click', () => { ctx.classList.remove('on'); it.run && it.run(); });
       ctx.appendChild(row);
     }
-    ctx.style.left = Math.min(x, innerWidth - 190) + 'px';
-    ctx.style.top = Math.min(y, innerHeight - 20 - items.length * 32) + 'px';
+    // 避開被右鍵的那一塊：優先放到它右側，右邊不夠就放左側
+    const avoid = ctxTarget?.getBoundingClientRect?.();
+    const w = 190;
+    const h = items.length * 32 + 12;
+    if (avoid) {
+      let nx = avoid.right + 12;
+      if (nx + w > innerWidth - 8) nx = avoid.left - w - 12;
+      if (nx < 8) nx = Math.min(x, innerWidth - w - 8);
+      let ny = Math.min(avoid.top, innerHeight - h - 8);
+      if (ny < 44) ny = 44;
+      ctx.style.left = nx + 'px';
+      ctx.style.top = ny + 'px';
+    } else {
+      ctx.style.left = Math.min(x, innerWidth - w) + 'px';
+      ctx.style.top = Math.min(y, innerHeight - h) + 'px';
+    }
+    ctx.style.maxHeight = h + 'px';
     ctx.classList.add('on');
   }
 
@@ -270,6 +285,7 @@
 
     if (ch) {
       e.preventDefault();
+      ctxTarget = ch;
       const idx = [...document.querySelectorAll('#tree .ch')].indexOf(ch);
       showCtx(e.clientX, e.clientY, [
         { label: '跳到這一章', icon: 'forward', run: () => D.goChapter(idx) },
@@ -281,6 +297,7 @@
     }
     if (p) {
       e.preventDefault();
+      ctxTarget = p;
       const text = (p.textContent || '').slice(0, 200);
       showCtx(e.clientX, e.clientY, [
         { label: '劃線 / 取消', icon: 'bookmark', run: () => p.click() },
@@ -291,6 +308,7 @@
     }
     if (card) {
       e.preventDefault();
+      ctxTarget = card;
       showCtx(e.clientX, e.clientY, [
         { label: '開啟這本書', icon: 'book', run: () => card.click() },
         { label: '整本下載', icon: 'down', run: () => { card.click(); setTimeout(() => findLegacy('整本下載')?.click(), 800); } },

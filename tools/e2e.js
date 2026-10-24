@@ -2,8 +2,12 @@
 const path = require('path');
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 
+
+/* 重要：E2E 用隔離資料目錄 _probe/e2e-data，不寫進 %LOCALAPPDATA% 的真實 profile */
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-const URL = process.argv[2] || 'http://127.0.0.1:47821/m/';
+const E2E_PORT = Number(process.env.E2E_PORT || 47977);
+const E2E_DATA = path.join(__dirname, '..', '_probe', 'e2e-data');
+const URL = process.argv[2] || `http://127.0.0.1:${E2E_PORT}/m/`;
 const OUT = process.argv[3] || path.join(__dirname, '..', '_probe', 'out', 'm.png');
 const W = Number(process.argv[4] || 390);
 const H = Number(process.argv[5] || 844);

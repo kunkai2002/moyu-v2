@@ -2,6 +2,8 @@
 const path = require('path');
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 
+
+/* 重要：E2E 用隔離資料目錄 _probe/e2e-data，不寫進 %LOCALAPPDATA% 的真實 profile */
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
 const BASE = process.argv[2] || 'http://127.0.0.1:47821';
 const OUT = process.argv[3] || path.join(__dirname, '..', '_probe', 'out', 'm-search.png');
