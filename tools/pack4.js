@@ -8,7 +8,7 @@ const OUT = path.join(ROOT, 'dist', '魔芋一夏');
 const FILES = [
   'server.js', 'README.md', '啟動.cmd',
   'src/fanqie.js', 'src/store.js', 'src/appapi.js', 'src/comments.js',
-  'src/login.js', 'src/shelf.js', 'src/charset.json',
+  'src/login.js', 'src/shelf.js', 'src/sync.js', 'src/charset.json',
   'src/sign/index.js', 'src/sign/sm3.js', 'src/sign/cipher.js', 'src/sign/protobuf.js',
   'ui/index.html', 'ui/theme.css', 'ui/app.js', 'ui/bridge-http.js',
   'ui/wiring.js', 'ui/wiring2.js', 'ui/wiring3.js', 'ui/wiring4.js', 'ui/wiring5.js', 'ui/wiring6.js', 'ui/wiring7.js', 'ui/wiring8.js',
