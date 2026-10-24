@@ -87,12 +87,10 @@ const MIME = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
-  '.webmanifest': 'application/manifest+json; charset=utf-8',
 };
 
 function serveStatic(req, res, urlPath) {
   let p = urlPath === '/' ? '/index.html' : urlPath;
-  if (p === '/m' || p === '/m/') p = '/m/index.html';
   if (p.endsWith('/')) p += 'index.html';
   p = decodeURIComponent(p.split('?')[0]);
   const full = path.normalize(path.join(UI, p));
@@ -489,14 +487,6 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
-    if (p === '/api/tunnel') {
-      let url = '';
-      try { url = fs.readFileSync(path.join(DATA_DIR, 'tunnel-url.txt'), 'utf8').trim(); } catch {}
-      const running = (() => {
-        try { return fs.existsSync(path.join(DATA_DIR, 'tunnel-url.txt')); } catch { return false; }
-      })();
-      return json(res, 200, { ok: true, url, running });
-    }
 
     if (p === '/api/health') {
       return json(res, 200, { ok: true, port: PORT, data: DATA_DIR });
@@ -563,7 +553,6 @@ server.listen(PORT, HOST, () => {
     for (const list of Object.values(nets)) {
       for (const n of list || []) {
         if (n.family === 'IPv4' && !n.internal) {
-          console.log(`  手機版 http://${n.address}:${PORT}/m/`);
         }
       }
     }

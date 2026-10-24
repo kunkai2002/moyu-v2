@@ -144,7 +144,7 @@
     btn.className = 'tb-btn';
     btn.id = 'tbDetail';
     btn.title = '書籍詳情';
-    btn.innerHTML = I.svg('book', 18);
+    btn.innerHTML = I.svg('book', 16);
     btn.addEventListener('click', showDetail);
     right.insertBefore(btn, right.firstChild);
   }

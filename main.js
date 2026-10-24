@@ -1,14 +1,21 @@
 'use strict';
 
+// 首次顯示時不要讓 renderer 被背景節流，否則會出現白窗（要從托盤再點一次才畫）
+require('electron').app.commandLine.appendSwitch('disable-renderer-backgrounding');
+require('electron').app.commandLine.appendSwitch('disable-backgrounding-occluded-windows');
+// 純文字閱讀器不需要 GPU；停用可避開 GPU 程序崩潰造成的白窗
+require('electron').app.disableHardwareAcceleration();
+
 const {
   app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage,
-  session, shell, dialog, clipboard,
+  clipboard,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
 const fanqie = require('./src/fanqie');
 const store = require('./src/store');
+const qrLogin = require('./src/login');
 
 /* ── 設定 ───────────────────────────────────────────────────── */
 const DEFAULT_SETTINGS = {
@@ -64,15 +71,45 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       spellcheck: false,
+      backgroundThrottling: false,
     },
   });
 
   win.setMenuBarVisibility(false);
   win.loadFile(path.join(__dirname, 'ui', 'index.html'));
 
-  win.once('ready-to-show', () => {
+  /* 顯示時機：等到畫面真的漆完再現身。
+     太早 show() 在部分顯示卡上會留下全白視窗，得從托盤再點一次才重繪。 */
+  let revealed = false;
+  let reloaded = false;
+  const reveal = () => {
+    if (revealed || !win || win.isDestroyed()) return;
+    revealed = true;
     win.show();
+    win.focus();
+    try { win.moveTop(); } catch {}
+    // Windows 會擋「搶焦點」，短暫置頂一次把視窗推到最前面
+    try {
+      win.setAlwaysOnTop(true);
+      setTimeout(() => { try { if (win && !win.isDestroyed()) win.setAlwaysOnTop(false); } catch {} }, 400);
+    } catch {}
+    try { win.webContents.invalidate(); } catch {}
+  };
+
+  win.once('ready-to-show', () => setTimeout(reveal, 140));
+  win.webContents.once('did-finish-load', () => {
+    setTimeout(reveal, 200);
+    // 自癒：載入後若內容是空的，無視快取重載一次
+    setTimeout(async () => {
+      if (!win || win.isDestroyed()) return;
+      try {
+        const len = await win.webContents.executeJavaScript('document.body.innerText.trim().length');
+        if (len < 24 && !reloaded) { reloaded = true; win.webContents.reloadIgnoringCache(); }
+      } catch {}
+    }, 3200);
   });
+  // 保險：無論如何 7 秒內一定現身
+  setTimeout(reveal, 7000);
 
   win.on('close', (e) => {
     if (settings.closeToTray && !app.isQuitting) {
@@ -127,37 +164,8 @@ function createTray() {
   tray.on('click', () => { if (win) { win.isVisible() ? win.hide() : win.show(); } });
 }
 
-/* ── 登入視窗 ───────────────────────────────────────────────── */
-function openLogin() {
-  return new Promise((resolve) => {
-    const w = new BrowserWindow({
-      width: 520,
-      height: 720,
-      title: '登入',
-      autoHideMenuBar: true,
-      parent: win,
-      webPreferences: { partition: 'persist:fanqie' },
-    });
-    w.setMenuBarVisibility(false);
-    w.loadURL('https://fanqienovel.com/');
-
-    const done = async () => {
-      const cookies = await session.fromPartition('persist:fanqie').cookies.get({ domain: 'fanqienovel.com' });
-      const names = cookies.map((c) => c.name);
-      const logged = names.some((n) => /sessionid|passport|uid_tt|sid_tt|odin_tt/i.test(n));
-      if (logged) {
-        saveSessionCookies(cookies);
-        w.destroy();
-        resolve({ ok: true, cookies: names.length });
-      }
-    };
-    w.webContents.on('did-navigate', () => setTimeout(done, 1200));
-    w.webContents.on('did-navigate-in-page', () => setTimeout(done, 1200));
-    w.on('closed', () => resolve({ ok: false }));
-  });
-}
-
 let sessionCookies = [];
+const qrJar = new Map();   // token -> 累積下來的 passport cookie
 
 function saveSessionCookies(cookies) {
   sessionCookies = cookies;
@@ -211,6 +219,19 @@ async function fetchShelf() {
 
 /* ── IPC ────────────────────────────────────────────────────── */
 function registerIpc() {
+  /* 偏好設定：存在 data/prefs.json，重裝或換版都還在 */
+  const prefsPath = () => path.join(DATA_DIR, 'prefs.json');
+
+  ipcMain.on('prefs:read', (e) => {
+    try { e.returnValue = store.readJson(prefsPath(), {}); } catch { e.returnValue = {}; }
+  });
+
+  ipcMain.on('prefs:write', (_e, obj) => {
+    try {
+      if (obj && typeof obj === 'object') store.writeJson(prefsPath(), obj);
+    } catch {}
+  });
+
   ipcMain.handle('config:get', () => ({
     ...settings,
     dataDir: DATA_DIR,
@@ -225,9 +246,31 @@ function registerIpc() {
     return settings;
   });
 
-  ipcMain.handle('login:open', async () => {
-    const r = await openLogin();
-    return r;
+  /* 掃碼登入：QR 由 passport 產生，確認後把 sessionid 等 cookie 存起來 */
+  ipcMain.handle('qr:start', async () => {
+    const q = await qrLogin.startQr();
+    qrJar.set(q.token, q.cookie || '');
+    return { token: q.token, image: q.image, expire: q.expire };
+  });
+
+  ipcMain.handle('qr:poll', async (_e, token) => {
+    const jar = qrJar.get(token) || '';
+    const r = await qrLogin.pollQr(token, jar);
+    qrJar.set(token, r.cookie || jar);
+    if (r.status === 'confirmed' && r.sessionId) {
+      const cookies = String(r.cookie || '').split(';').map((kv) => {
+        const i = kv.indexOf('=');
+        return i > 0 ? { name: kv.slice(0, i).trim(), value: kv.slice(i + 1).trim() } : null;
+      }).filter((c) => c && c.name && c.value);
+      if (cookies.length) {
+        sessionCookies = cookies;
+        store.writeJson(path.join(DATA_DIR, 'cookies.json'), cookies);
+        fs.writeFileSync(path.join(DATA_DIR, 'cookie.txt'),
+          cookies.map((c) => c.name + '=' + c.value).join('; '), 'utf8');
+      }
+      qrJar.delete(token);
+    }
+    return { status: r.status, message: r.message || '', ok: !!r.sessionId };
   });
 
   ipcMain.handle('shelf:list', async () => {

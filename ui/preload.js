@@ -7,7 +7,10 @@ contextBridge.exposeInMainWorld('moyu', {
     get: () => ipcRenderer.invoke('config:get'),
     set: (patch) => ipcRenderer.invoke('config:set', patch),
   },
-  login: () => ipcRenderer.invoke('login:open'),
+  qr: {
+    start: () => ipcRenderer.invoke('qr:start'),
+    poll: (token) => ipcRenderer.invoke('qr:poll', token),
+  },
   shelf: {
     list: () => ipcRenderer.invoke('shelf:list'),
     cached: () => ipcRenderer.invoke('shelf:cached'),
@@ -21,6 +24,10 @@ contextBridge.exposeInMainWorld('moyu', {
   cookie: {
     set: (v) => ipcRenderer.invoke('cookie:set', v),
     get: () => ipcRenderer.invoke('cookie:get'),
+  },
+  prefs: {
+    read: () => ipcRenderer.sendSync('prefs:read'),
+    write: (obj) => ipcRenderer.send('prefs:write', obj),
   },
   copy: (text) => ipcRenderer.invoke('clipboard:write', text),
   boss: (on) => ipcRenderer.invoke('app:boss', on),

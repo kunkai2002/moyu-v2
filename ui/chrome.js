@@ -148,10 +148,13 @@
   const statBtn = mk('tbStat', 'chart', '統計');
   statBtn.addEventListener('click', () => findLegacy('統計')?.click());
 
+  const setBtn = mk('tbSettings', 'settings', '設定');
+  setBtn.addEventListener('click', () => window.__moyuOpenSettings?.());
   const moreBtn = mk('tbMore', 'more', '更多');
   right.appendChild(listBtn);
   right.appendChild(markBtn);
   right.appendChild(statBtn);
+  right.appendChild(setBtn);
   right.appendChild(moreBtn);
 
   /* 溢出選單：把所有舊膠囊收進來 */
@@ -187,7 +190,7 @@
     const key = Object.keys(ICON_FOR).find((k) => label.startsWith(k));
     const row = document.createElement('button');
     row.className = 'ov-row';
-    row.innerHTML = I.svg(ICON_FOR[key] || 'note', 17) + `<span>${label}</span>`;
+    row.innerHTML = I.svg(ICON_FOR[key] || 'note', 16) + `<span>${label}</span>`;
     row.addEventListener('click', () => {
       ov.hidden = true;
       // 換成原本那顆按鈕的 click，保持原邏輯

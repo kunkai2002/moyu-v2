@@ -440,7 +440,8 @@ async function handleInput(raw) {
   if (/^\/grep\s+/i.test(text)) { searchInBook(text.replace(/^\/grep\s+/i, '').trim()); return; }
   if (/^\/boss$/i.test(text)) { bridge?.boss(true); return; }
   if (/^\/hide$/i.test(text)) { bridge?.hide(); return; }
-  if (/^\/login$/i.test(text)) { showCookiePrompt(); return; }
+  if (/^\/(login|qr)$/i.test(text)) { showLoginPanel(); return; }
+  if (/^\/(settings|set|config)$/i.test(text)) { window.__moyuOpenSettings?.(); return; }
   if (/^\/shelf$/i.test(text)) { openShelf(); return; }
   if (/^\/open\s+/i.test(text)) { openBook(text.replace(/^\/open\s+/i, '').trim()); return; }
   if (/^\/export$/i.test(text)) {
@@ -531,23 +532,12 @@ async function openShelf() {
 /* ──────────────────────────────────────────────────────────────
    登入：手機掃碼（抖音 / 番茄小說 App）
    ────────────────────────────────────────────────────────────── */
-function showCookiePrompt() {
-  const b = addAssistant();
-
+function showLoginPanel() {
   if (!bridge?.qr) {
-    // Electron 模式：退回貼 cookie
-    b.insertAdjacentHTML('beforeend', `
-      <div class="tool">⏺ <span class="fn">login</span></div>
-      <div class="p">貼上 cookie 字串（Chrome 登入後 F12 → Network → 任一請求 → cookie）</div>
-      <div class="cookie-row"><input id="cookieIn" placeholder="貼上 cookie…" spellcheck="false"><button id="cookieGo">送出</button></div>`);
-    const inp = b.querySelector('#cookieIn');
-    b.querySelector('#cookieGo').addEventListener('click', async () => {
-      await bridge?.cookie?.set(inp.value.trim());
-      addAssistant().insertAdjacentHTML('beforeend', '<div class="p">已記住。</div>');
-    });
-    scrollBottom();
+    addAssistant().insertAdjacentHTML('beforeend', '<div class="p">這個版本沒有掃碼能力，請更新後再試。</div>');
     return;
   }
+  const b = addAssistant();
 
   b.insertAdjacentHTML('beforeend', `
     <div class="tool">⏺ <span class="fn">login.qrcode</span></div>
@@ -763,7 +753,7 @@ window.__moyuDebug = {
   openShelf,
   setTheme,
   state,
-  login: showCookiePrompt,
+  login: showLoginPanel,
   goChapter: (i) => goChapter(i, { announce: true }),
   boss: (on) => document.body.classList.toggle('bossing', !!on),
   showReviewsInStream() {

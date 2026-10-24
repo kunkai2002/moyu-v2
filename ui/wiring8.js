@@ -9,7 +9,8 @@
   const HELP = [
     ['書號 / 網址', '貼上就開這本書'],
     ['/shelf', '我的書架（需登入）'],
-    ['/login', '手機掃碼登入'],
+    ['/login', '手機掃碼登入（QR）'],
+    ['/settings', '設定面板：主題、字級、行距、速度、登入'],
     ['/help', '這張表'],
     ['/grep 關鍵字', '全書搜尋（已讀過的章節）'],
     ['/theme <名字>', '換主題：claude-code / claude / vscode / excel / terminal / word'],

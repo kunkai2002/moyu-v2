@@ -69,6 +69,8 @@
     toggle(panel, true);
     refreshLoginState();
   }
+  // 給頂欄齒輪與 /settings 指令用
+  window.__moyuOpenSettings = openSettings;
 
   /* 設定：主題 */
   const sel = $('#setTheme');
@@ -83,6 +85,7 @@
   }
 
   /* 設定：字級 / 行距 / 串流速度 */
+  const CONFIG_KEY = { font: 'fontSize', lh: 'lineHeight', speed: 'streamSpeed' };
   function bindRange(id, label, key, def, apply) {
     const el = $('#' + id), out = $('#' + id + 'V');
     if (!el) return;
@@ -91,7 +94,7 @@
     el.addEventListener('input', () => {
       const n = Number(el.value);
       out.textContent = n; apply(n); store.set(key, n);
-      window.moyu?.config?.set?.({ [key === 'font' ? 'fontScale' : key]: n });
+      window.moyu?.config?.set?.({ [CONFIG_KEY[key] || key]: n });
     });
   }
   bindRange('setFont', '字級', 'font', 13.5, (v) => document.documentElement.style.setProperty('--fs', v + 'px'));
@@ -129,22 +132,4 @@
     }
   });
 
-  /* ── 指令表 ───────────────────────────────────────────── */
-  const HELP = [
-    ['書號 / 網址', '開一本書'],
-    ['/shelf', '我的書架（要登入）'],
-    ['/login', '手機掃碼登入'],
-    ['/help', '這張表'],
-    ['/theme <名字>', '換主題（claude-code / vscode / excel …）'],
-    ['/auto', '自動閱讀開關'],
-    ['/export', '匯出前 50 章 TXT'],
-    ['/boss', '切到假畫面'],
-    ['n / Enter', '下一章'],
-    ['12', '跳到第 12 章'],
-    ['Alt+1~6', '快速換主題'],
-    ['Alt+Q', '老闆鍵'],
-    ['Ctrl+K', '搜尋章節'],
-  ];
-  const hl = $('#helpList');
-  if (hl) hl.innerHTML = HELP.map(([k, v]) => `<div class="help-row"><code>${k}</code><span>${v}</span></div>`).join('');
 })();
