@@ -35,6 +35,7 @@ const state = {
   startedAt: 0,
   charsRead: 0,
   autoRead: false,
+  slowRead: false,
 };
 
 /* ──────────────────────────────────────────────────────────────
@@ -157,6 +158,14 @@ function updateCrumb() {
    ────────────────────────────────────────────────────────────── */
 function streamParagraphs(container, paras, onDone) {
   stopStreaming();
+  // 預設一次畫完；只有開啟「慢讀」才逐字吐
+  if (!state.slowRead) {
+    for (const t of paras) container.appendChild(el('p', 'p', t));
+    scrollBottom();
+    onDone && onDone();
+    return;
+  }
+
   const speed = Math.max(8, Number(state.config.streamSpeed) || 45); // 字/秒
   let pi = 0;
   let node = null;
