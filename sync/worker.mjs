@@ -59,6 +59,7 @@ export default {
     if (p === '/health') return json({ ok: true, service: 'moyu-sync' });
 
     /* ── 手機版靜態頁（不需要金鑰，金鑰在網址 fragment 裡） ── */
+    if (p === '/favicon.ico') return Response.redirect(url.origin + '/m/icon.svg', 302);
     if (p === '/m') return Response.redirect(url.origin + '/m/', 302);
     if (p.startsWith('/m/')) {
       const hit = asset(p);
@@ -168,19 +169,25 @@ export default {
     if (p === '/push' && req.method === 'POST') {
       const body = await req.json();
       const device = String(body.device || 'unknown').slice(0, 40);
+      const force = body.force === true;   // 以本機為準（救援用）
       const now = Date.now();
       let n = 0;
 
       for (const pr of body.progress || []) {
         if (!pr.book_id) continue;
-        await env.DB.prepare(
-          `INSERT INTO progress (book_id, chapter_id, chapter_no, title, updated_at, device)
-           VALUES (?,?,?,?,?,?)
-           ON CONFLICT(book_id) DO UPDATE SET
-             chapter_id=excluded.chapter_id, chapter_no=excluded.chapter_no,
-             title=excluded.title, updated_at=excluded.updated_at, device=excluded.device
-           WHERE excluded.updated_at > progress.updated_at`,
-        ).bind(pr.book_id, pr.chapter_id || '', pr.chapter_no || '',
+        const prSql = force
+          ? `INSERT INTO progress (book_id, chapter_id, chapter_no, title, updated_at, device)
+             VALUES (?,?,?,?,?,?)
+             ON CONFLICT(book_id) DO UPDATE SET
+               chapter_id=excluded.chapter_id, chapter_no=excluded.chapter_no,
+               title=excluded.title, updated_at=excluded.updated_at, device=excluded.device`
+          : `INSERT INTO progress (book_id, chapter_id, chapter_no, title, updated_at, device)
+             VALUES (?,?,?,?,?,?)
+             ON CONFLICT(book_id) DO UPDATE SET
+               chapter_id=excluded.chapter_id, chapter_no=excluded.chapter_no,
+               title=excluded.title, updated_at=excluded.updated_at, device=excluded.device
+             WHERE excluded.updated_at > progress.updated_at`;
+        await env.DB.prepare(prSql).bind(pr.book_id, pr.chapter_id || '', pr.chapter_no || '',
           pr.title || '', Number(pr.updated_at) || now, device).run();
         n++;
       }

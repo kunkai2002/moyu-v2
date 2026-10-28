@@ -155,7 +155,16 @@
       if (atBottom()) gestureSeq++;
     }, { passive: true });
   });
+  function typingIn(e) {
+    var t = e.target;
+    return !!t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable);
+  }
+  function panelOpen() {
+    return !!document.querySelector('.panel:not([hidden]), .marks-panel:not([hidden]), .stats-panel:not([hidden]), .detail:not([hidden]), .hist-panel:not([hidden]), .phone-panel:not([hidden]), .overflow:not([hidden])');
+  }
+
   window.addEventListener('keydown', function (e) {
+    if (typingIn(e) || panelOpen()) return;   // 打字、開面板都不算閱讀手勢
     if (/^(PageDown|ArrowDown|End|Down| )$/.test(e.key) && atBottom()) gestureSeq++;
   });
 
