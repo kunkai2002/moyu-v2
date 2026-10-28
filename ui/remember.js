@@ -109,6 +109,7 @@
       };
       await B.progress.set(prog);
       st.progress = prog;
+      st.explicitProgressAt = Date.now();   // 這是使用者明確按的，捲動監看先讓開
     } catch (e) { say('本機進度寫入失敗：' + e.message); return; }
 
     try {

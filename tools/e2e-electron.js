@@ -83,13 +83,20 @@ async function typeCmd(page, text) {
   });
   icons.length === 0 ? ok('圖標：全部 ≤20px') : bad('圖標過大', icons.join(' | '));
 
-  /* 3. 頂欄齒輪 → 設定面板 */
-  const gear = await page.$('#tbSettings');
-  gear ? ok('頂欄：有設定齒輪按鈕') : bad('頂欄：沒有設定齒輪');
-  if (gear) {
-    await gear.click();
-    await sleep(320);
-  }
+  /* 3. 設定（在「更多」選單裡）→ 設定面板 */
+  const gearInMore = await page.evaluate(async () => {
+    const more = document.querySelector('#tbMore');
+    if (!more) return { ok: false, why: '沒有更多按鈕' };
+    more.click();
+    await new Promise((r) => setTimeout(r, 200));
+    const ov = document.querySelector('.overflow');
+    const row = ov ? [...ov.querySelectorAll('.ov-row')].find((r) => r.textContent.trim().startsWith('設定')) : null;
+    if (ov) ov.hidden = true;
+    if (row) row.click();
+    await new Promise((r) => setTimeout(r, 320));
+    return { ok: !!row, rows: ov ? [...ov.querySelectorAll('.ov-row')].map((r) => r.textContent.trim()) : [] };
+  });
+  gearInMore.ok ? ok(`更多：有「設定」（${gearInMore.rows.join(' / ')}）`) : bad('更多：沒有設定', JSON.stringify(gearInMore));
   const panel = await page.evaluate(() => {
     const p = document.querySelector('#panel');
     const sel = document.querySelector('#setTheme');
@@ -102,7 +109,7 @@ async function typeCmd(page, text) {
       loginBtn: !!document.querySelector('#setLogin'),
     };
   });
-  panel.open ? ok('設定：齒輪能開面板') : bad('設定：齒輪打不開面板');
+  panel.open ? ok('設定：打開面板') : bad('設定：打不開面板');
   panel.themes >= 6 ? ok(`設定：主題下拉 ${panel.themes} 項`) : bad('設定：主題下拉異常', String(panel.themes));
   panel.hasFont && panel.hasLh && panel.hasSpeed ? ok('設定：字級/行距/速度滑桿都在') : bad('設定：滑桿缺失');
   panel.loginBtn ? ok('設定：面板內有掃碼登入入口') : bad('設定：面板沒有登入入口');

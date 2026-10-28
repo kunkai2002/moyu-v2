@@ -34,15 +34,17 @@
   panel.querySelector('#stClose').addEventListener('click', () => { panel.hidden = true; });
 
   const bar = $('.topbar-r');
+  async function toggleStats() {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) await render();
+  }
+  window.__moyuStatsPanel = { toggle: toggleStats, panel };
   if (bar) {
     const btn = document.createElement('button');
     btn.className = 'pill';
     btn.textContent = '統計';
     btn.title = '閱讀統計';
-    btn.addEventListener('click', async () => {
-      panel.hidden = !panel.hidden;
-      if (!panel.hidden) await render();
-    });
+    btn.addEventListener('click', toggleStats);
     bar.insertBefore(btn, bar.firstChild);
   }
 

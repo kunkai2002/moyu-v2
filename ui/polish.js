@@ -241,11 +241,15 @@
       try {
         const res = await B.update.apply();
         if (res.applied) {
-          // 只有 ui 檔時主行程會直接 reload 這個視窗，這裡的文字只是過渡
           b.querySelector('.u-t').textContent = res.defer
             ? '已更新，下次開啟程式就是新版'
-            : '已更新';
+            : '已更新，畫面重新載入…';
           later.textContent = '知道了';
+          if (res.reload) {
+            // 記住「重載後接回這本書」，不然更新完會掉回首頁
+            try { sessionStorage.setItem('moyu.resume', '1'); } catch {}
+            setTimeout(() => { try { location.reload(); } catch {} }, 500);
+          }
         } else {
           b.querySelector('.u-t').textContent = res.message || '沒有更新';
           later.textContent = '知道了';
@@ -256,15 +260,16 @@
     };
   }
 
-  // 主行程自己更新完（視窗有焦點時不會硬 reload）→ 在這裡告訴使用者
+  // 主行程自己更新完 → 在這裡告訴使用者，並在 reload 後接回同一本書
   if (B?.update?.onReady) {
     B.update.onReady((r) => {
       if (!r || !r.version) return;
       showBanner(r.defer
         ? `已同步到新版本 ${r.version}，下次開啟生效`
-        : `已同步到新版本 ${r.version}（重新載入畫面生效）`, !!r.reload);
+        : `已同步到新版本 ${r.version}，畫面重新載入…`, false);
       if (r.reload) {
-        setTimeout(() => { try { location.reload(); } catch {} }, 1200);
+        try { sessionStorage.setItem('moyu.resume', '1'); } catch {}
+        setTimeout(() => { try { location.reload(); } catch {} }, 900);
       }
     });
   }

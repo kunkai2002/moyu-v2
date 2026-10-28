@@ -99,10 +99,16 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   flow.seps >= 1 ? ok(`連讀：章間細線 ${flow.seps} 條`) : bad('連讀：沒有細線');
   flow.chars > 1500 ? ok(`連讀：累積 ${flow.chars} 字`) : bad('連讀：內容太少', String(flow.chars));
 
-  /* 記住進度：走真正的右鍵路徑 */
+  /* 記住進度：走真正的右鍵路徑（挑一段真的在畫面上的段落，
+     跟使用者會做的事一樣；亂挑看不見的段落會跟捲動監看打架） */
   const toastBefore = await page.evaluate(() => document.querySelector('.rm-toast')?.textContent || '');
   const menuOpened = await page.evaluate(() => {
-    const para = document.querySelector('#stream .pb .p');
+    const s = document.querySelector('#stream').getBoundingClientRect();
+    const vis = [...document.querySelectorAll('#stream .pb .p')].find((p) => {
+      const r = p.getBoundingClientRect();
+      return r.top > s.top + 40 && r.bottom < s.bottom - 20;
+    });
+    const para = vis || document.querySelector('#stream .pb .p');
     const r = para.getBoundingClientRect();
     para.dispatchEvent(new MouseEvent('contextmenu', {
       bubbles: true, cancelable: true,

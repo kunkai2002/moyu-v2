@@ -59,16 +59,19 @@
   const noteIn = panel.querySelector('#mkNoteIn');
 
   /* ── 頂欄「標記」按鈕 ── */
+  async function toggleMarks() {
+    panel.hidden = !panel.hidden;
+    if (!panel.hidden) await load();
+  }
+  window.__moyuMarksPanel = { toggle: toggleMarks, panel };
+
   const bar = $('.topbar-r');
   if (bar) {
     const btn = document.createElement('button');
     btn.className = 'pill';
     btn.textContent = '標記';
     btn.title = '書籤 / 劃線 / 筆記';
-    btn.addEventListener('click', async () => {
-      panel.hidden = !panel.hidden;
-      if (!panel.hidden) await load();
-    });
+    btn.addEventListener('click', toggleMarks);
     bar.insertBefore(btn, bar.firstChild);
   }
   panel.querySelector('#mkClose').addEventListener('click', () => { panel.hidden = true; });

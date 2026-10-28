@@ -33,6 +33,7 @@
     border:0;background:none;color:var(--fg2);font:inherit;font-size:12.5px;cursor:pointer;text-align:left}
   .ov-row:hover{background:var(--sel);color:var(--fg)}
   .ov-row svg{flex:none;color:var(--fg3)}
+  .ov-sep{height:1px;margin:5px 7px;background:var(--line)}
   .chapter-nav{display:flex;align-items:center;justify-content:center;gap:14px;
     padding:6px 0 8px;flex:none}
   .cn-btn{display:flex;align-items:center;justify-content:center;white-space:nowrap;border:1px solid var(--line);
@@ -135,46 +136,70 @@
   bar.insertBefore(fwdBtn, bar.firstChild);
   bar.insertBefore(backBtn, bar.firstChild);
 
-  /* 右側：常用三顆 + 溢出 */
-  const markBtn = mk('tbMark', 'bookmark', '標記');
-  markBtn.addEventListener('click', () => findLegacy('標記')?.click());
-  const listBtn = mk('tbList', 'list', '目錄（篩選章節）');
-  listBtn.addEventListener('click', () => $('#chFilter')?.focus());
-  const statBtn = mk('tbStat', 'chart', '統計');
-  statBtn.addEventListener('click', () => findLegacy('統計')?.click());
+  /* 右側：只留「讀的時候真的會按」的四顆，其餘全收進「更多」 */
+  const markBtn = mk('tbMark', 'bookmark', '標記（書籤／劃線／筆記）');
+  markBtn.addEventListener('click', () => window.__moyuMarksPanel?.toggle?.());
+  const listBtn = mk('tbList', 'list', '目錄（開關左側章節）');
+  listBtn.addEventListener('click', () => {
+    const app = document.querySelector('.app');
+    if (!app) return;
+    if (window.innerWidth <= 760) {
+      // 小視窗：目錄是抽屜
+      app.classList.toggle('side-open');
+      setTimeout(() => {
+        if (!app.classList.contains('side-open')) return;
+        const f = document.querySelector('#chFilter');
+        if (f) { f.focus(); f.select?.(); }
+      }, 200);
+    } else {
+      // 大視窗：直接收起／展開章節欄（跟側欄那顆箭頭同一件事）
+      app.classList.contains('side-hidden')
+        ? document.querySelector('.expand-btn')?.click()
+        : document.querySelector('.side-head .ghost.icon')?.click();
+    }
+  });
 
-  const homeBtn2 = mk('tbHome', 'home', '首頁');
-  const histBtn2 = mk('tbHistory', 'history', '歷史');
-  const bossBtn2 = mk('tbBoss', 'shield', '老闆鍵 (Alt+Q)');
-  bossBtn2.addEventListener('click', () => window.__moyuDebug?.boss(true));
-  const phoneBtn = mk('tbPhone', 'phone', '手機版');
-  const setBtn = mk('tbSettings', 'settings', '設定');
-  setBtn.addEventListener('click', () => window.__moyuOpenSettings?.());
+  const histBtn2 = mk('tbHistory', 'history', '歷史（最近讀過的書）');
   const moreBtn = mk('tbMore', 'more', '更多');
+
   right.appendChild(listBtn);
-  right.appendChild(markBtn);
-  right.appendChild(statBtn);
-  right.appendChild(homeBtn2);
   right.appendChild(histBtn2);
-  right.appendChild(bossBtn2);
-  right.appendChild(phoneBtn);
-  right.appendChild(setBtn);
+  right.appendChild(markBtn);
   right.appendChild(moreBtn);
 
-  /* 溢出選單：把所有舊膠囊收進來 */
+  /* 溢出選單：不常用的都放這裡 */
   const ov = document.createElement('div');
   ov.className = 'overflow';
   ov.hidden = true;
   document.querySelector('.main')?.appendChild(ov);
 
   const ICON_FOR = {
-    最近: 'history', 整本下載: 'down', 下載: 'down', 書評: 'comment',
+    最近: 'history', 整本下載: 'download', 下載: 'download', 書評: 'comment',
     統計: 'chart', 標記: 'bookmark', 章節: 'list', 同步: 'upload',
   };
 
   function findLegacy(label) {
     return [...ov.querySelectorAll('.ov-row')].find((r) => r.textContent.includes(label));
   }
+
+  function ovRow(label, icon, run) {
+    const row = document.createElement('button');
+    row.className = 'ov-row';
+    row.innerHTML = I.svg(icon, 16) + `<span>${label}</span>`;
+    row.addEventListener('click', () => { ov.hidden = true; run(); });
+    ov.appendChild(row);
+    return row;
+  }
+
+  /* 更多：首頁 / 統計 / 手機版 / 設定 / 老闆鍵（全部接真的函式，不再去點被收掉的舊按鈕） */
+  ovRow('首頁', 'home', () => window.__moyuShell?.openHome?.());
+  ovRow('統計', 'chart', () => window.__moyuStatsPanel?.toggle?.());
+  ovRow('手機版', 'phone', () => window.__moyuPhone?.toggle?.());
+  ovRow('設定', 'settings', () => window.__moyuOpenSettings?.());
+  ovRow('老闆鍵', 'shield', () => window.__moyuDebug?.boss(true));
+  const sep = document.createElement('div');
+  sep.className = 'ov-sep';
+  ov.appendChild(sep);
 
   function sweep() {
     // 把之後才插入右側的膠囊一併收進溢出

@@ -403,6 +403,8 @@ function watchReadingPosition() {
     clearTimeout(readProgTimer);
     readProgTimer = setTimeout(() => {
       if (!state.book || state.streaming) return;
+      // 剛手動按過「記住進度」就先別搶：那是使用者明確指定的位置
+      if (Date.now() - (state.explicitProgressAt || 0) < 2500) return;
       const i = readingIndex();
       const ch = state.chapters[i];
       if (!ch) return;
@@ -743,6 +745,10 @@ async function boot() {
       const last = await bridge.lastBook();
       if (last && last.id) setTimeout(() => openBook(last.id), 260);
     } catch {}
+  } else if (sessionStorage.getItem('moyu.resume') === '1' && state.progress.lastBook) {
+    // 熱更新 reload 之後：接回同一本書（不然更新完會掉回首頁）
+    sessionStorage.removeItem('moyu.resume');
+    setTimeout(() => openBook(state.progress.lastBook), 200);
   }
 
   // 事件

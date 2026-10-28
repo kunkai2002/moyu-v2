@@ -73,8 +73,8 @@ function updateLog(msg) {
   } catch {}
 }
 
-/* 自動更新：抓下來就換掉檔案。只有 UI 檔時，視窗沒焦點就直接 reload，
-   正在讀就發提示條（JOJO 的規矩：不准把程式關掉） */
+/* 自動更新：抓下來就換掉檔案。要不要 reload 由畫面那側決定
+   （只有它知道怎麼在 reload 後接回同一本書），主行程只負責通知 */
 async function autoUpdate() {
   try {
     const c = await updater.check();
@@ -82,9 +82,6 @@ async function autoUpdate() {
     const r = await updater.apply();
     if (!r.applied) { updateLog('auto update failed: ' + r.message); return; }
     updateLog(`auto update ${r.version} hot=${(r.hot || []).length} cold=${(r.cold || []).length}`);
-    if (r.reload && win && !win.isDestroyed() && !win.isFocused()) {
-      try { win.webContents.reload(); return; } catch {}
-    }
     if (win && !win.isDestroyed()) {
       try { win.webContents.send('update:ready', r); } catch {}
     }
@@ -563,9 +560,6 @@ ipcMain.handle('shelf:raw', async () => {
       const r = await updater.apply();
       if (r.applied) {
         updateLog(`update applied → ${r.version} hot=${(r.hot || []).length} cold=${(r.cold || []).length}`);
-        if (r.reload && win && !win.isDestroyed()) {
-          setTimeout(() => { try { win.webContents.reload(); } catch {} }, 600);
-        }
       }
       return r;
     } catch (e) { return { applied: false, message: e.message }; }

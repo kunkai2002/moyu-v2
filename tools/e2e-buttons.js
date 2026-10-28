@@ -56,26 +56,46 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   const ready = await page.evaluate(() => document.querySelectorAll('#stream .pb .p').length);
   ready > 0 ? ok(`準備：正文已載入 ${ready} 段`) : bad('準備：正文沒載入');
 
+  /* 從「更多」選單點一項（不常用的都在這裡） */
+  await page.evaluate(() => {
+    window.__ovClick = async (label) => {
+      document.querySelector('#tbMore')?.click();
+      await new Promise((r) => setTimeout(r, 200));
+      const ov = document.querySelector('.overflow');
+      const row = ov ? [...ov.querySelectorAll('.ov-row')].find((r) => r.textContent.trim().startsWith(label)) : null;
+      if (ov) ov.hidden = true;
+      if (row) row.click();
+      return !!row;
+    };
+  });
+
   console.log('· [1] 頂欄');
-  /* ── 1. 頂欄每一顆 ── */
+  /* ── 1. 頂欄每一顆（只留常用的：目錄／歷史／標記／更多 + 上一頁下一頁）── */
   const topbar = await page.evaluate(() => [...document.querySelectorAll('.topbar .tb-btn')].map((b) => b.id));
-  const EXPECT = ['tbBack', 'tbFwd', 'tbList', 'tbMark', 'tbStat', 'tbHome', 'tbHistory', 'tbBoss', 'tbPhone', 'tbSettings', 'tbMore'];
+  const EXPECT = ['tbBack', 'tbFwd', 'tbList', 'tbHistory', 'tbMark', 'tbMore'];
   const missing = EXPECT.filter((id) => !topbar.includes(id));
-  missing.length === 0 ? ok(`頂欄：${topbar.length} 顆齊全`) : bad('頂欄：缺按鈕', missing.join(','));
+  missing.length === 0 ? ok(`頂欄：${topbar.length} 顆齊全（常用四顆）`) : bad('頂欄：缺按鈕', missing.join(','));
+  const extra = topbar.filter((id) => !EXPECT.includes(id));
+  extra.length === 0 ? ok('頂欄：沒有多餘的按鈕') : bad('頂欄：還有不在清單裡的', extra.join(','));
 
   for (const id of topbar) {
     const before = errors.length;
-    const r = await page.evaluate(async (bid) => {
-      const el = document.getElementById(bid);
-      if (!el) return { ok: false, why: '找不到' };
-      const html = document.body.innerHTML.length;
-      el.click();
-      await new Promise((res) => setTimeout(res, 320));
-      const panels = [...document.querySelectorAll('.panel, .marks-panel, .stats-panel, .detail, .hist-panel')]
-        .filter((p) => !p.hidden).length;
-      const focused = document.activeElement ? document.activeElement.id : '';
-      return { ok: true, changed: document.body.innerHTML.length !== html, panels, focused };
-    }, id);
+    let r;
+    try {
+      r = await page.evaluate(async (bid) => {
+        const el = document.getElementById(bid);
+        if (!el) return { ok: false, why: '找不到' };
+        const html = document.body.innerHTML.length;
+        try { el.click(); } catch (e) { return { ok: false, why: 'click 拋錯：' + e.message }; }
+        await new Promise((res) => setTimeout(res, 320));
+        const panels = [...document.querySelectorAll('.panel, .marks-panel, .stats-panel, .detail, .hist-panel')]
+          .filter((p) => !p.hidden).length;
+        const focused = document.activeElement ? document.activeElement.id : '';
+        return { ok: true, changed: document.body.innerHTML.length !== html, panels, focused };
+      }, id);
+    } catch (e) {
+      r = { ok: false, why: 'evaluate 失敗：' + String(e.message).slice(0, 80) };
+    }
     const newErr = errors.slice(before);
     if (!r.ok) bad(`按鈕 ${id}：${r.why}`);
     else if (newErr.length) bad(`按鈕 ${id}：拋錯 ${newErr[0].slice(0, 60)}`);
@@ -105,9 +125,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ovRows.length ? ok(`溢出：${ovRows.length} 項（${ovRows.join(' / ')}）`) : warn('溢出：沒有項目');
 
   console.log('· [3] 首頁');
-  /* 手機面板 */
+  /* 手機面板（在「更多」裡） */
   const phone = await page.evaluate(async () => {
-    document.querySelector('#tbPhone').click();
+    await window.__ovClick('手機版');
     await new Promise((r) => setTimeout(r, 1000));
     const panel = document.querySelector('.phone-panel');
     const url = panel ? panel.querySelector('#phUrl').value : '';
@@ -118,7 +138,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   phone.open ? ok('手機面板：打得開') : bad('手機面板：打不開');
   /\/m\/#t=.+/.test(phone.url) ? ok('手機面板：網址帶金鑰') : bad('手機面板：網址不對', phone.url);
 
-  /* 資訊架構：頂欄與溢出不得重複 */
+  /* 資訊架構：頂欄放常用、其餘進「更多」，兩邊不准重複 */
   const ia = await page.evaluate(async () => {
     const top = [...document.querySelectorAll('.topbar .tb-btn')].map((b) => (b.title || '').trim());
     document.querySelector('#tbMore')?.click();
@@ -128,14 +148,17 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     if (ov) ov.hidden = true;
     return { top, rows };
   });
-  const DUP = ['最近', '歷史', '統計', '標記', '章節', '書架', '首頁', '手機', '設定', '目錄', '老闆鍵'];
-  const dupHit = ia.rows.filter((row) => DUP.some((k) => row.startsWith(k)));
-  dupHit.length === 0 ? ok(`資訊架構：溢出沒有重複項（${ia.rows.join(' / ') || '空'}）`) : bad('資訊架構：溢出有重複', dupHit.join(','));
+  const KEYS = ['首頁', '統計', '手機版', '設定', '老闆鍵', '下載', '書評'];
+  const lack = KEYS.filter((k) => !ia.rows.some((r) => r.startsWith(k)));
+  lack.length === 0 ? ok(`更多：${ia.rows.length} 項，不常用的都在（${ia.rows.join(' / ')}）`) : bad('更多：缺項', lack.join(','));
+  // 同一件事不能既在頂欄又在更多
+  const overlap = ia.rows.filter((row) => ia.top.some((t) => t && row.startsWith(t.slice(0, 2)) && t.length <= 6));
+  overlap.length === 0 ? ok('資訊架構：頂欄與更多沒有重複') : warn('資訊架構：可能有重複', overlap.join(','));
   const noTitle = ia.top.filter((t) => !t);
   noTitle.length === 0 ? ok(`資訊架構：頂欄 ${ia.top.length} 顆都有標題`) : bad('資訊架構：有按鈕沒有標題');
 
   /* ── 3. 首頁 ── */
-  await page.evaluate(() => document.querySelector('#tbHome').click());
+  await page.evaluate(() => window.__ovClick('首頁'));
   await sleep(1500);
   const home = await page.evaluate(() => ({
     visible: !!document.querySelector('.home'),
@@ -161,7 +184,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   console.log('· [5] 右鍵');
   /* ── 5. 右鍵選單 ── */
-  await page.evaluate(() => document.querySelector('#tbHome').click());
+  await page.evaluate(() => window.__ovClick('首頁'));
   await sleep(300);
   await page.evaluate(async () => { await window.__moyuDebug.openBook('7373660003258862617'); });
   await sleep(2600);
@@ -229,7 +252,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   sideDrag.ok && sideDrag.before !== sideDrag.after ? ok(`拖拽：目錄寬 ${sideDrag.before} → ${sideDrag.after}（已記住 ${sideDrag.saved}）`) : bad('拖拽：目錄拖不動', JSON.stringify(sideDrag));
 
   const panelDrag = await page.evaluate(async () => {
-    document.querySelector('#tbSettings').click();
+    await window.__ovClick('設定');
     await new Promise((r) => setTimeout(r, 300));
     const panel = document.querySelector('.panel');
     const rz = panel?.querySelector('.panel-rz');

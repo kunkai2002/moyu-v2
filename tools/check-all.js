@@ -16,6 +16,7 @@ const STEPS = [
   { name: '一次滑動只接一章', cmd: 'node', args: ['tools/e2e-jump.js', APP] },
   { name: '書架（真帳號）', cmd: 'node', args: ['tools/e2e-shelf.js', APP] },
   { name: '全按鈕自檢', cmd: 'node', args: ['tools/e2e-buttons.js', APP] },
+  { name: '頂欄與更多選單', cmd: 'node', args: ['tools/e2e-topbar.js', APP] },
   { name: '視窗狀態記憶', cmd: 'node', args: ['tools/e2e-window.js', APP] },
   { name: '手機後端', cmd: 'node', args: ['tools/test-worker.js'], skip: quick },
   { name: '手機 PWA', cmd: 'node', args: ['tools/e2e-mobile.js'], skip: quick },

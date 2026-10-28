@@ -97,7 +97,11 @@
 
   document.addEventListener('click', function (e) {
     if (panel.hidden) return;
-    if (!panel.contains(e.target) && e.target.id !== 'tbPhone') panel.hidden = true;
+    // 從「更多」選單點進來的同一個 click 事件會冒泡到這裡，
+    // 不排除的話面板一開就被自己關掉
+    if (e.target.closest && e.target.closest('.overflow')) return;
+    if (e.target.id === 'tbPhone' || e.target.closest('#tbPhone')) return;
+    if (!panel.contains(e.target)) panel.hidden = true;
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') panel.hidden = true; });
 

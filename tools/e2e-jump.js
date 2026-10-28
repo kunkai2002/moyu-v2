@@ -187,15 +187,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   });
   await page.evaluate(() => {
     const b = document.querySelectorAll('#stream .pb')[1];
-    const s = document.querySelector('#stream');
-    if (b) s.scrollTop = s.scrollTop + b.getBoundingClientRect().top - s.getBoundingClientRect().top - 8;
+    if (b) b.scrollIntoView({ block: 'start' });
   });
-  await sleep(1800);
-  prog = readProg();
-  entry = prog && prog.books && prog.books[BOOK];
-  nextId && entry && entry.chapterId === nextId
-    ? ok(`捲進第 2 章後進度跟著更新（第 ${entry.chapterNo} 章）`)
-    : bad('捲到下一章進度沒更新', JSON.stringify(entry) + ' 應該要是 ' + nextId);
+  /* 捲動監看是「停下來 800ms 才寫」，所以用等的，不要用猜的 */
+  let got = null;
+  for (let i = 0; i < 12; i++) {
+    await sleep(500);
+    const p = readProg();
+    const e = p && p.books && p.books[BOOK];
+    if (e && e.chapterId === nextId) { got = e; break; }
+    got = e;
+  }
+  nextId && got && got.chapterId === nextId
+    ? ok(`捲進第 2 章後進度跟著更新（第 ${got.chapterNo} 章）`)
+    : bad('捲到下一章進度沒更新', JSON.stringify(got) + ' 應該要是 ' + nextId);
 
   /* 小視窗收合目錄：左邊不准有陰影 */
   const shadow = await page.evaluate(() => {
