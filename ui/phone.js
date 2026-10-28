@@ -53,6 +53,10 @@
 
   async function refresh() {
     try {
+      if (!B.sync || !B.sync.status) {
+        stateEl.textContent = '這個版本還沒接上同步，請更新後再試';
+        return;
+      }
       var st = await B.sync.status();
       if (!st || !st.configured) {
         stateEl.textContent = '還沒設定同步（設定 → 同步，填網址與金鑰）';
@@ -96,6 +100,16 @@
     if (!panel.contains(e.target) && e.target.id !== 'tbPhone') panel.hidden = true;
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') panel.hidden = true; });
+
+  /* 自己綁按鈕：不依賴別的檔案的初始化順序 */
+  function bindBtn() {
+    var b = document.getElementById('tbPhone');
+    if (!b || b.dataset.phoneBound) return;
+    b.dataset.phoneBound = '1';
+    b.addEventListener('click', toggle);
+  }
+  bindBtn();
+  new MutationObserver(bindBtn).observe(document.body, { childList: true, subtree: true });
 
   window.__moyuPhone = { toggle: toggle };
 })();

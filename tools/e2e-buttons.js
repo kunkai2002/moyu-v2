@@ -59,7 +59,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   console.log('· [1] 頂欄');
   /* ── 1. 頂欄每一顆 ── */
   const topbar = await page.evaluate(() => [...document.querySelectorAll('.topbar .tb-btn')].map((b) => b.id));
-  const EXPECT = ['tbBack', 'tbFwd', 'tbShelf', 'tbList', 'tbMark', 'tbStat', 'tbHome', 'tbHistory', 'tbSettings', 'tbMore'];
+  const EXPECT = ['tbBack', 'tbFwd', 'tbList', 'tbMark', 'tbStat', 'tbHome', 'tbHistory', 'tbBoss', 'tbPhone', 'tbSettings', 'tbMore'];
   const missing = EXPECT.filter((id) => !topbar.includes(id));
   missing.length === 0 ? ok(`頂欄：${topbar.length} 顆齊全`) : bad('頂欄：缺按鈕', missing.join(','));
 
@@ -83,7 +83,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     else ok(`按鈕 ${id}：有反應`);
     // 關掉可能開起來的面板
     await page.evaluate(() => {
-      document.querySelectorAll('.panel, .marks-panel, .stats-panel, .detail, .hist-panel')
+      // 老闆鍵按下去之後一定要退出假畫面，否則後面的量測全在假畫面裡
+      try { window.__moyuDebug.boss(false); } catch (e) {}
+      document.body.classList.remove('bossing');
+      document.querySelectorAll('.panel, .marks-panel, .stats-panel, .detail, .hist-panel, .phone-panel')
         .forEach((p) => { p.hidden = true; });
     });
     await sleep(120);
@@ -114,6 +117,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   });
   phone.open ? ok('手機面板：打得開') : bad('手機面板：打不開');
   /\/m\/#t=.+/.test(phone.url) ? ok('手機面板：網址帶金鑰') : bad('手機面板：網址不對', phone.url);
+
+  /* 資訊架構：頂欄與溢出不得重複 */
+  const ia = await page.evaluate(async () => {
+    const top = [...document.querySelectorAll('.topbar .tb-btn')].map((b) => (b.title || '').trim());
+    document.querySelector('#tbMore')?.click();
+    await new Promise((r) => setTimeout(r, 260));
+    const ov = document.querySelector('.overflow');
+    const rows = ov ? [...ov.querySelectorAll('.ov-row')].map((r) => r.textContent.trim()) : [];
+    if (ov) ov.hidden = true;
+    return { top, rows };
+  });
+  const DUP = ['最近', '歷史', '統計', '標記', '章節', '書架', '首頁', '手機', '設定', '目錄', '老闆鍵'];
+  const dupHit = ia.rows.filter((row) => DUP.some((k) => row.startsWith(k)));
+  dupHit.length === 0 ? ok(`資訊架構：溢出沒有重複項（${ia.rows.join(' / ') || '空'}）`) : bad('資訊架構：溢出有重複', dupHit.join(','));
+  const noTitle = ia.top.filter((t) => !t);
+  noTitle.length === 0 ? ok(`資訊架構：頂欄 ${ia.top.length} 顆都有標題`) : bad('資訊架構：有按鈕沒有標題');
 
   /* ── 3. 首頁 ── */
   await page.evaluate(() => document.querySelector('#tbHome').click());
@@ -187,6 +206,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   searched ? ok('右鍵：全書搜尋有輸出') : warn('右鍵：搜尋沒有明顯輸出');
 
   console.log('· [6] 拖拽');
+  /* 確保沒在假畫面、正文在 */
+  await page.evaluate(async () => {
+    try { window.__moyuDebug.boss(false); } catch (e) {}
+    document.body.classList.remove('bossing');
+    if (!window.__moyuDebug.state.book) await window.__moyuDebug.openBook('7373660003258862617');
+  });
+  await sleep(1800);
+
   /* ── 6. 拖拽 ── */
   const sideDrag = await page.evaluate(async () => {
     const rz = document.querySelector('.side .rz');
@@ -264,10 +291,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (let i = 0; i < 3; i++) {
     const before = await page.evaluate(() => window.__moyuDebug.state.index);
     await page.evaluate(() => {
-      const s = document.querySelector('#stream');
-      s.dispatchEvent(new WheelEvent('wheel', { deltaY: 240, bubbles: true }));
-      s.scrollTop = s.scrollHeight;
-      s.dispatchEvent(new Event('scroll'));
+    const s = document.querySelector('#stream');
+    s.scrollTop = s.scrollHeight;
+    s.dispatchEvent(new Event('scroll'));
+    s.dispatchEvent(new WheelEvent('wheel', { deltaY: 240, bubbles: true }));
+    s.dispatchEvent(new Event('scroll'));
     });
     await sleep(2600);
     const after = await page.evaluate(() => window.__moyuDebug.state.index);

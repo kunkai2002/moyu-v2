@@ -242,16 +242,20 @@
   function bind() {
     var homeBtn = document.querySelector('#tbHome');
     if (homeBtn && !homeBtn.dataset.bound) { homeBtn.dataset.bound = '1'; homeBtn.addEventListener('click', openHome); }
-    var phoneBtn = document.querySelector('#tbPhone');
-    if (phoneBtn && !phoneBtn.dataset.bound) {
-      phoneBtn.dataset.bound = '1';
-      phoneBtn.addEventListener('click', function () { window.__moyuPhone && window.__moyuPhone.toggle(); });
-    }
     var histBtn = document.querySelector('#tbHistory');
     if (histBtn && !histBtn.dataset.bound) { histBtn.dataset.bound = '1'; histBtn.addEventListener('click', toggleHistory); }
   }
   bind();
   new MutationObserver(bind).observe(document.body, { childList: true, subtree: true });
+
+  /* Esc：沒有其他面板開著時回首頁 */
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Escape') return;
+    var open = document.querySelector('.panel:not([hidden]), .marks-panel:not([hidden]), .stats-panel:not([hidden]), .detail:not([hidden]), .hist-panel:not([hidden]), .phone-panel:not([hidden]), .overflow:not([hidden])');
+    if (open) return;
+    if (document.body.classList.contains('bossing')) return;
+    openHome();
+  });
 
   window.__moyuShell = { openHome: openHome, toggleHistory: toggleHistory, recentList: recentList };
 })();

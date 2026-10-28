@@ -1,4 +1,8 @@
-/* 章節連讀 v2：底部哨兵 + 點它也能接；碰到試讀自動停 */
+/* 章節連讀 v3
+   - 底部哨兵：滑到底（或點它）接下一章
+   - 手勢令牌：一次手勢最多接一章，絕不連鎖
+   - 碰到試讀章節就停
+   - 內容不滿一屏時自動補齊 */
 (function () {
   'use strict';
   var D = window.__moyuDebug;
@@ -21,11 +25,13 @@
   document.head.appendChild(css);
 
   var busy = false;
-  var armed = false;   // 使用者滾到底才允許自動接
   var blocked = false;
+  var gestureSeq = 0;   // 每次真實手勢 +1
+  var usedSeq = 0;      // 已經用掉的手勢
   var lastIndex = -1;
   var sentinel = null;
   var io = null;
+  var lastPaint = '';
 
   function lastBody() {
     var list = document.querySelectorAll('#stream .pb');
@@ -36,13 +42,21 @@
     return stream.scrollHeight - stream.scrollTop - stream.clientHeight < 420;
   }
 
+  function noScrollbar() {
+    return stream.scrollHeight <= stream.clientHeight + 4;
+  }
+
+  function rendered() {
+    var b = lastBody();
+    return !!b && !/讀取中/.test(b.textContent) && b.querySelectorAll('.p').length > 1;
+  }
+
   function canAdvance() {
     if (busy || blocked) return false;
     if (!st.book || !st.chapters || !st.chapters.length) return false;
     if (st.index >= st.chapters.length - 1) return false;
     if (st.streaming) return false;
-    var body = lastBody();
-    if (body && /讀取中/.test(body.textContent)) return false;
+    if (!rendered()) return false;   // 本章還沒畫出來，先等
     return true;
   }
 
@@ -58,6 +72,7 @@
     sentinel.innerHTML = '<span>繼續往下，自動接下一章</span>';
     sentinel.addEventListener('click', function () {
       if (blocked) return;
+      gestureSeq++;
       advance(true);
     });
     thread.appendChild(sentinel);
@@ -65,17 +80,13 @@
     if (window.IntersectionObserver) {
       io = new IntersectionObserver(function (entries) {
         for (var i = 0; i < entries.length; i++) {
-          if (entries[i].isIntersecting) {
-            var noScrollbar = stream.scrollHeight <= stream.clientHeight + 4;
-            if (armed || noScrollbar) advance(false);
-          }
+          if (entries[i].isIntersecting) advance(false);
         }
       }, { root: stream, rootMargin: '240px' });
       io.observe(sentinel);
     }
   }
 
-  var lastPaint = '';
   function paintSentinel() {
     if (!sentinel) return;
     var want;
@@ -91,17 +102,23 @@
 
   function advance(manual) {
     if (!canAdvance()) { paintSentinel(); return; }
+    var autoFill = noScrollbar();
     if (!manual) {
-      if (!atBottom()) return;
-      // 沒有滾動（內容比視窗短）時允許自動補齊；其餘要等使用者滾
-      var noScrollbar = stream.scrollHeight <= stream.clientHeight + 4;
-      if (!armed && !noScrollbar) return;
+      if (!atBottom() && !autoFill) return;
+      if (!autoFill && usedSeq >= gestureSeq) return;
+      if (autoFill && usedSeq >= gestureSeq && busy) return;
     }
     busy = true;
-    if (sentinel) { sentinel.className = 'flow-more busy'; sentinel.innerHTML = '<span>正在接下一章…</span>'; }
+    var usedAtStart = gestureSeq;
+    if (sentinel) {
+      sentinel.className = 'flow-more busy';
+      sentinel.innerHTML = '<span>正在接下一章…</span>';
+      lastPaint = 'busy';
+    }
     var thread = document.querySelector('#stream .thread');
     var keepTop = stream.scrollTop;
     var before = thread ? thread.children.length : 0;
+
     D.goChapter(st.index + 1, { announce: false }).then(function () {
       var t = document.querySelector('#stream .thread');
       if (t && t.children.length > before) {
@@ -112,27 +129,44 @@
       var body = lastBody();
       if (body && /試讀|免費範圍外/.test(body.textContent)) blocked = true;
       lastIndex = st.index;
-      // 保住閱讀位置，讓使用者自己決定速度
+      usedSeq = Math.max(usedSeq, usedAtStart);
       requestAnimationFrame(function () { stream.scrollTop = keepTop; });
       setTimeout(function () { stream.scrollTop = keepTop; }, 80);
-      sentinel = null;                 // 重新掛到新的結尾
+      sentinel = null;
       makeSentinel();
       paintSentinel();
       busy = false;
-      armed = false;
-      // 內容仍比視窗短就再補一章，否則停下等使用者滾
+      // 只有「內容還不滿一屏」才自動補下一章
       setTimeout(function () {
         if (!canAdvance()) return;
-        var noScrollbar = stream.scrollHeight <= stream.clientHeight + 4;
-        if (noScrollbar) advance(false);
-      }, 220);
+        if (noScrollbar()) advance(false);
+      }, 240);
     }).catch(function () {
       busy = false;
+      sentinel = null;
+      makeSentinel();
       paintSentinel();
     });
   }
 
-  /* 內容變動（新章渲染、換書）→ 重新掛哨兵 */
+  /* 真實手勢：滾輪 / 觸控 / 鍵盤 */
+  ['wheel', 'touchmove'].forEach(function (ev) {
+    stream.addEventListener(ev, function () {
+      if (atBottom()) gestureSeq++;
+    }, { passive: true });
+  });
+  window.addEventListener('keydown', function (e) {
+    if (/^(PageDown|ArrowDown|End|Down| )$/.test(e.key) && atBottom()) gestureSeq++;
+  });
+
+  /* 捲動只負責在「已有新手勢」時觸發，不自己製造手勢 */
+  stream.addEventListener('scroll', function () {
+    if (st.streaming) return;
+    if (!atBottom()) return;
+    if (canAdvance()) advance(false);
+  }, { passive: true });
+
+  /* 觀察 #stream 的直接子節點（首頁/換書會重建 thread） */
   var threadEl = document.querySelector('#stream .thread');
   var mo = new MutationObserver(function () {
     makeSentinel();
@@ -152,28 +186,15 @@
     observeThread(document.querySelector('#stream .thread'));
   }).observe(stream, { childList: true });
 
-  /* 只有真的手勢才武裝：程式自己捲到底（例如接章後還原位置）不該觸發連鎖 */
-  ['wheel', 'touchmove'].forEach(function (ev) {
-    stream.addEventListener(ev, function () { if (atBottom()) armed = true; }, { passive: true });
-  });
-  window.addEventListener('keydown', function (e) {
-    if (/^(PageDown|ArrowDown|End|Down| )$/.test(e.key)) { if (atBottom()) armed = true; }
-  });
-  stream.addEventListener('scroll', function () {
-    if (st.streaming) return;
-    if (!atBottom()) { armed = false; return; }
-    if (armed && canAdvance()) advance(false);
-  }, { passive: true });
-
-  /* 人工換章時解除「試讀封鎖」 */
+  /* 守護：換章、換書、首頁切換都補回哨兵 */
   setInterval(function () {
     if (lastIndex !== st.index) {
       if (lastIndex >= 0) blocked = false;
       lastIndex = st.index;
       sentinel = null;
+      lastPaint = '';
     }
     if (!st.book || !st.chapters || !st.chapters.length) return;
-    // 換書、重建 thread、首頁切換都可能讓哨兵掉隊，這裡補回來
     makeSentinel();
     paintSentinel();
   }, 900);
@@ -184,6 +205,8 @@
   window.__moyuFlow = {
     advance: advance,
     reset: function () { blocked = false; paintSentinel(); },
-    get state() { return { blocked: blocked, busy: busy, index: st.index, sentinel: !!sentinel }; },
+    get state() {
+      return { blocked: blocked, busy: busy, index: st.index, gestureSeq: gestureSeq, usedSeq: usedSeq, sentinel: !!sentinel };
+    },
   };
 })();

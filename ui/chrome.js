@@ -132,11 +132,6 @@
   const fwdBtn = mk('tbFwd', 'forward', '前進 (Alt+→)');
   backBtn.addEventListener('click', back);
   fwdBtn.addEventListener('click', fwd);
-
-  const homeBtn = mk('tbShelf', 'shelf', '回書架 (Esc)');
-  homeBtn.addEventListener('click', () => { D.openShelf(); push(snap()); });
-
-  bar.insertBefore(homeBtn, bar.firstChild);
   bar.insertBefore(fwdBtn, bar.firstChild);
   bar.insertBefore(backBtn, bar.firstChild);
 
@@ -150,6 +145,8 @@
 
   const homeBtn2 = mk('tbHome', 'home', '首頁');
   const histBtn2 = mk('tbHistory', 'history', '歷史');
+  const bossBtn2 = mk('tbBoss', 'shield', '老闆鍵 (Alt+Q)');
+  bossBtn2.addEventListener('click', () => window.__moyuDebug?.boss(true));
   const phoneBtn = mk('tbPhone', 'phone', '手機版');
   const setBtn = mk('tbSettings', 'settings', '設定');
   setBtn.addEventListener('click', () => window.__moyuOpenSettings?.());
@@ -159,6 +156,7 @@
   right.appendChild(statBtn);
   right.appendChild(homeBtn2);
   right.appendChild(histBtn2);
+  right.appendChild(bossBtn2);
   right.appendChild(phoneBtn);
   right.appendChild(setBtn);
   right.appendChild(moreBtn);
@@ -189,14 +187,18 @@
     if (cb) cb.remove();
   }
 
+  /* 頂欄已經有的功能，不要再出現在溢出選單裡 */
+  const DUP_IN_TOPBAR = ['最近', '歷史', '統計', '標記', '章節', '書架', '首頁', '手機', '設定', '目錄', '老闆鍵'];
+
   function addToOverflow(el) {
     if (!el || el.dataset.moved) return;
     el.dataset.moved = '1';
-    // 純圖標按鈕沒有文字，用 title 當名字；真的沒有就跳過（不要出現「功能」這種空殼）
     const raw = (el.textContent || '').trim() || (el.getAttribute('title') || '').trim();
     if (!raw) { el.remove(); return; }
-    // 純資訊項（章節 0 這種）不需要進選單
-    if (/^章節\s*\d+$/.test(raw)) { el.remove(); return; }
+    // 純資訊項（章節 0、已開啟的書數…）不需要進選單
+    if (/^章節\s*\d+$/.test(raw) || /書數$/.test(raw) || /^已開啟/.test(raw)) { el.remove(); return; }
+    // 與頂欄重複 → 移除
+    if (DUP_IN_TOPBAR.some((k) => raw.startsWith(k))) { el.remove(); return; }
     const label = raw;
     if ([...ov.querySelectorAll('.ov-row')].some((r) => r.textContent.trim() === label)) { el.remove(); return; }
     const key = Object.keys(ICON_FOR).find((k) => label.startsWith(k));

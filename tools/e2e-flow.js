@@ -70,13 +70,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   balls === 0 ? ok('UI：小圓球已移除（只剩右鍵選單）') : bad('UI：小圓球還在', String(balls));
 
   /* 滾到底 3 次，看會不會自動接章 */
-  for (let round = 0; round < 5; round++) {
+  for (let round = 0; round < 4; round++) {
     await page.evaluate(() => {
-      const s = document.querySelector('#stream');
-      s.scrollTop = s.scrollHeight;
-      s.dispatchEvent(new Event('scroll'));
+    const s = document.querySelector('#stream');
+    s.scrollTop = s.scrollHeight;
+    s.dispatchEvent(new Event('scroll'));
+    s.dispatchEvent(new WheelEvent('wheel', { deltaY: 240, bubbles: true }));
+    s.dispatchEvent(new Event('scroll'));
     });
-    await sleep(2600);
+    await sleep(2800);
   }
   const flow = await page.evaluate(() => ({
     chaps: document.querySelectorAll('#stream .chap').length,
@@ -103,8 +105,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const menuText = await page.evaluate(() => document.querySelector('.rm-menu')?.innerText || '');
   /記住進度/.test(menuText) ? ok(`右鍵：選單有「記住進度」（${menuText.replace(/\n+/g, ' / ').slice(0, 40)}）`) : bad('右鍵：選單沒有記住進度', menuText);
+  const menuItems = await page.evaluate(() => window.__moyuRemember.items);
+  const wantItems = ['記住進度', '劃線', '寫筆記', '複製這段', '全書搜尋這段'];
+  const missItems = wantItems.filter((w) => !menuItems.some((i) => i.includes(w.replace('…', ''))));
+  missItems.length === 0 ? ok(`右鍵：五項齊（${menuItems.length}）`) : bad('右鍵：缺項', missItems.join(','));
 
-  await page.evaluate(() => document.querySelector('#rmMenuSave').click());
+  await page.evaluate(() => document.querySelector('#rmSave').click());
   await sleep(900);
   const after = await page.evaluate(() => document.querySelector('.rm-toast')?.textContent || '');
   /記住/.test(after) ? ok(`記住進度：提示「${after}」`) : bad('記住進度：沒有提示', after || toastBefore);
