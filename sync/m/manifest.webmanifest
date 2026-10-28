@@ -1,0 +1,19 @@
+{
+  "name": "魔芋一夏",
+  "short_name": "魔芋",
+  "start_url": "/m/",
+  "scope": "/m/",
+  "display": "standalone",
+  "background_color": "#1a1915",
+  "theme_color": "#1a1915",
+  "orientation": "portrait",
+  "lang": "zh-Hant",
+  "icons": [
+    {
+      "src": "/m/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

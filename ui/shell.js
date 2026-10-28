@@ -242,6 +242,11 @@
   function bind() {
     var homeBtn = document.querySelector('#tbHome');
     if (homeBtn && !homeBtn.dataset.bound) { homeBtn.dataset.bound = '1'; homeBtn.addEventListener('click', openHome); }
+    var phoneBtn = document.querySelector('#tbPhone');
+    if (phoneBtn && !phoneBtn.dataset.bound) {
+      phoneBtn.dataset.bound = '1';
+      phoneBtn.addEventListener('click', function () { window.__moyuPhone && window.__moyuPhone.toggle(); });
+    }
     var histBtn = document.querySelector('#tbHistory');
     if (histBtn && !histBtn.dataset.bound) { histBtn.dataset.bound = '1'; histBtn.addEventListener('click', toggleHistory); }
   }

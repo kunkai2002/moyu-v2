@@ -16,7 +16,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function launch() {
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'persist.log'), 'a');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`], {
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], {
     stdio: ['ignore', log, log],
   });
   let browser = null;

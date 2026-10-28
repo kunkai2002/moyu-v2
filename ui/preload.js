@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld('moyu', {
     status: () => ipcRenderer.invoke('sync:status'),
     config: (cfg) => ipcRenderer.invoke('sync:config', cfg),
     push: () => ipcRenderer.invoke('sync:push'),
+    setup: () => ipcRenderer.invoke('sync:setup'),
     pull: () => ipcRenderer.invoke('sync:pull'),
   },
   copy: (text) => ipcRenderer.invoke('clipboard:write', text),

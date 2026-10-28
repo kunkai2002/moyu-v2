@@ -26,7 +26,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.mkdirSync(path.join(PROBE, 'chapters'), { recursive: true });
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'buttons.log'), 'w');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`], { stdio: ['ignore', log, log] });
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], { stdio: ['ignore', log, log] });
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {
@@ -102,6 +102,19 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   ovRows.length ? ok(`溢出：${ovRows.length} 項（${ovRows.join(' / ')}）`) : warn('溢出：沒有項目');
 
   console.log('· [3] 首頁');
+  /* 手機面板 */
+  const phone = await page.evaluate(async () => {
+    document.querySelector('#tbPhone').click();
+    await new Promise((r) => setTimeout(r, 1000));
+    const panel = document.querySelector('.phone-panel');
+    const url = panel ? panel.querySelector('#phUrl').value : '';
+    const open = !!panel && !panel.hidden;
+    if (panel) panel.hidden = true;
+    return { open, url };
+  });
+  phone.open ? ok('手機面板：打得開') : bad('手機面板：打不開');
+  /\/m\/#t=.+/.test(phone.url) ? ok('手機面板：網址帶金鑰') : bad('手機面板：網址不對', phone.url);
+
   /* ── 3. 首頁 ── */
   await page.evaluate(() => document.querySelector('#tbHome').click());
   await sleep(1500);

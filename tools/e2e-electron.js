@@ -31,7 +31,7 @@ async function typeCmd(page, text) {
 
   const logPath = path.join(__dirname, '..', '_probe', 'e2e-electron.log');
   const logFd = fs.openSync(logPath, 'w');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`], {
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], {
     stdio: ['ignore', logFd, logFd], detached: false,
   });
 

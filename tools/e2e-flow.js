@@ -25,7 +25,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.mkdirSync(path.join(PROBE, 'chapters'), { recursive: true });
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'flow.log'), 'w');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`], { stdio: ['ignore', log, log] });
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], { stdio: ['ignore', log, log] });
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {

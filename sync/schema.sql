@@ -26,3 +26,9 @@ CREATE TABLE IF NOT EXISTS marks (
 
 CREATE INDEX IF NOT EXISTS idx_marks_book ON marks(book_id);
 CREATE INDEX IF NOT EXISTS idx_marks_updated ON marks(updated_at);
+
+-- 設定（手機版代理要用的登入 cookie）
+CREATE TABLE IF NOT EXISTS config (
+  key   TEXT PRIMARY KEY,
+  value TEXT
+);

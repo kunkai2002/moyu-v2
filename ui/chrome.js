@@ -150,6 +150,7 @@
 
   const homeBtn2 = mk('tbHome', 'home', '首頁');
   const histBtn2 = mk('tbHistory', 'history', '歷史');
+  const phoneBtn = mk('tbPhone', 'phone', '手機版');
   const setBtn = mk('tbSettings', 'settings', '設定');
   setBtn.addEventListener('click', () => window.__moyuOpenSettings?.());
   const moreBtn = mk('tbMore', 'more', '更多');
@@ -158,6 +159,7 @@
   right.appendChild(statBtn);
   right.appendChild(homeBtn2);
   right.appendChild(histBtn2);
+  right.appendChild(phoneBtn);
   right.appendChild(setBtn);
   right.appendChild(moreBtn);
 

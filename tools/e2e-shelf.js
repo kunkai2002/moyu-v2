@@ -31,7 +31,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.mkdirSync(path.join(PROBE, 'chapters'), { recursive: true });
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'shelf.log'), 'w');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`], {
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], {
     stdio: ['ignore', log, log],
   });
 

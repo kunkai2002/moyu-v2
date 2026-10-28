@@ -147,6 +147,12 @@ async function pull(dataDir) {
   return { ok: true, progress: (r.progress || []).length, marks: added, removed };
 }
 
+/* 手機版配對網址（金鑰放 fragment，不會進伺服器 log） */
+function phoneUrl() {
+  if (!configured()) return '';
+  return String(state.url).replace(/\/+$/, '') + '/m/#t=' + encodeURIComponent(state.token || '');
+}
+
 function status() {
   return {
     configured: configured(),
@@ -157,4 +163,4 @@ function status() {
   };
 }
 
-module.exports = { init, configure, push, pull, status, configured };
+module.exports = { init, configure, push, pull, status, configured, phoneUrl };

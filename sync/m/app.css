@@ -1,0 +1,90 @@
+/* 魔芋一夏 · 手機版 */
+:root{
+  --bg:#1a1915; --bg2:#211f1a; --fg:#e8e3d9; --fg2:#b9b2a4; --fg3:#7d776c;
+  --line:#332f28; --line2:#453f35; --acc:#d97757; --hl:#3a2f22;
+  --fs:17px; --lh:1.95;
+  --serif:"Source Han Serif TC","Noto Serif TC","Songti TC",PMingLiU,Georgia,serif;
+  --ui:-apple-system,"PingFang TC","Microsoft JhengHei UI",system-ui,sans-serif;
+}
+[data-theme="light"]{
+  --bg:#faf7f2; --bg2:#ffffff; --fg:#2b2822; --fg2:#5d574c; --fg3:#8d867a;
+  --line:#e6e0d6; --line2:#d5cec2; --acc:#c25a34; --hl:#f6e7c8;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--fg); font-family:var(--ui);
+  padding-bottom:env(safe-area-inset-bottom);
+  -webkit-font-smoothing:antialiased; overscroll-behavior-y:none;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0}
+
+/* 頂欄 */
+.top{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:6px;
+  height:calc(48px + env(safe-area-inset-top));padding:env(safe-area-inset-top) 8px 0;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+}
+.ic{width:34px;height:34px;display:grid;place-items:center;color:var(--fg2);border-radius:8px;font-size:22px;line-height:1}
+.ic:active{background:var(--bg2)}
+.ic svg{width:19px;height:19px}
+.ttl{flex:1;font-size:13.5px;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* 書架 */
+.shelf{padding:12px 12px 80px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{
+  background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:12px 11px;
+  text-align:left;display:flex;flex-direction:column;gap:5px;min-height:86px;
+}
+.card:active{border-color:var(--acc)}
+.card .t{font-size:13.5px;line-height:1.4;color:var(--fg);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.card .p{font-size:11px;color:var(--fg3);margin-top:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.empty{padding:30px 16px;text-align:center;color:var(--fg3);font-size:13px;line-height:1.8}
+.empty code{color:var(--acc);font-family:var(--ui)}
+
+/* 正文 */
+.read{padding:8px 18px 120px;max-width:720px;margin:0 auto}
+.read .chap{font-size:15px;color:var(--fg);margin:22px 0 14px;font-weight:600;line-height:1.5}
+.read .p{
+  font-family:var(--serif);font-size:var(--fs);line-height:var(--lh);
+  color:var(--fg);margin:0 0 12px;text-indent:2em;
+}
+.read .p.marked{background:var(--hl);border-radius:3px}
+.read .sep{border:0;border-top:1px solid var(--line);margin:26px 0}
+.read .loading{color:var(--fg3);font-size:12.5px;text-align:center;padding:14px}
+.read .preview{color:var(--fg3);font-size:12px;border-top:1px dashed var(--line);padding-top:10px;margin-top:16px}
+
+/* 目錄抽屜 */
+.toc{
+  position:fixed;left:0;top:0;bottom:0;width:82vw;max-width:360px;z-index:40;
+  background:var(--bg2);border-right:1px solid var(--line);display:flex;flex-direction:column;
+  animation:slide .18s cubic-bezier(.2,.7,.3,1);
+}
+@keyframes slide{from{transform:translateX(-100%)}to{transform:none}}
+.toc-h{display:flex;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);font-size:13px}
+.toc-h b{flex:1;font-weight:600;color:var(--fg)}
+.toc-l{flex:1;overflow:auto;padding:6px 0}
+.toc-r{display:block;width:100%;text-align:left;padding:10px 14px;font-size:13px;color:var(--fg2);border-bottom:1px solid transparent}
+.toc-r:active{background:var(--bg)}
+.toc-r.on{color:var(--acc)}
+.mask{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:30}
+
+/* 浮動「記住進度」 */
+.pill{
+  position:fixed;right:14px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:25;
+  background:var(--acc);color:#fff;border-radius:999px;padding:9px 16px;font-size:12.5px;
+  box-shadow:0 8px 24px rgba(0,0,0,.35);
+}
+.pill:active{transform:scale(.97)}
+.toast{
+  position:fixed;left:50%;bottom:calc(74px + env(safe-area-inset-bottom));transform:translate(-50%,8px);
+  background:var(--bg2);border:1px solid var(--line2);color:var(--fg2);border-radius:999px;
+  padding:7px 14px;font-size:12px;opacity:0;pointer-events:none;transition:opacity .16s,transform .16s;z-index:26;
+}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.token{padding:20px 16px}
+.token h2{font-size:15px;margin:0 0 8px}
+.token p{font-size:12.5px;color:var(--fg3);line-height:1.7;margin:0 0 14px}
+.token input{width:100%;padding:11px;border-radius:9px;border:1px solid var(--line2);background:var(--bg2);color:var(--fg);font-size:13px}
+.token button{margin-top:12px;width:100%;padding:12px;border-radius:9px;background:var(--acc);color:#fff;font-size:14px}

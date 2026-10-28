@@ -35,6 +35,9 @@ const DEFAULT_SETTINGS = {
   modelName: 'opus 4.5 · 中',
 };
 
+// 測試用：--hidden 時視窗不現身（照樣能用偵錯埠驅動、能截圖）
+const HIDDEN_MODE = process.argv.includes('--hidden');
+
 let settings = { ...DEFAULT_SETTINGS };
 let win = null, tray = null, hidden = null;
 let isBoss = false;
@@ -87,6 +90,7 @@ function createWindow() {
   let revealed = false;
   let reloaded = false;
   const reveal = () => {
+    if (HIDDEN_MODE) { revealed = true; return; }
     if (revealed || !win || win.isDestroyed()) return;
     revealed = true;
     win.show();
@@ -444,6 +448,22 @@ ipcMain.handle('shelf:raw', async () => {
     try { syncer.configure(cfg || {}); return { ok: true, ...syncer.status() }; }
     catch (e) { return { ok: false, error: e.message, ...syncer.status() }; }
   });
+  ipcMain.handle('sync:setup', async () => {
+    const st = syncer.status();
+    if (!st.configured) return { ok: false, error: '還沒設定同步（網址 / 金鑰）' };
+    const cookie = cookieHeader();
+    if (!cookie) return { ok: false, error: '還沒登入，先掃碼' };
+    try {
+      const r = await fetch(st.url + '/setup', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + (st.token || ''), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cookie }),
+      });
+      const j = await r.json().catch(() => ({}));
+      return { ok: !!j.ok, ...j, url: st.url, phoneUrl: syncer.phoneUrl() };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
   ipcMain.handle('sync:push', async () => {
     try { const r = await syncer.push(DATA_DIR); return { ok: true, ...r, status: syncer.status() }; }
     catch (e) { return { ok: false, error: e.message, status: syncer.status() }; }

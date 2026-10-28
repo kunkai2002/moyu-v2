@@ -171,9 +171,11 @@
       if (lastIndex >= 0) blocked = false;
       lastIndex = st.index;
       sentinel = null;
-      makeSentinel();
-      paintSentinel();
     }
+    if (!st.book || !st.chapters || !st.chapters.length) return;
+    // 換書、重建 thread、首頁切換都可能讓哨兵掉隊，這裡補回來
+    makeSentinel();
+    paintSentinel();
   }, 900);
 
   makeSentinel();
