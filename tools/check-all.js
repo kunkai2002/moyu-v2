@@ -13,11 +13,13 @@ const STEPS = [
   { name: '桌面版開機 + 設定/登入', cmd: 'node', args: ['tools/e2e-electron.js', APP] },
   { name: '設定持久化', cmd: 'node', args: ['tools/e2e-persist.js', APP] },
   { name: '連讀 + 記住進度', cmd: 'node', args: ['tools/e2e-flow.js', APP] },
+  { name: '一次滑動只接一章', cmd: 'node', args: ['tools/e2e-jump.js', APP] },
   { name: '書架（真帳號）', cmd: 'node', args: ['tools/e2e-shelf.js', APP] },
   { name: '全按鈕自檢', cmd: 'node', args: ['tools/e2e-buttons.js', APP] },
   { name: '視窗狀態記憶', cmd: 'node', args: ['tools/e2e-window.js', APP] },
   { name: '手機後端', cmd: 'node', args: ['tools/test-worker.js'], skip: quick },
   { name: '手機 PWA', cmd: 'node', args: ['tools/e2e-mobile.js'], skip: quick },
+  { name: '雲端熱更新', cmd: 'node', args: ['tools/e2e-update.js', APP], skip: quick },
 ];
 
 console.log('⚙ 魔芋一夏 · 全套檢查' + (quick ? '（quick：跳過雲端）' : ''));

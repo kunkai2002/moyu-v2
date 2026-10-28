@@ -20,8 +20,9 @@ const setProgress = async (row) => fetch(BASE + '/api/progress', {
 
 (async () => {
   /* ── 準備：挑書架上第一本有目錄的書，把進度設在第 7 章 ── */
+  const REAL_BOOK = '7143038691944959011';   // JOJO 真正的書（十日终焉），測試不准碰
   const shelfRes = await (await fetch(BASE + '/api/shelf', { headers: AUTH })).json();
-  const shelfBooks = shelfRes.books || [];
+  const shelfBooks = (shelfRes.books || []).filter((b) => b.id !== REAL_BOOK);
   if (!shelfBooks.length) { console.error('❌ 書架空的'); process.exit(2); }
 
   let bookId = '', chapters = [], target = null;
@@ -214,13 +215,13 @@ const setProgress = async (row) => fetch(BASE + '/api/progress', {
 
   errors.length === 0 ? ok('全程無 pageerror') : bad('有 pageerror', errors.slice(0, 2).join(' | '));
 
-  /* 還原測試書原本的雲端進度，不要留測試痕跡 */
+  /* 還原測試書原本的雲端進度，不要留測試痕跡（原本沒有就整筆刪掉） */
   if (orig) {
     await setProgress({ book_id: bookId, chapter_id: orig.chapter_id, chapter_no: orig.chapter_no, title: orig.title });
   } else {
     await fetch(BASE + '/api/progress', {
       method: 'POST', headers: AUTH,
-      body: JSON.stringify({ book_id: bookId, chapter_id: '', chapter_no: '', title: '' }),
+      body: JSON.stringify({ action: 'remove', book_id: bookId }),
     });
   }
 

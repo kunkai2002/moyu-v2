@@ -63,4 +63,9 @@ contextBridge.exposeInMainWorld('moyu', {
     close: () => ipcRenderer.invoke('win:close'),
   },
   onBoss: (cb) => ipcRenderer.on('boss', (_e, on) => cb(on)),
+  update: {
+    check: () => ipcRenderer.invoke('update:check'),
+    apply: () => ipcRenderer.invoke('update:apply'),
+    onReady: (cb) => ipcRenderer.on('update:ready', (_e, r) => cb(r)),
+  },
 });

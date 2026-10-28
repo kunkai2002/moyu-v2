@@ -328,8 +328,9 @@
       e.preventDefault();
       ctxTarget = card;
       showCtx(e.clientX, e.clientY, [
-        { label: '開啟這本書', icon: 'book', run: () => card.click() },
-        { label: '整本下載', icon: 'down', run: () => { card.click(); setTimeout(() => findLegacy('整本下載')?.click(), 800); } },
+        { label: '開啟這本書', icon: 'auto', run: () => card.click() },
+        { label: '書籍詳情', icon: 'book', run: () => window.__moyuPolish?.showDetail(card) },
+        { label: '整本下載', icon: 'download', run: () => { card.click(); setTimeout(() => findLegacy('整本下載')?.click(), 800); } },
       ]);
     }
   });

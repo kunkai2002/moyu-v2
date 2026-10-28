@@ -85,6 +85,49 @@
     saveLocal('theme', theme);
   });
 
+  /* 字級：A− / A+，13–26px，記在本機（--fs 本來就在吃了，只缺按鈕） */
+  var fzPanel = $('fz');
+  var FZ_MIN = 13;
+  var FZ_MAX = 26;
+  function clampFont(v) {
+    v = Math.round(Number(v) || 17);
+    return Math.max(FZ_MIN, Math.min(FZ_MAX, v));
+  }
+  function paintFont() {
+    document.documentElement.style.setProperty('--fs', font + 'px');
+    $('fzVal').textContent = String(font);
+  }
+  function setFont(v) {
+    var n = clampFont(v);
+    if (n === font) { paintFont(); return; }
+    font = n;
+    saveLocal('font', font);
+    paintFont();
+  }
+  font = clampFont(font);
+  paintFont();
+
+  $('btnFont').addEventListener('click', function (e) {
+    e.stopPropagation();
+    fzPanel.hidden = !fzPanel.hidden;
+  });
+  $('fzMinus').addEventListener('click', function (e) {
+    e.stopPropagation();
+    setFont(font - 1);
+  });
+  $('fzPlus').addEventListener('click', function (e) {
+    e.stopPropagation();
+    setFont(font + 1);
+  });
+  document.addEventListener('click', function (e) {
+    if (fzPanel.hidden) return;
+    if (fzPanel.contains(e.target) || $('btnFont').contains(e.target)) return;
+    fzPanel.hidden = true;
+  });
+  window.addEventListener('scroll', function () {
+    if (!fzPanel.hidden) fzPanel.hidden = true;
+  }, { passive: true });
+
   /* ── 進度顯示 ── */
   function progressOf(bookId) {
     var cloud = state.progress[bookId];
@@ -100,6 +143,8 @@
   function renderShelf() {
     $('btnBack').hidden = true;
     $('btnToc').hidden = true;
+    $('btnFont').hidden = true;
+    $('fz').hidden = true;
     $('remember').hidden = true;
     titleEl.textContent = '書架';
 
@@ -215,6 +260,7 @@
     state.index = index;
     $('btnBack').hidden = false;
     $('btnToc').hidden = false;
+    $('btnFont').hidden = false;
     $('remember').hidden = false;
     if (opts.wipe) {
       view.innerHTML = '<div class="read" id="readBox"></div>';
@@ -432,6 +478,10 @@
 
   /* ── 啟動 ── */
   async function boot() {
+    /* 離線快取：外殼 + 讀過的章節（sw.js 自己判斷，這裡只負責註冊） */
+    if (navigator.serviceWorker && window.isSecureContext) {
+      navigator.serviceWorker.register('/m/sw.js').catch(function () {});
+    }
     if (!TOKEN) {
       view.innerHTML = '<div class="token"><h2>需要配對</h2>'
         + '<p>在桌面版按頂欄的手機圖標，複製那條網址，用它在手機打開。</p>'

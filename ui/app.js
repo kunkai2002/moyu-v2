@@ -254,16 +254,23 @@ async function openBook(input) {
   $('#av').textContent = [...r.book.title][0] || '書';
   $('#crumb').innerHTML = `${escapeHtml(r.book.title)} / <b>${escapeHtml(state.chapters[0].title)}</b>`;
 
-  // 續讀
+  // 續讀（章節 id → 章號，兩層回退；兩層都對不上才回第 1 章）
   const saved = state.progress.books?.[r.book.id];
-  const startIdx = saved ? Math.max(0, state.chapters.findIndex((c) => c.id === saved.chapterId)) : 0;
-  state.index = startIdx >= 0 ? startIdx : 0;
+  let startIdx = 0;
+  if (saved) {
+    let i = state.chapters.findIndex((c) => c.id === saved.chapterId);
+    if (i < 0 && saved.chapterNo != null) {
+      i = state.chapters.findIndex((c) => String(c.no) === String(saved.chapterNo));
+    }
+    if (i >= 0) startIdx = i;
+  }
+  state.index = startIdx;
 
   renderTree();
   await goChapter(state.index, { announce: true });
 }
 
-async function goChapter(i, { announce = false } = {}) {
+async function goChapter(i, { announce = false, autoAppend = false } = {}) {
   if (!bridge || !state.book) return;
   const ch = state.chapters[i];
   if (!ch) return;
@@ -274,6 +281,9 @@ async function goChapter(i, { announce = false } = {}) {
   const b = addAssistant();
   b.insertAdjacentHTML('beforeend', `<div class="chap">${escapeHtml(ch.title)}</div>`);
   const body = el('div', 'pb');
+  // 給「你現在眼睛在哪一章」用：進度以視窗上緣那一章為準，不是最後接進來的那一章
+  body.dataset.ci = String(i);
+  body.dataset.chapter = ch.id;
   b.appendChild(body);
   body.insertAdjacentHTML('beforeend', '<div class="meta">✻ 讀取中…</div>');
 
@@ -308,7 +318,7 @@ async function goChapter(i, { announce = false } = {}) {
     body.appendChild(el('div', 'next', `<span class="k">⏎</span><span>繼續下一章</span>`));
     $('#sbChapter').textContent = `第 ${ch.no} / ${state.chapters.length} 章`;
     updateCrumb();
-    saveProgress();
+    if (!autoAppend) saveProgress();
     return;
   }
 
@@ -323,7 +333,9 @@ async function goChapter(i, { announce = false } = {}) {
       `<span style="opacity:.45">·</span><span>輸入章號可跳轉</span>`));
 
     $('#sbTime').textContent = `⏱ ${fmtTime(secs)}`;
-    saveProgress();
+    // 連讀自動接進來的章節還不算「你在讀」，進度交給捲動監看，
+    // 不然一接章就會把 121 蓋成 122（這是之前跳章的幫兇）
+    if (!autoAppend) saveProgress();
 
     if (state.autoRead && nx) {
       setTimeout(() => {
@@ -338,16 +350,67 @@ async function goChapter(i, { announce = false } = {}) {
   updateCrumb();
 }
 
+/* 「你現在眼睛在哪一章」：視窗上緣往下 56px 那條探測線，最後一個越線的 .pb 就是答案。
+   連讀一次接了三章，進度也只會記你真正在看的那一章。 */
+function readingIndex() {
+  if (!state.chapters.length) return state.index;
+  const stream = document.querySelector('#stream');
+  const bodies = [...document.querySelectorAll('#stream .pb')];
+  if (!stream || !bodies.length) return state.index;
+  const probe = stream.getBoundingClientRect().top + 56;
+  let pick = null;
+  for (const b of bodies) {
+    if (!Number.isFinite(Number(b.dataset.ci))) continue;
+    if (b.getBoundingClientRect().top <= probe) pick = b;
+    else break;
+  }
+  if (!pick) {
+    for (const b of bodies) {
+      const i = Number(b.dataset.ci);
+      if (Number.isFinite(i)) return i;
+    }
+    return state.index;
+  }
+  const i = Number(pick.dataset.ci);
+  return Number.isFinite(i) ? i : state.index;
+}
+
 function saveProgress() {
   if (!state.book) return;
-  const ch = state.chapters[state.index];
+  const ch = state.chapters[readingIndex()] || state.chapters[state.index];
   if (!ch) return;
   state.progress.lastBook = state.book.id;
   state.progress.books = state.progress.books || {};
-  state.progress.books[state.book.id] = {
+  const prev = state.progress.books[state.book.id] || {};
+  const next = {
+    ...prev,
     chapterId: ch.id, chapterNo: ch.no, title: state.book.title, updated: Date.now(),
   };
+  // 「記住進度」記下的段落在同一章要留著，換章就沒意義了（不要覆蓋掉它）
+  if (prev.chapterId !== ch.id) delete next.para;
+  state.progress.books[state.book.id] = next;
   bridge?.progress.set(state.progress);
+}
+
+/* 捲動停下來 800ms 後，如果已經真的換到別章，才更新進度。
+   開書、接章都不會自己寫，只有你眼睛換章才會。 */
+let readProgTimer = null;
+function watchReadingPosition() {
+  const stream = document.querySelector('#stream');
+  if (!stream || stream.dataset.progWatch) return;
+  stream.dataset.progWatch = '1';
+  stream.addEventListener('scroll', () => {
+    clearTimeout(readProgTimer);
+    readProgTimer = setTimeout(() => {
+      if (!state.book || state.streaming) return;
+      const i = readingIndex();
+      const ch = state.chapters[i];
+      if (!ch) return;
+      const cur = state.progress.books?.[state.book.id];
+      if (cur && cur.chapterId === ch.id) return;
+      saveProgress();
+    }, 800);
+  }, { passive: true });
 }
 
 /* ──────────────────────────────────────────────────────────────
@@ -518,6 +581,7 @@ async function openShelf() {
   const wrap = el('div', 'shelf');
   for (const it of list) {
     const card = el('button', 'shelf-card');
+    card.dataset.book = it.id;
     card.innerHTML = `
       ${it.cover ? `<img class="sc-cover" src="${escapeHtml(it.cover)}" loading="lazy" alt="">` : '<span class="sc-cover sc-noimg"></span>'}
       <span class="sc-body">
@@ -746,6 +810,8 @@ async function boot() {
     $('#sbNet').textContent = `↑ ${j(8, 3)}ms ↓ ${j(3, 2)}ms`;
     $('#sbTok').textContent = `▍ ${j(42, 10)} tok/s`;
   }, 2000);
+
+  watchReadingPosition();
 }
 
 document.addEventListener('DOMContentLoaded', boot);
@@ -802,7 +868,8 @@ window.__moyuDebug = {
   setTheme,
   state,
   login: showLoginPanel,
-  goChapter: (i) => goChapter(i, { announce: true }),
+  goChapter: (i, o) => goChapter(i, Object.assign({ announce: true }, o || {})),
+  readingIndex,
   boss: (on) => document.body.classList.toggle('bossing', !!on),
   showReviewsInStream() {
     const b = addAssistant();

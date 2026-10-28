@@ -100,13 +100,40 @@
     return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
-  function showDetail() {
+  function showDetail(target) {
+    /* 從書架卡片的右鍵進來時，看的是「那本書」；否則看目前開著的書 */
+    const card = (target && target.closest) ? target.closest('.shelf-card') : null;
+    const cardId = card ? card.dataset.book : '';
     const book = D.state.book;
+    if (card && cardId && (!book || cardId !== book.id)) {
+      const title = card.querySelector('.sc-t')?.textContent || cardId;
+      const author = card.querySelector('.sc-a')?.textContent || '';
+      const prog = card.querySelector('.sc-p')?.textContent || '';
+      const cover = card.querySelector('.sc-cover img')?.getAttribute('src') || '';
+      detail.innerHTML = `
+        <div class="dt-head">
+          ${cover ? `<img class="dt-cover" src="${esc(cover)}" alt="">` : '<div class="dt-cover"></div>'}
+          <div class="dt-meta">
+            <div class="dt-title">${esc(title)}</div>
+            <div class="dt-author">${esc(author || '未知作者')}</div>
+            <div class="dt-line">${esc(prog || '未開始')}</div>
+            <div class="dt-line" style="opacity:.7">書號 ${esc(cardId)}</div>
+            <div class="dt-actions">
+              <button class="dt-btn primary" id="dtOpen">${I.svg('book', 15)}<span>開啟這本書</span></button>
+              <button class="dt-btn" id="dtClose">${I.svg('close', 15)}<span>關閉</span></button>
+            </div>
+          </div>
+        </div>`;
+      detail.hidden = false;
+      $('#dtOpen').addEventListener('click', () => { detail.hidden = true; card.click(); });
+      $('#dtClose').addEventListener('click', () => { detail.hidden = true; });
+      return;
+    }
+
     if (!book) { D.openShelf(); return; }
     const chs = D.state.chapters || [];
     const i = D.state.index || 0;
     const cur = chs[i] || {};
-    const prog = D.state.progress?.books?.[book.id];
     const pct = chs.length ? Math.round(((i + 1) / chs.length) * 100) : 0;
 
     detail.innerHTML = `
@@ -137,17 +164,8 @@
     });
   }
 
-  // 頂欄加「詳情」圖示（書的資訊）
-  const right = $('.topbar-r');
-  if (right) {
-    const btn = document.createElement('button');
-    btn.className = 'tb-btn';
-    btn.id = 'tbDetail';
-    btn.title = '書籍詳情';
-    btn.innerHTML = I.svg('book', 16);
-    btn.addEventListener('click', showDetail);
-    right.insertBefore(btn, right.firstChild);
-  }
+  // 書籍詳情：入口只有書架卡片的右鍵／長按（頂欄不再放重複的圖標）
+  window.__moyuPolishDetail = showDetail;
 
   /* ── 4. 首次引導（首頁） ── */
   function enhanceWelcome() {
@@ -201,28 +219,54 @@
     try {
       const r = await B.update.check();
       if (!r.ok || r.upToDate) {
-        if (manual) alert(r.ok ? '已是最新版本（' + r.local + '）' : '檢查失敗：' + (r.error || ''));
+        if (manual) alert(r.ok ? '已是最新版本（' + (r.local || '未記錄') + '）' : '檢查失敗：' + (r.error || ''));
         return;
       }
-      const b = ensureBanner();
-      b.hidden = false;
-      b.querySelector('.u-t').textContent = `有新版本 ${r.remote}（目前 ${r.local}）`;
-      b.querySelector('#updLater').onclick = () => { b.hidden = true; };
-      b.querySelector('#updGo').onclick = async () => {
-        b.querySelector('.u-t').textContent = '正在更新…';
-        try {
-          const res = await B.update.apply();
-          if (res.applied) {
-            b.querySelector('.u-t').textContent = '已更新，請重新啟動程式';
-            b.querySelector('#updGo').style.display = 'none';
-          } else {
-            b.querySelector('.u-t').textContent = res.message || '需要重新執行啟動器才能更新';
-          }
-        } catch (e) {
-          b.querySelector('.u-t').textContent = '更新失敗：' + e.message;
-        }
-      };
+      showBanner(`有新版本 ${r.remote}（目前 ${r.local || '未記錄'}）`, true);
     } catch { /* 離線就忽略 */ }
+  }
+
+  function showBanner(text, withButton) {
+    const b = ensureBanner();
+    b.hidden = false;
+    b.querySelector('.u-t').textContent = text;
+    const go = b.querySelector('#updGo');
+    const later = b.querySelector('#updLater');
+    go.style.display = withButton ? '' : 'none';
+    later.textContent = withButton ? '稍後' : '知道了';
+    later.onclick = () => { b.hidden = true; };
+    go.onclick = async () => {
+      go.style.display = 'none';
+      b.querySelector('.u-t').textContent = '正在更新…';
+      try {
+        const res = await B.update.apply();
+        if (res.applied) {
+          // 只有 ui 檔時主行程會直接 reload 這個視窗，這裡的文字只是過渡
+          b.querySelector('.u-t').textContent = res.defer
+            ? '已更新，下次開啟程式就是新版'
+            : '已更新';
+          later.textContent = '知道了';
+        } else {
+          b.querySelector('.u-t').textContent = res.message || '沒有更新';
+          later.textContent = '知道了';
+        }
+      } catch (e) {
+        b.querySelector('.u-t').textContent = '更新失敗：' + e.message;
+      }
+    };
+  }
+
+  // 主行程自己更新完（視窗有焦點時不會硬 reload）→ 在這裡告訴使用者
+  if (B?.update?.onReady) {
+    B.update.onReady((r) => {
+      if (!r || !r.version) return;
+      showBanner(r.defer
+        ? `已同步到新版本 ${r.version}，下次開啟生效`
+        : `已同步到新版本 ${r.version}（重新載入畫面生效）`, !!r.reload);
+      if (r.reload) {
+        setTimeout(() => { try { location.reload(); } catch {} }, 1200);
+      }
+    });
   }
 
   /* ── 啟動 ── */

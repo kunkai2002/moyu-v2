@@ -91,7 +91,10 @@
   /* ── 記住進度 ── */
   async function remember(para) {
     if (!st.book || !st.chapters || !st.chapters.length) { say('先開一本書'); return; }
-    var ch = st.chapters[st.index];
+    // 這一串文字屬於哪一章：看它自己所在的 .pb，不是「最後接進來的那一章」
+    var box = (para && para.closest) ? para.closest('.pb') : null;
+    var ci = box ? Number(box.dataset.ci) : NaN;
+    var ch = (Number.isFinite(ci) && st.chapters[ci]) ? st.chapters[ci] : st.chapters[st.index];
     var parent = para && para.parentElement;
     var idx = parent ? Array.prototype.indexOf.call(parent.children, para) : 0;
     var text = (para ? para.textContent : '').trim().slice(0, 80);

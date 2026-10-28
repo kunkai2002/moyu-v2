@@ -18,9 +18,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   fs.rmSync(PROBE, { recursive: true, force: true });
   fs.mkdirSync(PROBE, { recursive: true });
-  for (const f of ['cookie.txt', 'cookies.json', 'settings.json', 'prefs.json', 'sync.json']) {
+  for (const f of ['cookie.txt', 'cookies.json', 'settings.json', 'prefs.json']) {
     const src = path.join(REAL, f);
     if (fs.existsSync(src)) fs.copyFileSync(src, path.join(PROBE, f));
+  }
+  // 測試用的 sync.json：保留網址讓「已設定」成立，但金鑰換成假的，
+  // 這樣測試按「記住進度」不會把測試書寫進 JOJO 真正的雲端。
+  const realSync = path.join(REAL, 'sync.json');
+  if (fs.existsSync(realSync)) {
+    const s = JSON.parse(fs.readFileSync(realSync, 'utf8'));
+    s.token = 'e2e-test-only-token';
+    s.deviceId = 'dev-e2etest';
+    fs.writeFileSync(path.join(PROBE, 'sync.json'), JSON.stringify(s, null, 1), 'utf8');
   }
   fs.mkdirSync(path.join(PROBE, 'chapters'), { recursive: true });
 
@@ -111,7 +120,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   missItems.length === 0 ? ok(`右鍵：五項齊（${menuItems.length}）`) : bad('右鍵：缺項', missItems.join(','));
 
   await page.evaluate(() => document.querySelector('#rmSave').click());
-  await sleep(900);
+  await sleep(1800);
   const after = await page.evaluate(() => document.querySelector('.rm-toast')?.textContent || '');
   /記住/.test(after) ? ok(`記住進度：提示「${after}」`) : bad('記住進度：沒有提示', after || toastBefore);
 

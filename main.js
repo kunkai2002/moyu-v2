@@ -20,6 +20,7 @@ const bookstore = require('./src/shelf');
 const appapi = require('./src/appapi');
 const { search: searchInBook } = require('./src/search');
 const syncer = require('./src/sync');
+const updater = require('./src/updater');
 
 /* ── 設定 ───────────────────────────────────────────────────── */
 const DEFAULT_SETTINGS = {
@@ -62,6 +63,33 @@ let DATA_DIR = '';
 
 /* ── 視窗狀態（大小 / 位置 / 最大化）───────────────────────── */
 const winStatePath = () => path.join(DATA_DIR, 'window.json');
+
+/* 更新紀錄：出問題時看 data\update.log 就知道發生什麼事 */
+function updateLog(msg) {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.appendFileSync(path.join(DATA_DIR, 'update.log'),
+      `[${new Date().toISOString()}] ${msg}\n`, 'utf8');
+  } catch {}
+}
+
+/* 自動更新：抓下來就換掉檔案。只有 UI 檔時，視窗沒焦點就直接 reload，
+   正在讀就發提示條（JOJO 的規矩：不准把程式關掉） */
+async function autoUpdate() {
+  try {
+    const c = await updater.check();
+    if (!c.ok || c.upToDate) return;
+    const r = await updater.apply();
+    if (!r.applied) { updateLog('auto update failed: ' + r.message); return; }
+    updateLog(`auto update ${r.version} hot=${(r.hot || []).length} cold=${(r.cold || []).length}`);
+    if (r.reload && win && !win.isDestroyed() && !win.isFocused()) {
+      try { win.webContents.reload(); return; } catch {}
+    }
+    if (win && !win.isDestroyed()) {
+      try { win.webContents.send('update:ready', r); } catch {}
+    }
+  } catch (e) { updateLog('auto update error: ' + e.message); }
+}
 
 function readWindowState() {
   const st = store.readJson(winStatePath(), null);
@@ -526,6 +554,27 @@ ipcMain.handle('shelf:raw', async () => {
     return true;
   });
 
+  /* 雲端熱更新：比對雜湊、只抓不一樣的檔案，ui\*.js 換掉直接 reload（不關程式） */
+  ipcMain.handle('update:check', async () => {
+    try { return await updater.check(); } catch (e) { return { ok: false, error: e.message }; }
+  });
+  ipcMain.handle('update:apply', async () => {
+    try {
+      const r = await updater.apply();
+      if (r.applied) {
+        updateLog(`update applied → ${r.version} hot=${(r.hot || []).length} cold=${(r.cold || []).length}`);
+        if (r.reload && win && !win.isDestroyed()) {
+          setTimeout(() => { try { win.webContents.reload(); } catch {} }, 600);
+        }
+      }
+      return r;
+    } catch (e) { return { applied: false, message: e.message }; }
+  });
+
+  /* 開機 5 秒後自己檢查一次，之後每 30 分鐘一次 */
+  setTimeout(() => autoUpdate(), 5000);
+  setInterval(() => autoUpdate(), 30 * 60 * 1000);
+
   ipcMain.handle('cookie:set', async (_e, v) => {
     if (v && String(v).trim()) {
       const c = String(v).trim();
@@ -626,6 +675,7 @@ if (!gotLock) {
     // 匿名裝置（跟帳號無關）：沒有它 APP 網關拿不到完整正文，只能退回網頁預覽
     appapi.useDataDir(DATA_DIR);
     syncer.init(DATA_DIR);
+    updater.init(DATA_DIR);
     registerIpc();
     createWindow();
     createTray();

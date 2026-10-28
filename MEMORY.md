@@ -7,30 +7,46 @@
 - 每次改完**先自己測完再交**，測試要跑完整流程、不要彈視窗出來。
 - 有疑問先問，不要自己猜設計。
 - 討厭重複入口（例如「回書架」和「首頁」並存）。
+- **不准叫他關程式**：更新要靜靜做完（見下面「雲端熱更新」）。
 
 ## 硬性規則
 - **不要用 PowerShell 改 UTF-8 檔**（會亂碼、引號會爛）。一律寫 `tools/patch-*.js` 用 `node` 跑。
 - 使用者真正的書：`十日终焉 7143038691944959011`，位置 **第 121 章「闯入者」**（id `7195932558943584823`）。測試不要碰。
 - 測試一律 `--hidden`（Electron）＋ headless Chrome（手機），不彈窗。
-- 改完 `sync/m/*` 要 `node tools/build-mobile-assets.js` 再 `wrangler deploy`。
+- 改完要發佈：`node tools/pack4.js` → 複製到安裝目錄 → `node tools/publish-app.js`。
+- 改完 `sync/m/*` 還要 `node tools/build-mobile-assets.js`（Worker 靜態備援）。
 
 ## 踩過的坑（別重犯）
-1. **進度不能被「開書」覆寫**：手機開書只讀進度不寫；只有目錄跳章／記住進度／真手勢接章才寫。
-   曾經因此把 121 章蓋成 123，教訓。
-2. **自動接章必須有真實手勢**：桌機打字按空白鍵曾被當成接章 → 一次往前跳好幾章。
-   現在桌機用「手勢令牌＋渲染閘」；手機用 `userGesture`（touch/wheel/keydown 才算）。
-3. **測試按了老闆鍵要退出假畫面**，否則後面量測全在假畫面裡（曾誤判「輸入框高度 0」）。
-4. **Electron 的 CDP 沒有 `Browser.getWindowForTarget`**，視窗大小要用自訂 IPC `win:set-state`。
-5. `wrangler` 認證用 `gh auth setup-git` 之後才能 push（GCM 會要互動）。
-6. 手機 sticky 頂欄失效：`body{height:100%}` 造成，改成 `min-height:100%`。
-7. 手機劃線索引要**每段自帶 `data-chapter` / `data-para`**，不能跨章一起數。
+1. **進度不能被「開書」或「接章」覆寫**。進度＝「視窗上緣那一章」（`readingIndex()`），
+   自動接進來的章節不算；`goChapter(..., {autoAppend:true})` 時不寫進度。
+2. **程式化捲動不是手勢**。App 畫完一章會自己 `scrollBottom()`，舊版把 scroll 事件當手勢
+   → 每畫完一章就自己接下一章，JOJO 的 121 就是這樣被推到 122→123。
+   現在 `flow.js` 只認真的輸入事件（wheel 向下 / 手指往上 / PageDown），**沒有 scroll 監聽**。
+3. **一次滑動只能接一章**。舊版是「每個滾輪事件 +1 令牌」，章節快取命中（IPC < 10ms）時
+   一次滑動的十幾個事件會各接一章。現在是「手勢爆發」（靜止 340ms 才算新的一下滑）＋
+   900ms 冷卻，而且**載入前就把爆發吃掉**。`tools/e2e-jump.js` 專門守這條。
+4. **自動接章必須有真實手勢**；桌機用「手勢令牌＋渲染閘」，手機用 `userGesture`。
+5. **測試按了老闆鍵要退出假畫面**，否則後面量測全在假畫面裡。
+6. **Electron 的 CDP 沒有 `Browser.getWindowForTarget`**，視窗大小要用自訂 IPC `win:set-state`。
+7. `wrangler` 認證用 `gh auth setup-git` 之後才能 push（GCM 會要互動）。
+8. 手機 sticky 頂欄失效：`body{height:100%}` 造成，改成 `min-height:100%`。
+9. 手機劃線索引要**每段自帶 `data-chapter` / `data-para`**，不能跨章一起數。
+10. **小視窗目錄抽屜收起來時不准留陰影**（`layout.js` 的 `box-shadow` 要綁在 `.side-open`）。
+11. **發佈一律 base64 原始位元組**。`update.cmd` 裡有非 UTF-8 位元組，用 utf8 讀寫會偷偷
+    改內容，雜湊永遠對不上（改之前就踩過）。
+12. **測試不准寫進 JOJO 的雲端**：e2e-flow 的 probe `sync.json` 要換假金鑰；
+    e2e-mobile 會挑書架上第一本書，已排除 `7143038691944959011`，而且沒收尾時要用
+    `{action:'remove'}` 刪掉，不要留空進度列。
 
 ## 決策記錄
 - 不做手機原生 App、不用 Electron 以外框架；零依賴 Node。
 - 付費章節抓不到全文就**照實顯示試讀**，不假裝。
 - 手機版放 Cloudflare（外網可讀），入口用可複製網址，不做 QR。
 - 進度以「雲端章節 id → 章號 → 本機記憶」三層回退；本機另存最近讀過清單。
+- **雲端熱更新取代 git 自動更新**：Worker 存檔案＋雜湊，桌面版只抓差異，UI 檔換掉就 reload，
+  本體檔下次開啟生效。入口：`tools/publish-app.js`。
+- 書籍詳情不再放頂欄（JOJO 討厭重複入口），改成書架卡片右鍵「書籍詳情」。
 
 ## 測試現況（`node tools/check-all.js`）
-10 套全綠：自檢、桌機開機、設定持久化、連讀+記住進度、書架（真帳號）、
-全按鈕 39 項、視窗記憶、手機後端 16 項、手機 PWA 21 項。
+11 套全綠：自檢、桌機開機、設定持久化、連讀+記住進度、**一次滑動只接一章**、書架（真帳號）、
+全按鈕、視窗記憶、手機後端、手機 PWA、**雲端熱更新**。

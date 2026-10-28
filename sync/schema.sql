@@ -32,3 +32,17 @@ CREATE TABLE IF NOT EXISTS config (
   key   TEXT PRIMARY KEY,
   value TEXT
 );
+
+-- 應用程式熱更新：每個檔案的內容與雜湊（桌面版自己抓下來覆蓋，不用關程式）
+CREATE TABLE IF NOT EXISTS app_files (
+  path       TEXT PRIMARY KEY,
+  body       TEXT NOT NULL,
+  hash       TEXT NOT NULL,
+  version    TEXT,
+  updated_at INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS app_meta (
+  key   TEXT PRIMARY KEY,
+  value TEXT
+);
