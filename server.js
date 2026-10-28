@@ -25,6 +25,7 @@ const { getShelf } = require('./src/shelf');
 const sync = require('./src/sync');
 const prefetch = require('./src/prefetch');
 const { searchBooks } = require('./src/booksearch');
+const { search: searchInBook } = require('./src/search');
 const { getBookComments } = require('./src/comments');
 
 const ROOT = __dirname;
@@ -285,29 +286,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === '/api/search' && req.method === 'GET') {
+      const bookId = u.searchParams.get('book') || '';
       const q = (u.searchParams.get('q') || '').trim();
-      if (!q) return json(res, 400, { error: '缺 q' });
-      const dir = path.join(DATA_DIR, 'chapters');
-      let files = [];
-      try { files = fs.readdirSync(dir).filter((f) => f.endsWith('.json')); } catch {}
-      const hits = [];
-      for (const f of files) {
-        const ch = store.readJson(path.join(dir, f), null);
-        if (!ch || !Array.isArray(ch.paragraphs)) continue;
-        ch.paragraphs.forEach((t, i) => {
-          const at = t.indexOf(q);
-          if (at >= 0 && hits.length < 100) {
-            hits.push({
-              chapterId: ch.chapterId,
-              title: ch.title || '',
-              para: i + 1,
-              text: t.slice(Math.max(0, at - 16), at + q.length + 16),
-            });
-          }
-        });
-        if (hits.length >= 100) break;
+      if (!q) return json(res, 400, { ok: false, error: '缺 q' });
+      try {
+        return json(res, 200, searchInBook(DATA_DIR, bookId, q, 40));
+      } catch (e) {
+        return json(res, 200, { ok: false, error: e.message, hits: [], total: 0 });
       }
-      return json(res, 200, { ok: true, q, hits, searched: files.length });
     }
 
     if (p === '/api/marks') {

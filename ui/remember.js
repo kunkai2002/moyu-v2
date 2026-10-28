@@ -1,5 +1,4 @@
-/* 記住進度：只在段落右鍵選單裡（不再有小圓球）。
-   寫入本機進度（含段落位置）+ 一筆位置標記，並立即推上雲端（有設定的話）。 */
+/* 段落右鍵選單：記住進度 / 劃線 / 筆記 / 複製 / 搜尋 */
 (function () {
   'use strict';
   var D = window.__moyuDebug;
@@ -10,13 +9,14 @@
 
   var css = document.createElement('style');
   css.textContent = [
-    '.rm-menu{position:fixed;z-index:61;min-width:150px;background:var(--bg-elev);',
+    '.rm-menu{position:fixed;z-index:61;min-width:168px;background:var(--bg-elev);',
     '  border:1px solid var(--line-strong);border-radius:8px;padding:4px;',
     '  box-shadow:0 18px 46px rgba(0,0,0,.5);font-size:12px}',
     '.rm-menu[hidden]{display:none}',
     '.rm-menu .rm-head{padding:5px 8px 4px;color:var(--fg3);font-size:10.5px;',
     '  border-bottom:1px solid var(--line);margin-bottom:3px;overflow:hidden;',
-    '  text-overflow:ellipsis;white-space:nowrap;max-width:230px}',
+    '  text-overflow:ellipsis;white-space:nowrap;max-width:240px}',
+    '.rm-menu .rm-sep{height:1px;background:var(--line);margin:3px 2px}',
     '.rm-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 8px;',
     '  border-radius:5px;color:var(--fg2);text-align:left}',
     '.rm-menu button:hover{background:var(--sel);color:var(--fg)}',
@@ -29,7 +29,8 @@
   ].join('\n');
   document.head.appendChild(css);
 
-  var icon = (window.MOYU_ICONS && window.MOYU_ICONS.svg) ? window.MOYU_ICONS.svg : function () { return ''; };
+  var I = window.MOYU_ICONS;
+  var icon = function (name, size) { return I ? I.svg(name, size || 14) : ''; };
 
   var toast = document.createElement('div');
   toast.className = 'rm-toast';
@@ -45,15 +46,22 @@
 
   var currentPara = null;
 
-  /* ── 右鍵選單 ── */
   var menu = document.createElement('div');
   menu.className = 'rm-menu';
   menu.hidden = true;
-  menu.innerHTML = '<div class="rm-head" id="rmHead"></div>'
-    + '<button id="rmMenuSave">' + icon('bookmark', 14) + '<span>記住進度</span></button>';
+  menu.innerHTML = ''
+    + '<div class="rm-head" id="rmHead"></div>'
+    + '<button id="rmSave">' + icon('bookmark') + '<span>記住進度</span></button>'
+    + '<div class="rm-sep"></div>'
+    + '<button id="rmMark">' + icon('note') + '<span id="rmMarkTxt">劃線</span></button>'
+    + '<button id="rmNote">' + icon('note') + '<span>寫筆記…</span></button>'
+    + '<div class="rm-sep"></div>'
+    + '<button id="rmCopy">' + icon('copy') + '<span>複製這段</span></button>'
+    + '<button id="rmSearch">' + icon('search') + '<span>全書搜尋這段</span></button>';
   document.body.appendChild(menu);
 
   var head = menu.querySelector('#rmHead');
+  var markTxt = menu.querySelector('#rmMarkTxt');
 
   function closeMenu() { menu.hidden = true; }
 
@@ -63,10 +71,12 @@
     e.preventDefault();
     currentPara = p;
     var ch = st.chapters[st.index];
-    head.textContent = ch ? ('第 ' + ch.no + ' 章 · ' + ch.title) : '記住這一段';
+    head.textContent = ch ? ('第 ' + ch.no + ' 章 · ' + ch.title) : '這一段';
+    var marked = !!(window.__moyuMarks && window.__moyuMarks.isMarked(p));
+    markTxt.textContent = marked ? '取消劃線' : '劃線';
     menu.hidden = false;
-    var w = menu.offsetWidth || 160;
-    var h = menu.offsetHeight || 60;
+    var w = menu.offsetWidth || 176;
+    var h = menu.offsetHeight || 180;
     menu.style.left = Math.max(8, Math.min(e.clientX, window.innerWidth - w - 10)) + 'px';
     menu.style.top = Math.max(8, Math.min(e.clientY, window.innerHeight - h - 10)) + 'px';
   });
@@ -78,6 +88,7 @@
   window.addEventListener('scroll', closeMenu, true);
   window.addEventListener('resize', closeMenu);
 
+  /* ── 記住進度 ── */
   async function remember(para) {
     if (!st.book || !st.chapters || !st.chapters.length) { say('先開一本書'); return; }
     var ch = st.chapters[st.index];
@@ -86,7 +97,6 @@
     var text = (para ? para.textContent : '').trim().slice(0, 80);
     var now = Date.now();
 
-    /* 1. 本機進度 */
     try {
       var prog = (await B.progress.get()) || {};
       prog.books = prog.books || {};
@@ -98,7 +108,6 @@
       st.progress = prog;
     } catch (e) { say('本機進度寫入失敗：' + e.message); return; }
 
-    /* 2. 位置標記（會跟其他標記一起同步） */
     try {
       await B.marks.save({
         bookId: st.book.id, chapterId: ch.id, chapterTitle: ch.title,
@@ -106,7 +115,6 @@
       });
     } catch (e) { /* 標記失敗不擋進度 */ }
 
-    /* 3. 雲端 */
     var cloud = '雲端未設定';
     try {
       var s = await B.sync.status();
@@ -119,15 +127,51 @@
     say('進度已記住 · ' + cloud);
   }
 
-  menu.querySelector('#rmMenuSave').addEventListener('click', function (e) {
-    e.stopPropagation();
-    closeMenu();
+  menu.querySelector('#rmSave').addEventListener('click', function (e) {
+    e.stopPropagation(); closeMenu();
     if (currentPara) remember(currentPara);
+  });
+
+  /* ── 劃線 / 取消 ── */
+  menu.querySelector('#rmMark').addEventListener('click', async function (e) {
+    e.stopPropagation(); closeMenu();
+    if (!currentPara || !window.__moyuMarks) return;
+    var on = await window.__moyuMarks.toggle(currentPara);
+    say(on ? '已劃線' : '已取消劃線');
+  });
+
+  /* ── 筆記 ── */
+  menu.querySelector('#rmNote').addEventListener('click', async function (e) {
+    e.stopPropagation(); closeMenu();
+    if (!currentPara || !window.__moyuMarks) return;
+    await window.__moyuMarks.note(currentPara);
+  });
+
+  /* ── 複製 ── */
+  menu.querySelector('#rmCopy').addEventListener('click', async function (e) {
+    e.stopPropagation(); closeMenu();
+    var text = currentPara ? currentPara.textContent.trim() : '';
+    if (!text) return;
+    try {
+      if (B.copyPlain) { await B.copyPlain(text); }
+      else { await navigator.clipboard.writeText(text); }
+      say('已複製');
+    } catch (err) { say('複製失敗：' + err.message); }
+  });
+
+  /* ── 搜尋 ── */
+  menu.querySelector('#rmSearch').addEventListener('click', function (e) {
+    e.stopPropagation(); closeMenu();
+    var text = currentPara ? currentPara.textContent.trim().slice(0, 24) : '';
+    if (!text) return;
+    if (D.searchInBook) D.searchInBook(text);
   });
 
   window.__moyuRemember = {
     save: function () { return currentPara ? remember(currentPara) : Promise.resolve(); },
     setPara: function (el) { currentPara = el; },
+    openWith: function (el) { currentPara = el; menu.hidden = false; },
     get menuOpen() { return !menu.hidden; },
+    get items() { return [...menu.querySelectorAll('button')].map(function (b) { return b.textContent.trim(); }); },
   };
 })();

@@ -751,7 +751,52 @@ async function boot() {
 document.addEventListener('DOMContentLoaded', boot);
 
 /* 除錯／快照用的鉤子 */
+
+/* ──────────────────────────────────────────────────────────────
+   全書搜尋：章節標題 + 已讀過的正文
+   ────────────────────────────────────────────────────────────── */
+async function searchInBook(q) {
+  const query = String(q || "").trim();
+  if (!query) return;
+  if (!state.book) { addError('先開一本書再搜尋'); return; }
+  addUser(`搜尋「${query}」`);
+  const b = addAssistant();
+  b.insertAdjacentHTML('beforeend',
+    `<div class="tool">⏺ <span class="fn">grep</span>("${escapeHtml(query)}")</div>` +
+    '<div class="toolres" id="searchRes"><div class="ln"><span class="bar">⎿</span><div>搜尋中…</div></div></div>');
+  const box = b.querySelector('#searchRes');
+  let r = null;
+  try { r = await bridge.search?.(state.book.id, query); }
+  catch (e) { r = { ok: false, error: e.message }; }
+  if (!r || r.ok === false) {
+    box.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${escapeHtml((r && r.error) || "搜尋失敗")}</div></div>`;
+    return;
+  }
+  const hits = r.hits || [];
+  if (!hits.length) {
+    box.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>沒有找到「${escapeHtml(query)}」。正文只搜已讀過的章節。</div></div>`;
+    scrollBottom();
+    return;
+  }
+  box.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${hits.length} 個結果（正文掃了 ${r.scanned || 0} 個已讀章節）</div></div>`;
+  const list = el('div', 'search-hits');
+  for (const h of hits) {
+    const row = el('button', 'search-hit');
+    row.innerHTML = `<span class="sh-t">第 ${escapeHtml(String(h.no || "?"))} 章 ${escapeHtml(h.title || "")}</span>` +
+      `<span class="sh-x">${escapeHtml(h.snippet || "")}</span>` +
+      `<span class="sh-k">${h.where === "title" ? "標題" : "正文"}</span>`;
+    row.addEventListener('click', () => {
+      const i = state.chapters.findIndex((c) => String(c.id) === String(h.chapterId));
+      if (i >= 0) goChapter(i, { announce: true });
+    });
+    list.appendChild(row);
+  }
+  box.appendChild(list);
+  scrollBottom();
+}
+
 window.__moyuDebug = {
+  searchInBook,
   openBook,
   openShelf,
   setTheme,

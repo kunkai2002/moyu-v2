@@ -114,32 +114,62 @@
   const esc = (s) => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   /* ── 點段落 → 劃線 ── */
-  document.addEventListener('click', async (e) => {
-    const p = e.target.closest?.('#stream .p');
-    if (!p || !st.book || !st.chapters?.length) return;
+  /* 回傳這一頁段落的標記資訊 */
+  function paraInfo(p) {
+    if (!p || !st.book || !st.chapters?.length) return null;
     const ch = st.chapters[st.index];
-    if (!ch) return;
+    if (!ch) return null;
     const box = p.closest('.pb') || p.parentElement;
-    if (!box) return;
+    if (!box) return null;
     const all = [...box.querySelectorAll('.p')];
     const idx = all.indexOf(p);
-    if (idx < 0) return;
+    if (idx < 0) return null;
+    return {
+      chapterId: ch.id, chapterTitle: ch.title, para: idx,
+      text: (p.textContent || '').slice(0, 80), type: 'highlight',
+      id: ch.id + '-' + idx + '-highlight',
+    };
+  }
 
-    const text = (p.textContent || '').slice(0, 80);
-    const id = ch.id + '-' + idx + '-highlight';
-
+  async function togglePara(p) {
+    const info = paraInfo(p);
+    if (!info) return false;
     if (p.classList.contains('marked')) {
       p.classList.remove('marked');
-      await B.marks.remove(st.book.id, id);
-    } else {
-      p.classList.add('marked');
-      noteTarget = { chapterId: ch.id, chapterTitle: ch.title, para: idx, text, type: 'highlight' };
-      await B.marks.save({ ...noteTarget, bookId: st.book.id });
-      // 連點第二次（同一段已標記狀態）才開筆記
-      noteBox.hidden = false;
-      noteIn.focus();
+      await B.marks.remove(st.book.id, info.id);
+      return false;
     }
+    p.classList.add('marked');
+    noteTarget = info;
+    await B.marks.save({ ...info, bookId: st.book.id });
+    return true;
+  }
+
+  async function notePara(p) {
+    const info = paraInfo(p);
+    if (!info) return false;
+    if (!p.classList.contains('marked')) await togglePara(p);
+    noteTarget = info;
+    noteBox.hidden = false;
+    noteIn.focus();
+    return true;
+  }
+
+  document.addEventListener('click', async (e) => {
+    const p = e.target.closest?.('#stream .p');
+    if (!p) return;
+    const markedNow = await togglePara(p);
+    // 新劃線就順手開筆記欄，取消劃線時收起來
+    if (markedNow) { noteBox.hidden = false; noteIn.focus(); }
+    else { noteBox.hidden = true; }
   });
+
+  window.__moyuMarks = {
+    toggle: togglePara,
+    note: notePara,
+    isMarked: (el) => !!el && el.classList.contains('marked'),
+    has: () => marks.length,
+  };
 
   panel.querySelector('#mkNoteSave').addEventListener('click', async () => {
     const v = noteIn.value.trim();

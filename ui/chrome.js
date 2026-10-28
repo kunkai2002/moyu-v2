@@ -148,12 +148,16 @@
   const statBtn = mk('tbStat', 'chart', '統計');
   statBtn.addEventListener('click', () => findLegacy('統計')?.click());
 
+  const homeBtn2 = mk('tbHome', 'home', '首頁');
+  const histBtn2 = mk('tbHistory', 'history', '歷史');
   const setBtn = mk('tbSettings', 'settings', '設定');
   setBtn.addEventListener('click', () => window.__moyuOpenSettings?.());
   const moreBtn = mk('tbMore', 'more', '更多');
   right.appendChild(listBtn);
   right.appendChild(markBtn);
   right.appendChild(statBtn);
+  right.appendChild(homeBtn2);
+  right.appendChild(histBtn2);
   right.appendChild(setBtn);
   right.appendChild(moreBtn);
 
@@ -186,7 +190,13 @@
   function addToOverflow(el) {
     if (!el || el.dataset.moved) return;
     el.dataset.moved = '1';
-    const label = (el.textContent || '').trim() || '功能';
+    // 純圖標按鈕沒有文字，用 title 當名字；真的沒有就跳過（不要出現「功能」這種空殼）
+    const raw = (el.textContent || '').trim() || (el.getAttribute('title') || '').trim();
+    if (!raw) { el.remove(); return; }
+    // 純資訊項（章節 0 這種）不需要進選單
+    if (/^章節\s*\d+$/.test(raw)) { el.remove(); return; }
+    const label = raw;
+    if ([...ov.querySelectorAll('.ov-row')].some((r) => r.textContent.trim() === label)) { el.remove(); return; }
     const key = Object.keys(ICON_FOR).find((k) => label.startsWith(k));
     const row = document.createElement('button');
     row.className = 'ov-row';

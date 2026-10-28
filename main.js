@@ -18,6 +18,7 @@ const store = require('./src/store');
 const qrLogin = require('./src/login');
 const bookstore = require('./src/shelf');
 const appapi = require('./src/appapi');
+const { search: searchInBook } = require('./src/search');
 const syncer = require('./src/sync');
 
 /* ── 設定 ───────────────────────────────────────────────────── */
@@ -61,8 +62,8 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1440,
     height: 900,
-    minWidth: 960,
-    minHeight: 620,
+    minWidth: 420,
+    minHeight: 320,
     backgroundColor: '#1a1915',
     frame: false,
     titleBarStyle: 'hidden',
@@ -346,6 +347,45 @@ ipcMain.handle('shelf:raw', async () => {
   /* 標記：跟伺服器版同一份 marks.json */
   const marksPath = () => path.join(DATA_DIR, 'marks.json');
 
+  /* 內建官網視窗：逛網站、掃碼登入都用它 */
+  ipcMain.handle('site:open', async (_e, url) => {
+    const target = String(url || 'https://fanqienovel.com/');
+    try {
+      const w = new BrowserWindow({
+        width: 1080, height: 760, title: '番茄小說',
+        autoHideMenuBar: true, parent: win || undefined,
+        webPreferences: { partition: 'persist:fanqie' },
+      });
+      w.setMenuBarVisibility(false);
+      w.loadURL(target);
+      // 網站登入後把 cookie 收進來
+      const harvest = async () => {
+        try {
+          const ses = session.fromPartition('persist:fanqie');
+          const cookies = await ses.cookies.get({ domain: 'fanqienovel.com' });
+          const names = (cookies || []).map((c) => c.name);
+          if (names.some((n) => /sessionid|passport|uid_tt|sid_tt/i.test(n))) {
+            sessionCookies = (cookies || []).map((c) => ({ name: c.name, value: c.value }));
+            store.writeJson(path.join(DATA_DIR, 'cookies.json'), sessionCookies);
+            fs.writeFileSync(path.join(DATA_DIR, 'cookie.txt'),
+              sessionCookies.map((c) => c.name + '=' + c.value).join('; '), 'utf8');
+          }
+        } catch {}
+      };
+      w.webContents.on('did-navigate', () => setTimeout(harvest, 800));
+      w.webContents.on('did-navigate-in-page', () => setTimeout(harvest, 800));
+      w.on('closed', () => { setTimeout(harvest, 400); });
+      return { ok: true };
+    } catch (e) { return { ok: false, error: e.message }; }
+  });
+
+  ipcMain.handle('search:query', (_e, payload) => {
+    try {
+      const { bookId, q } = payload || {};
+      return searchInBook(DATA_DIR, bookId, q, 40);
+    } catch (e) { return { ok: false, error: e.message, hits: [], total: 0 }; }
+  });
+
   ipcMain.handle('marks:list', (_e, bookId) => {
     const all = store.readJson(marksPath(), {});
     return bookId ? (all[bookId] || []) : all;
@@ -441,6 +481,11 @@ ipcMain.handle('shelf:raw', async () => {
     loggedIn: sessionCookies.length > 0,
     preview: sessionCookies.slice(0, 3).map((c) => c.name + '=…').join('; '),
   }));
+
+  ipcMain.handle('clipboard:plain', (_e, text) => {
+    clipboard.writeText(String(text == null ? '' : text));
+    return true;
+  });
 
   ipcMain.handle('clipboard:write', (_e, text) => {
     // 複製時加上看起來像程式碼的前綴

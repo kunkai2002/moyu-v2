@@ -30,6 +30,8 @@ contextBridge.exposeInMainWorld('moyu', {
     read: () => ipcRenderer.sendSync('prefs:read'),
     write: (obj) => ipcRenderer.send('prefs:write', obj),
   },
+  openSite: (url) => ipcRenderer.invoke('site:open', url),
+  search: (bookId, q) => ipcRenderer.invoke('search:query', { bookId, q }),
   marks: {
     list: (bookId) => ipcRenderer.invoke('marks:list', bookId),
     save: (m) => ipcRenderer.invoke('marks:save', m),
@@ -48,6 +50,7 @@ contextBridge.exposeInMainWorld('moyu', {
     pull: () => ipcRenderer.invoke('sync:pull'),
   },
   copy: (text) => ipcRenderer.invoke('clipboard:write', text),
+  copyPlain: (text) => ipcRenderer.invoke('clipboard:plain', text),
   boss: (on) => ipcRenderer.invoke('app:boss', on),
   hide: () => ipcRenderer.invoke('app:hide'),
   quit: () => ipcRenderer.invoke('app:quit'),
