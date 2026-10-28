@@ -10,8 +10,14 @@
 - **不准叫他關程式**：更新要靜靜做完（見下面「雲端熱更新」）。
 
 ## 硬性規則
+- **不准二話不說關掉使用者的程式**（2026-10-28 JOJO 親自罵過）。
+  要重啟／關程式之前：①`node tools/backup-data.js` ②跟 JOJO 講一聲 ③不要 `Stop-Process -Force`，
+  要關就發正常的視窗關閉（`$p.CloseMainWindow()`），讓 Electron 跑完 close 存檔。
+  資料都在 `%LOCALAPPDATA%\Programs\魔芋一夏\data\`：progress / marks / prefs / settings /
+  window / sync / stats / shelf，備份到 `D:\kun-workspace\backup\moyu-data-<時間>\`。
 - **不要用 PowerShell 改 UTF-8 檔**（會亂碼、引號會爛）。一律寫 `tools/patch-*.js` 用 `node` 跑。
-- 使用者真正的書：`十日终焉 7143038691944959011`，位置 **第 121 章「闯入者」**（id `7195932558943584823`）。測試不要碰。
+- 使用者真正的書：`十日终焉 7143038691944959011`。他常常邊測邊讀，**進度會自己變**，
+  不要看到數字跟紀錄不一樣就以為壞了，更不要擅自改回去（要改先問）。
 - 測試一律 `--hidden`（Electron）＋ headless Chrome（手機），不彈窗。
 - 改完要發佈：`node tools/pack4.js` → 複製到安裝目錄 → `node tools/publish-app.js`。
 - 改完 `sync/m/*` 還要 `node tools/build-mobile-assets.js`（Worker 靜態備援）。
