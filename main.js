@@ -60,11 +60,56 @@ let DATA_DIR = '';
   }
 }
 
+/* ── 視窗狀態（大小 / 位置 / 最大化）───────────────────────── */
+const winStatePath = () => path.join(DATA_DIR, 'window.json');
+
+function readWindowState() {
+  const st = store.readJson(winStatePath(), null);
+  if (!st || !st.width || !st.height) return null;
+  // 上次的位置若已不在任何螢幕內（拔掉外接螢幕），就不要硬套
+  try {
+    const { screen } = require('electron');
+    const areas = screen.getAllDisplays().map((d) => d.workArea);
+    const ok = typeof st.x === 'number' && typeof st.y === 'number'
+      && areas.some((a) => st.x + 80 > a.x && st.x < a.x + a.width - 80
+        && st.y + 40 > a.y && st.y < a.y + a.height - 60);
+    if (!ok) { delete st.x; delete st.y; }
+  } catch {}
+  return st;
+}
+
+function saveWindowState(w) {
+  if (!w || w.isDestroyed()) return;
+  try {
+    const b = w.getNormalBounds();     // 最大化時仍然拿到「還原後」的尺寸
+    store.writeJson(winStatePath(), {
+      width: Math.max(420, Math.round(b.width)),
+      height: Math.max(320, Math.round(b.height)),
+      x: Math.round(b.x),
+      y: Math.round(b.y),
+      maximized: w.isMaximized(),
+    });
+  } catch {}
+}
+
+function trackWindowState(w) {
+  let t = null;
+  const later = () => { clearTimeout(t); t = setTimeout(() => saveWindowState(w), 400); };
+  w.on('resize', later);
+  w.on('move', later);
+  w.on('maximize', later);
+  w.on('unmaximize', later);
+  w.on('close', () => saveWindowState(w));
+}
+
 /* ── 主視窗 ─────────────────────────────────────────────────── */
 function createWindow() {
+  const st = readWindowState() || {};
   win = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: st.width || 1440,
+    height: st.height || 900,
+    ...(typeof st.x === 'number' ? { x: st.x, y: st.y } : {}),
+
     minWidth: 420,
     minHeight: 320,
     backgroundColor: '#1a1915',
@@ -83,6 +128,8 @@ function createWindow() {
   });
 
   win.setMenuBarVisibility(false);
+  trackWindowState(win);
+  if (st.maximized) { try { win.maximize(); } catch {} }
   win.loadFile(path.join(__dirname, 'ui', 'index.html'));
 
   /* 顯示時機：等到畫面真的漆完再現身。
@@ -518,6 +565,32 @@ ipcMain.handle('shelf:raw', async () => {
   ipcMain.handle('app:quit', () => { app.isQuitting = true; app.quit(); });
 
   /* 自訂標題列用的視窗控制 */
+  ipcMain.handle('win:state', () => {
+    if (!win || win.isDestroyed()) return null;
+    const b = win.getNormalBounds();
+    return { ...b, maximized: win.isMaximized(), fullScreen: win.isFullScreen() };
+  });
+
+  ipcMain.handle('win:set-state', (_e, st) => {
+    if (!win || win.isDestroyed() || !st) return false;
+    try {
+      if (st.maximized === true) { win.maximize(); }
+      else {
+        if (st.maximized === false && win.isMaximized()) win.unmaximize();
+        if (st.width && st.height) {
+          win.setBounds({
+            width: Math.max(420, Math.round(st.width)),
+            height: Math.max(320, Math.round(st.height)),
+            ...(typeof st.x === 'number' ? { x: Math.round(st.x) } : {}),
+            ...(typeof st.y === 'number' ? { y: Math.round(st.y) } : {}),
+          });
+        }
+      }
+      saveWindowState(win);
+      return true;
+    } catch { return false; }
+  });
+
   ipcMain.handle('win:min', () => { win?.minimize(); return true; });
   ipcMain.handle('win:max', () => {
     if (!win) return false;

@@ -43,6 +43,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   first ? ok('手機頁：卡片文字', String(first).slice(0, 40)) : bad('手機頁：卡片是空的');
 
   await page.evaluate(() => document.querySelector('.shelf .card').click());
+  await sleep(2600);
+  // 有些書的進度停在付費章節（只有試讀），先跳到第 1 章再驗閱讀與接章
+  await page.evaluate(async () => {
+    document.getElementById('btnToc').click();
+    await new Promise((r) => setTimeout(r, 400));
+    const first = document.querySelector('.toc-r');
+    if (first) first.click();
+  });
   let paras = 0;
   for (let i = 0; i < 40; i++) {
     await sleep(400);

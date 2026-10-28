@@ -56,6 +56,8 @@ contextBridge.exposeInMainWorld('moyu', {
   hide: () => ipcRenderer.invoke('app:hide'),
   quit: () => ipcRenderer.invoke('app:quit'),
   win: {
+    state: () => ipcRenderer.invoke('win:state'),
+    setState: (st) => ipcRenderer.invoke('win:set-state', st),
     min: () => ipcRenderer.invoke('win:min'),
     max: () => ipcRenderer.invoke('win:max'),
     close: () => ipcRenderer.invoke('win:close'),

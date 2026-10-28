@@ -84,6 +84,7 @@
     state.shelf.forEach(function (b) {
       var card = document.createElement('button');
       card.className = 'card';
+      card.setAttribute('data-book', b.id);
       var pr = state.progress[b.id] || {};
       card.innerHTML = '<span class="t">' + esc(b.title || b.id) + '</span>'
         + '<span class="p">' + (pr.chapter_no ? '第 ' + esc(pr.chapter_no) + ' 章'
@@ -147,11 +148,12 @@
   }
 
   function paintMarks(box, chapterId) {
-    var ps = box.querySelectorAll('.p');
     var list = state.marks.filter(function (m) { return m.chapter_id === chapterId && !m.deleted; });
-    ps.forEach(function (p, i) {
-      var hit = list.some(function (m) { return Number(m.para) === i; });
-      p.classList.toggle('marked', hit);
+    var set = {};
+    list.forEach(function (m) { set[Number(m.para)] = 1; });
+    box.querySelectorAll('.p').forEach(function (p) {
+      if (p.dataset.chapter !== chapterId) return;
+      p.classList.toggle('marked', !!set[Number(p.dataset.para)]);
     });
   }
 
@@ -205,10 +207,12 @@
     h.textContent = r.title || ch.title || ('第 ' + ch.no + ' 章');
     box.appendChild(h);
 
-    (r.paragraphs || []).forEach(function (text) {
+    (r.paragraphs || []).forEach(function (text, idx) {
       var p = document.createElement('p');
       p.className = 'p';
       p.textContent = text;
+      p.dataset.para = String(idx);
+      p.dataset.chapter = ch.id;
       p.addEventListener('click', function () { toggleMark(p); });
       box.appendChild(p);
     });
@@ -248,20 +252,23 @@
   async function toggleMark(p) {
     var ch = state.chapters[state.index];
     if (!ch || !state.book) return;
-    var box = p.parentElement;
-    var idx = Array.prototype.indexOf.call(box.querySelectorAll('.p'), p);
-    var id = ch.id + '-' + idx + '-highlight';
+    // 段落自己帶著章節與序號，跨章之後也不會算錯
+    var chId = p.dataset.chapter || ch.id;
+    var idx = Number(p.dataset.para);
+    if (!Number.isFinite(idx)) return;
+    var id = chId + '-' + idx + '-highlight';
     var had = p.classList.contains('marked');
     p.classList.toggle('marked', !had);
     var payload = had
       ? { action: 'remove', book_id: state.book.id, id: id }
       : {
-        action: 'save', id: id, book_id: state.book.id, chapter_id: ch.id,
+        action: 'save', id: id, book_id: state.book.id, chapter_id: chId,
         chapter_title: ch.title || '', para: idx,
         text: (p.textContent || '').slice(0, 80), type: 'highlight',
       };
     await api('/api/marks', { method: 'POST', body: payload });
     await loadMarks(state.book.id);
+    paintMarks(p.parentElement, chId);
     toast(had ? '已取消劃線' : '已劃線');
   }
 
