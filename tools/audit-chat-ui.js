@@ -185,10 +185,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     list.slice(0, -1).forEach((b) => cutBodies.push(b));
   }
   const cutOk = cutBodies.length === 0
-    || cutBodies.every((b) => /[。！？…\.!?」』）)】"']$/.test(b.tail));
+    || cutBodies.every((b) => /[。！？…\.!?」』）)】》〕”’"']$/.test(b.tail));
   cutOk
     ? ok(`每個切點都在句尾（檢查 ${cutBodies.length} 個切點）`)
-    : bad('有切點斷在句子中間', cutBodies.filter((b) => !/[。！？…\.!?」』）)】"']$/.test(b.tail)).map((b) => b.tail).join(' | '));
+    : bad('有切點斷在句子中間', cutBodies.filter((b) => !/[。！？…\.!?」』）)】》〕”’"']$/.test(b.tail)).map((b) => b.tail).join(' | '));
   const paraSum = chat.bodies.reduce((n, b) => n + b.ps, 0);
   paraSum > 8 ? ok(`正文共 ${paraSum} 段（切段沒有吃掉段落）`) : bad('正文段落太少', String(paraSum));
   chat.chapterWord === 0 ? ok('舊的章節標題（.chap）已移除') : bad('.chap 還在', String(chat.chapterWord));
