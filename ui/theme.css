@@ -273,7 +273,7 @@ kbd{
 :root[data-theme="excel"] .p{margin-bottom:3px}
 :root[data-theme="excel"] .box{border-radius:0;border-color:#b6b6b6}
 :root[data-theme="excel"] .composer{padding-bottom:4px}
-:root[data-theme="excel"] .hintline{display:none}
+/* excel 主題以前把提示行整個藏起來；現在那裡是「說明／自動模式」兩顆圖示，不能藏 */
 
 /* ══════════════════════════════════════════════════════════════
    主題 5 ── terminal（純黑綠字，retro）
