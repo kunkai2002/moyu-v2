@@ -18,7 +18,7 @@ Windows 桌面番茄小說閱讀器 + 手機 PWA，偽裝成程式編輯器（Cl
 
 ## 常用指令
 ```powershell
-node tools/check-all.js            # 全套 14 套檢查（隱藏視窗，不彈窗）
+node tools/check-all.js            # 全套 13 套檢查（隱藏視窗，不彈窗）
 node tools/check-all.js --quick    # 跳過雲端三套
 node tools/backup-data.js          # 關程式前先備份使用者的 data\（JOJO 的硬規矩）
 node tools/pack4.js                # 打包到 dist\魔芋一夏
