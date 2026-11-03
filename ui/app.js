@@ -87,34 +87,76 @@ function thread() {
   return t;
 }
 
-/* 一則使用者發言 */
-function addUser(text, { dim = false } = {}) {
-  const t = el('div', 'turn');
-  t.innerHTML = `<div class="gutter">⏺</div><div class="b">
-      <div class="who">你</div>
-      <div class="you"><span class="q">${escapeHtml(text)}</span></div>
-    </div>`;
+/* 一則使用者發言（對話氣泡，靠右、字少） */
+function addUser(text) {
+  const t = el('div', 'turn user');
+  t.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
   thread().appendChild(t);
   scrollBottom();
   return t;
 }
 
-/* 一則助手發言容器（可之後塞內容） */
+/* 一則助手發言容器（左側，沒有泡泡、字多） */
 function addAssistant() {
-  const t = el('div', 'turn');
-  t.innerHTML = `<div class="gutter">⏺</div>`;
+  const t = el('div', 'turn ai');
+  t.innerHTML = `<div class="gutter">${markSvg(14)}</div>`;
   const b = el('div', 'b');
-  b.innerHTML = `<div class="who">我</div>`;
   t.appendChild(b);
   thread().appendChild(t);
   scrollBottom();
   return b;
 }
 
+/* 品牌記號（跟 App 圖示同一顆星） */
+function markSvg(size) {
+  return window.MOYU_ICONS ? window.MOYU_ICONS.svg('mark', size || 14) : '';
+}
+
+/* 把一章切成 1–3 段（0–2 個切點）
+   規則：
+   · 切在「段落之間」＝段落結尾本來就是句尾，所以一定按句子切
+   · 段落本身不拆開，data-pi 的索引就不會亂（劃線、筆記、進度都靠它）
+   · 每段至少 120 字，第一段不超過 65%，避免「一句話＋九成內容」 */
+function planChapter(paras) {
+  const n = paras.length;
+  const total = paras.reduce((s, p) => s + p.length, 0);
+  if (n < 5 || total < 900) return [{ from: 0, to: n }];
+
+  const cuts = Math.random() < 0.5 ? 1 : 2;
+  const targets = cuts === 1
+    ? [0.44 + Math.random() * 0.18]
+    : [0.3 + Math.random() * 0.14, 0.62 + Math.random() * 0.18];
+
+  const bounds = [];
+  let acc = 0;
+  for (let i = 1; i < n; i++) {
+    acc += paras[i - 1].length;
+    bounds.push({ i, at: acc / total });
+  }
+  const picked = [];
+  for (const t of targets) {
+    const near = bounds
+      .filter((b) => b.i > (picked[picked.length - 1] || 0) && b.i < n)
+      .sort((a, b) => Math.abs(a.at - t) - Math.abs(b.at - t))[0];
+    if (!near) continue;
+    const charsBefore = paras.slice(0, near.i).join('').length;
+    if (charsBefore < 120 || total - charsBefore < 120) continue;
+    if (picked.includes(near.i)) continue;
+    picked.push(near.i);
+  }
+  picked.sort((a, b) => a - b);
+
+  const out = [];
+  let from = 0;
+  for (const i of picked) { out.push({ from, to: i }); from = i; }
+  out.push({ from, to: n });
+  return out;
+}
+
 function addError(msg) {
   const b = addAssistant();
   b.insertAdjacentHTML('beforeend',
-    `<div class="tool" style="color:var(--acc)">⏺ <span class="fn">error</span></div>
+    `<div class="tool" style="color:var(--acc)">${markSvg(12)} <span class="fn">error</span></div>
      <div class="toolres"><div class="ln"><span class="bar">⎿</span><div>${escapeHtml(msg)}</div></div></div>`);
   scrollBottom();
 }
@@ -148,19 +190,25 @@ function updateCrumb() {
   const c = state.chapters[state.index];
   if (!c || !state.book) return;
   $('#crumb').innerHTML = `${escapeHtml(state.book.title)} / <b>${escapeHtml(c.title)}</b>`;
-  $('#sbChapter').textContent = `第 ${c.no} / ${state.chapters.length} 章`;
-  $('#meTxt').textContent = `第 ${c.no} / ${state.chapters.length} 章`;
+  const pos = `${c.no} / ${state.chapters.length}`;
+  $('#sbChapter').textContent = pos;
+  $('#meTxt').textContent = pos;
   $('#mePct').textContent = ((state.index + 1) / state.chapters.length * 100).toFixed(1) + '%';
 }
 
 /* ──────────────────────────────────────────────────────────────
    串流播放
    ────────────────────────────────────────────────────────────── */
-function streamParagraphs(container, paras, onDone) {
+function streamParagraphs(container, paras, onDone, piBase) {
   stopStreaming();
+  const base = Number(piBase) || 0;
   // 預設一次畫完；只有開啟「慢讀」才逐字吐
   if (!state.slowRead) {
-    for (const t of paras) container.appendChild(el('p', 'p', t));
+    paras.forEach((t, idx) => {
+      const p = el('p', 'p', t);
+      p.dataset.pi = String(base + idx);   // 全章第幾段（切段後仍然對得回原文）
+      container.appendChild(p);
+    });
     scrollBottom();
     onDone && onDone();
     return;
@@ -185,6 +233,7 @@ function streamParagraphs(container, paras, onDone) {
       const src = paras[pi];
       if (!node) {
         node = el('p', 'p');
+        node.dataset.pi = String(base + pi);
         container.appendChild(node);
         buf = '';
         charIdx = 0;
@@ -234,7 +283,7 @@ async function openBook(input) {
   addUser(`開一本書：${input}`);
   const b = addAssistant();
   b.insertAdjacentHTML('beforeend',
-    `<div class="tool">⏺ <span class="fn">open_book</span>(<span class="fn">${escapeHtml(String(input).slice(0, 40))}</span>)</div>
+    `<div class="tool">${markSvg(12)} <span class="fn">open_book</span>(<span class="fn">${escapeHtml(String(input).slice(0, 40))}</span>)</div>
      <div class="toolres"><div class="ln"><span class="bar">⎿</span><div>抓取書頁與目錄…</div></div></div>`);
 
   let r;
@@ -277,77 +326,98 @@ async function goChapter(i, { announce = false, autoAppend = false } = {}) {
   state.index = i;
   renderTree();
 
-  if (announce) addUser(`第 ${ch.no} 章`);
-  const b = addAssistant();
-  b.insertAdjacentHTML('beforeend', `<div class="chap">${escapeHtml(ch.title)}</div>`);
-  const body = el('div', 'pb');
-  // 給「你現在眼睛在哪一章」用：進度以視窗上緣那一章為準，不是最後接進來的那一章
-  body.dataset.ci = String(i);
-  body.dataset.chapter = ch.id;
-  b.appendChild(body);
-  body.insertAdjacentHTML('beforeend', '<div class="meta">✻ 讀取中…</div>');
+  /* 章節＝使用者的氣泡（短），內容＝助手回覆（長） */
+  addUser(ch.title);
+  const pending = addAssistant();
+  const pbody = el('div', 'pb');
+  pbody.dataset.ci = String(i);
+  pbody.dataset.chapter = ch.id;
+  pbody.dataset.part = '0';
+  pending.appendChild(pbody);
+  pbody.innerHTML = '<div class="meta loading"><span class="dots"></span></div>';
+  const pendingTurn = pending.parentElement;
 
   let r;
   try { r = await bridge.loadChapter(state.book.id, ch.id); }
   catch (e) {
-    body.innerHTML = '';
-    body.insertAdjacentHTML('beforeend',
-      `<div class="toolres"><div class="ln"><span class="bar">⎿</span><div>${escapeHtml(e.message || String(e))}</div></div></div>`);
+    if (pendingTurn && pendingTurn.parentNode) pendingTurn.remove();
+    addError(e.message || String(e));
     return;
   }
+  if (pendingTurn && pendingTurn.parentNode) pendingTurn.remove();
 
-  body.innerHTML = '';
   state.startedAt = Date.now();
   state.charsRead = 0;
 
-  // 只有預覽（網頁端沒 SVIP）→ 講清楚，不要假裝讀完了
+  /* 一章切成 1–3 段，段與段之間插一句使用者的「繼續」 */
+  const paras = r.paragraphs || [];
+  const parts = planChapter(paras);
+  const last = parts.length - 1;
+
+  const finishAll = () => {
+    const secs = Math.max(1, Math.round((Date.now() - state.startedAt) / 1000));
+    const lastBody = [...document.querySelectorAll('#stream .pb')].pop() || null;
+    const meta = el('div', 'meta');
+    const okIcon = window.MOYU_ICONS ? window.MOYU_ICONS.svg('check', 12) : '';
+    meta.innerHTML = `<span class="ok">${okIcon}</span>`
+      + `<span>${Number(r.chars || 0).toLocaleString()} tok</span>`
+      + `<span class="sep">·</span><span>${fmtTime(secs)}</span>`;
+    (lastBody || document.body).appendChild(meta);
+    if (lastBody) lastBody.dataset.done = '1';
+
+    $('#sbTime').textContent = `⏱ ${fmtTime(secs)}`;
+    // 連讀自動接進來的章節還不算「你在讀」，進度交給捲動監看
+    if (!autoAppend) saveProgress();
+
+    if (state.autoRead) {
+      const nx = state.chapters[i + 1];
+      if (nx) setTimeout(() => { if (state.autoRead) goChapter(i + 1, { announce: true }); }, 1400);
+    }
+    if (lastBody) showReviews(lastBody);
+  };
+
   if (r.previewOnly) {
-    body.innerHTML = '';
-    body.appendChild(el('div', 'meta',
-      `<span class="warn">·</span>本章只取到 ${r.chars} 字試讀`));
-    for (const para of (r.paragraphs || [])) {
+    /* 只有試讀：照實講，但一樣是對話形式 */
+    const b = addAssistant();
+    const body = el('div', 'pb');
+    body.dataset.ci = String(i);
+    body.dataset.chapter = ch.id;
+    b.appendChild(body);
+    const note = el('div', 'meta');
+    note.innerHTML = `<span class="warn">${markSvg(12)}</span><span>僅取到 ${Number(r.chars || 0).toLocaleString()} tok 試讀</span>`;
+    body.appendChild(note);
+    paras.forEach((para, idx) => {
       const d = el('div', 'p');
+      d.dataset.pi = String(idx);
       d.textContent = para;
       body.appendChild(d);
-    }
-    body.insertAdjacentHTML('beforeend',
-      '<div class="toolres"><div class="ln"><span class="bar">⎿</span><div>' +
-        '這一章在免費範圍外，只給試讀片段。<br>' +
-        '免費章節可以完整讀；付費章節目前取不到全文。' +
-      '</div></div></div>');
-    body.appendChild(el('div', 'next', `<span class="k">⏎</span><span>繼續下一章</span>`));
-    $('#sbChapter').textContent = `第 ${ch.no} / ${state.chapters.length} 章`;
+    });
+    body.dataset.done = '1';
+    $('#sbChapter').textContent = spec(ch.no);
     updateCrumb();
     if (!autoAppend) saveProgress();
     return;
   }
 
-  streamParagraphs(body, r.paragraphs, () => {
-    const secs = Math.max(1, Math.round((Date.now() - state.startedAt) / 1000));
-    body.appendChild(el('div', 'meta',
-      `<span class="ok">✓</span>已讀 ${r.chars.toLocaleString()} 字<span class="sep">·</span>${fmtTime(secs)}<span class="sep">·</span>第 ${ch.no} / ${state.chapters.length} 章`));
-
-    const nx = state.chapters[i + 1];
-    body.appendChild(el('div', 'next',
-      `<span class="k">⏎</span><span>繼續${nx ? ' ' + escapeHtml(nx.title) : ''}</span>` +
-      `<span style="opacity:.45">·</span><span>輸入章號可跳轉</span>`));
-
-    $('#sbTime').textContent = `⏱ ${fmtTime(secs)}`;
-    // 連讀自動接進來的章節還不算「你在讀」，進度交給捲動監看，
-    // 不然一接章就會把 121 蓋成 122（這是之前跳章的幫兇）
-    if (!autoAppend) saveProgress();
-
-    if (state.autoRead && nx) {
-      setTimeout(() => {
-        if (state.autoRead) goChapter(i + 1, { announce: true });
-      }, 1400);
-    }
-
-    showReviews(body);
+  parts.forEach((part, k) => {
+    if (k > 0) addUser('繼續');
+    const b = addAssistant();
+    const body = el('div', 'pb');
+    body.dataset.ci = String(i);
+    body.dataset.chapter = ch.id;
+    body.dataset.part = String(k);
+    b.appendChild(body);
+    const slice = paras.slice(part.from, part.to);
+    streamParagraphs(body, slice, k === last ? finishAll : null, part.from);
   });
 
-  $('#sbChapter').textContent = `第 ${ch.no} / ${state.chapters.length} 章`;
+  $('#sbChapter').textContent = spec(ch.no);
   updateCrumb();
+}
+
+/* 狀態列／側欄的章號寫法：像編輯器的位置，不像小說（3 / 614） */
+function spec(no) {
+  return `${no} / ${state.chapters.length}`;
 }
 
 /* 「你現在眼睛在哪一章」：視窗上緣往下 56px 那條探測線，最後一個越線的 .pb 就是答案。
@@ -434,7 +504,7 @@ async function showReviews(container) {
   const top = data.comments.slice(0, 3);
   const tool = el('div', 'tool');
   tool.innerHTML =
-    `<span class="gutter" style="width:auto;color:var(--acc)">⏺</span>` +
+    `<span class="gutter" style="width:auto;color:var(--acc)">${markSvg(12)}</span>` +
     `<span>read_reviews</span><span class="fn">(${escapeHtml(state.book.title.slice(0, 8))}…)</span>` +
     `<span class="arrow">→</span><span>${data.total.toLocaleString()} 則` +
     (data.scoreText ? ` · ${escapeHtml(data.scoreText)}` : '') + `</span>`;
@@ -467,7 +537,7 @@ function cannedReply(q) {
     return `要開始的話，把番茄的書頁網址貼進來（長得像 fanqienovel.com/page/7373660003258862617），或直接給書號。\n\n也可以按「書架」抓你自己的收藏。`;
   }
   const options = [
-    `這章在推進的是「${ch.title}」這條線。要我做的話可以：\n\n1. 把這章壓成三句話的摘要\n2. 抓出這章跟她之前提過的事對得上的地方\n3. 直接跳到下一章\n\n你要哪個？`,
+    `這章在推進的是「${ch.title}」這條線。要我做的話可以：\n\n1. 把這章壓成三句話的摘要\n2. 抓出這章跟她之前提過的事對得上的地方\n3. 接著往下讀\n\n你要哪個？`,
     `看完了。這章的節奏偏慢，但鋪陳有用——後面大概會用到。\n\n要我幫你標一下值得回看的地方嗎？`,
     `你問的「${String(q).slice(0, 16)}」我從上下文推的：這章主要是在收上一章的尾巴，同時開一個新的懸念。\n\n想更確定的話，可以把前後三章一起給我。`,
   ];
@@ -487,7 +557,7 @@ async function handleInput(raw) {
   addUser(text);
 
   // 指令
-  if (/^n$|^下一章$|^next$/i.test(text)) {
+  if (/^n$|^下一章$|^next$|^繼續$/i.test(text)) {
     goChapter(Math.min(state.index + 1, state.chapters.length - 1), { announce: true });
     return;
   }
@@ -516,7 +586,7 @@ async function handleInput(raw) {
     if (!state.book) { addError('先開一本書'); return; }
     const b = addAssistant();
     b.insertAdjacentHTML('beforeend',
-      `<div class="tool">⏺ <span class="fn">export</span>(txt, 前 50 章)</div>
+      `<div class="tool">${markSvg(12)} <span class="fn">export</span>(txt)</div>
        <div class="toolres"><div class="ln"><span class="bar">⎿</span><div>抓取中…（每章約 0.3 秒）</div></div></div>`);
     try {
       const r = await bridge.exportBook(state.book.id, 50);
@@ -533,8 +603,8 @@ async function handleInput(raw) {
     state.autoRead = !state.autoRead;
     if (!state.autoRead && state.autoTimer) { clearTimeout(state.autoTimer); state.autoTimer = null; }
     addAssistant().insertAdjacentHTML('beforeend',
-      `<div class="p">自動閱讀${state.autoRead ? '開' : '關'}了。${state.autoRead ? '讀完會自己接下一章。' : ''}</div>`);
-    $('#modeTag').textContent = state.autoRead ? '⏵⏵ auto-read on' : '⏸ auto-read off';
+      `<div class="p">自動模式${state.autoRead ? '已開啟' : '已關閉'}。</div>`);
+    window.__moyuPaintMode?.();
     return;
   }
 
@@ -563,7 +633,7 @@ async function openShelf() {
   addUser('打開書架');
   const b = addAssistant();
   b.insertAdjacentHTML('beforeend',
-    `<div class="tool">⏺ <span class="fn">read_shelf</span></div>
+    `<div class="tool">${markSvg(12)} <span class="fn">read_shelf</span></div>
      <div class="toolres"><div class="ln"><span class="bar">⎿</span><div>讀取官方書架…</div></div></div>`);
 
   let list = [];
@@ -609,7 +679,7 @@ function showLoginPanel() {
   const b = addAssistant();
 
   b.insertAdjacentHTML('beforeend', `
-    <div class="tool">⏺ <span class="fn">login.qrcode</span></div>
+    <div class="tool">${markSvg(12)} <span class="fn">login.qrcode</span></div>
     <div class="qr-wrap">
       <div class="qr-box" id="qrBox"><span class="qr-loading">產生 QR…</span></div>
       <div class="qr-side">
@@ -834,7 +904,7 @@ async function searchInBook(q) {
   addUser(`搜尋「${query}」`);
   const b = addAssistant();
   b.insertAdjacentHTML('beforeend',
-    `<div class="tool">⏺ <span class="fn">grep</span>("${escapeHtml(query)}")</div>` +
+    `<div class="tool">${markSvg(12)} <span class="fn">grep</span>("${escapeHtml(query)}")</div>` +
     '<div class="toolres" id="searchRes"><div class="ln"><span class="bar">⎿</span><div>搜尋中…</div></div></div>');
   const box = b.querySelector('#searchRes');
   let r = null;

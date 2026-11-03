@@ -8,6 +8,7 @@
 // 而且進度只記「視窗上緣那一章」。
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
@@ -37,7 +38,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'jump.log'), 'w');
   const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'],
-    { stdio: ['ignore', log, log] });
+    { stdio: ['ignore', log, log], env: appEnv()});
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {
@@ -57,7 +58,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   page.on('pageerror', (e) => errors.push(e.message));
   await sleep(1500);
 
-  const chaps = () => page.evaluate(() => document.querySelectorAll('#stream .pb').length);
+  const chaps = () => page.evaluate(() => new Set([...document.querySelectorAll('#stream .pb')].map((b) => b.dataset.chapter)).size);
   const flowState = () => page.evaluate(() => (window.__moyuFlow ? window.__moyuFlow.state : null));
   const idle = async () => {
     for (let i = 0; i < 40; i++) {
@@ -186,8 +187,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     return (d.state.chapters[1] || {}).id || '';
   });
   await page.evaluate(() => {
-    const b = document.querySelectorAll('#stream .pb')[1];
-    if (b) b.scrollIntoView({ block: 'start' });
+    const seen = [];
+    for (const b of document.querySelectorAll('#stream .pb')) {
+      if (!seen.includes(b.dataset.chapter)) seen.push(b.dataset.chapter);
+    }
+    const target = [...document.querySelectorAll('#stream .pb')]
+      .find((b) => b.dataset.chapter === seen[1]);
+    if (target) target.scrollIntoView({ block: 'start' });
   });
   /* 捲動監看是「停下來 800ms 才寫」，所以用等的，不要用猜的 */
   let got = null;

@@ -1,6 +1,7 @@
 // 頂欄檢查：小視窗下每顆按鈕是不是真的看得到、點得到；歷史抽屜開不開得起來
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
@@ -28,7 +29,7 @@ const bad = (n, e = '') => results.push({ pass: false, n, e });
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'topbar.log'), 'w');
   const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'],
-    { stdio: ['ignore', log, log] });
+    { stdio: ['ignore', log, log], env: appEnv()});
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {
@@ -133,6 +134,15 @@ const bad = (n, e = '') => results.push({ pass: false, n, e });
   const mStats = await clickMore('統計');
   mStats.stats ? ok('更多 → 統計：面板打開') : bad('更多 → 統計：沒反應', JSON.stringify(mStats));
   await page.evaluate(() => { const p = document.querySelector('.stats-panel'); if (p) p.hidden = true; });
+
+  /* 註解（舊的「書評」）：點下去要在對話流裡長出東西 */
+  const before = await page.evaluate(() => document.querySelectorAll('#stream .cm, #stream .tool').length);
+  const mCmt = await clickMore('註解');
+  await sleep(1500);
+  const after = await page.evaluate(() => document.querySelectorAll('#stream .cm, #stream .tool').length);
+  (after > before && !mCmt.err)
+    ? ok(`更多 → 註解：對話流出現 ${after - before} 個區塊`)
+    : bad('更多 → 註解：沒反應', JSON.stringify({ before, after, err: mCmt.err }));
 
   const mPhone = await clickMore('手機版');
   mPhone.phone ? ok('更多 → 手機版：面板打開') : bad('更多 → 手機版：沒反應', JSON.stringify(mPhone));

@@ -120,17 +120,21 @@
   /* 回傳這一頁段落的標記資訊 */
   function paraInfo(p) {
     if (!p || !st.book || !st.chapters?.length) return null;
-    const ch = st.chapters[st.index];
-    if (!ch) return null;
     const box = p.closest('.pb') || p.parentElement;
     if (!box) return null;
+    // 段落在「整章」裡的第幾段：切段之後 DOM 位置會重排，但 data-pi 不會
     const all = [...box.querySelectorAll('.p')];
-    const idx = all.indexOf(p);
+    let idx = p.dataset.pi !== undefined ? Number(p.dataset.pi) : all.indexOf(p);
+    if (!Number.isFinite(idx) || idx < 0) idx = all.indexOf(p);
     if (idx < 0) return null;
+    const chId = box.dataset.chapter || '';
+    const ci = Number(box.dataset.ci);
+    const ch = (Number.isFinite(ci) && st.chapters[ci]) ? st.chapters[ci] : st.chapters[st.index];
+    if (!ch) return null;
     return {
-      chapterId: ch.id, chapterTitle: ch.title, para: idx,
+      chapterId: chId || ch.id, chapterTitle: ch.title, para: idx,
       text: (p.textContent || '').slice(0, 80), type: 'highlight',
-      id: ch.id + '-' + idx + '-highlight',
+      id: (chId || ch.id) + '-' + idx + '-highlight',
     };
   }
 
@@ -183,15 +187,18 @@
     await load();
   });
 
-  /* 開啟時若已有標記，補上樣式 */
+  /* 開啟時若已有標記，補上樣式
+     一章現在會切成好幾段 .pb，所以：①每一段看自己的 data-chapter
+     ②段落在整章的第幾段看 data-pi（不是它在這一段裡的第幾個） */
   const obs = new MutationObserver(() => {
     if (!marks.length || !st.chapters?.length) return;
-    const ch = st.chapters[st.index];
-    if (!ch) return;
     document.querySelectorAll('#stream .pb').forEach((box) => {
+      const chId = box.dataset.chapter || '';
+      if (!chId) return;
       const ps = [...box.querySelectorAll('.p')];
       ps.forEach((p, i) => {
-        const has = marks.some((m) => m.chapterId === ch.id && m.para === i);
+        const pi = p.dataset.pi !== undefined ? Number(p.dataset.pi) : i;
+        const has = marks.some((m) => m.chapterId === chId && Number(m.para) === pi);
         p.classList.toggle('marked', has);
       });
     });

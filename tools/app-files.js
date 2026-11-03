@@ -6,6 +6,7 @@
 
 const FILES = [
   'server.js', 'main.js', 'package.json', 'ui/preload.js', 'README.md', '啟動.cmd',
+  'app/icon.svg', 'app/icon.ico', 'app/icon-256.png', 'app/icon-64.png', 'app/tray-16.png',
   'src/fanqie.js', 'src/store.js', 'src/appapi.js', 'src/comments.js',
   'src/login.js', 'src/shelf.js', 'src/sync.js', 'src/updater.js',
   'src/prefetch.js', 'src/booksearch.js', 'src/search.js', 'src/charset.json',

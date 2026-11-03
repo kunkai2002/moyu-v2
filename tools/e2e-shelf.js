@@ -1,6 +1,7 @@
 // 真帳號書架驗證：複製現有登入態到 probe，跑 /shelf 看書有沒有出來、能不能開
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
@@ -32,8 +33,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'shelf.log'), 'w');
   const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], {
-    stdio: ['ignore', log, log],
-  });
+    stdio: ['ignore', log, log], env: appEnv()});
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {

@@ -28,16 +28,27 @@
   var css = document.createElement('style');
   css.textContent = [
     '#stream .chap-sep{border:0;border-top:1px solid var(--line);margin:26px 0 22px;opacity:.85}',
-    '.flow-more{display:flex;align-items:center;gap:10px;margin:18px 0 26px;color:var(--fg3);',
-    '  font-size:11.5px;cursor:pointer;user-select:none}',
-    '.flow-more::before,.flow-more::after{content:"";flex:1;border-top:1px solid var(--line);opacity:.6}',
-    '.flow-more span{padding:0 4px;white-space:nowrap}',
+    /* 接續提示：只有一個圖示，沒有字（對話流裡的「往下」暗示） */
+    '.flow-more{display:flex;align-items:center;justify-content:center;gap:10px;margin:16px 0 24px;',
+    '  height:26px;color:var(--fg3);cursor:pointer;user-select:none}',
+    '.flow-more::before,.flow-more::after{content:"";flex:1;border-top:1px solid var(--line);opacity:.55}',
+    '.flow-more svg{flex:none;transition:transform 140ms ease}',
     '.flow-more:hover{color:var(--acc)}',
+    '.flow-more:hover svg{transform:translateY(2px)}',
     '.flow-more.busy{cursor:default;color:var(--fg3)}',
     '.flow-more.stop{cursor:default}',
     '.flow-more.stop:hover{color:var(--fg3)}',
+    '.flow-more.stop:hover svg{transform:none}',
+    '.flow-spin{width:13px;height:13px;border-radius:50%;border:1.5px solid var(--line-strong);',
+    '  border-top-color:var(--acc);animation:flowspin .9s linear infinite;display:inline-block}',
+    '@keyframes flowspin{to{transform:rotate(360deg)}}',
   ].join('\n');
   document.head.appendChild(css);
+
+  var ICON_DOWN = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor"'
+    + ' stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="m6.5 9.5 5.5 5.5 5.5-5.5"/></svg>';
+  var ICON_END = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"'
+    + ' stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h12"/></svg>';
 
   var BURST_GAP = 340;   // 兩次滑動之間的靜止時間（ms）
   var COOLDOWN = 900;    // 接完一章的冷卻（ms）
@@ -101,6 +112,13 @@
     return burstId;
   }
 
+  /* 把舊的哨兵整個拿走：只留一個，不然接一章就多一個箭頭 */
+  function dropSentinel() {
+    if (sentinel && sentinel.parentNode) sentinel.parentNode.removeChild(sentinel);
+    sentinel = null;
+    lastPaint = '';
+  }
+
   function makeSentinel() {
     var thread = document.querySelector('#stream .thread');
     if (!thread) return;
@@ -110,7 +128,8 @@
     lastPaint = '';
     sentinel = document.createElement('div');
     sentinel.className = 'flow-more';
-    sentinel.innerHTML = '<span>繼續往下，自動接下一章</span>';
+    sentinel.title = '往下';
+    sentinel.innerHTML = ICON_DOWN;
     sentinel.addEventListener('click', function () {
       if (blocked || busy) return;
       if (st.index >= st.chapters.length - 1) return;
@@ -122,14 +141,15 @@
   function paintSentinel() {
     if (!sentinel) return;
     var want;
-    if (blocked) want = 'stop|這一章只有試讀，先停在這裡';
-    else if (st.index >= st.chapters.length - 1) want = 'stop|已經是最後一章';
-    else want = 'open|繼續往下，自動接下一章';
+    if (blocked) want = 'stop|已到可讀範圍';
+    else if (st.index >= st.chapters.length - 1) want = 'stop|已到最後';
+    else want = 'open|往下';
     if (want === lastPaint) return;
     lastPaint = want;
     var parts = want.split('|');
     sentinel.className = 'flow-more' + (parts[0] === 'stop' ? ' stop' : '');
-    sentinel.innerHTML = '<span>' + parts[1] + '</span>';
+    sentinel.title = parts[1];
+    sentinel.innerHTML = parts[0] === 'stop' ? ICON_END : ICON_DOWN;
   }
 
   function advance(manual) {
@@ -147,7 +167,8 @@
 
     if (sentinel) {
       sentinel.className = 'flow-more busy';
-      sentinel.innerHTML = '<span>正在接下一章…</span>';
+      sentinel.title = '載入中';
+      sentinel.innerHTML = '<span class="flow-spin"></span>';
       lastPaint = 'busy';
     }
     var thread = document.querySelector('#stream .thread');
@@ -166,14 +187,14 @@
       lastIndex = st.index;
       requestAnimationFrame(function () { stream.scrollTop = keepTop; });
       setTimeout(function () { stream.scrollTop = keepTop; }, 80);
-      sentinel = null;
+      dropSentinel();
       makeSentinel();
       paintSentinel();
       busy = false;
       setTimeout(function () { tryFill(); }, 260);
     }).catch(function () {
       busy = false;
-      sentinel = null;
+      dropSentinel();
       makeSentinel();
       paintSentinel();
     });
@@ -244,7 +265,7 @@
     threadEl = t;
     mo.disconnect();
     mo.observe(t, { childList: true });
-    sentinel = null;
+    dropSentinel();
     makeSentinel();
     paintSentinel();
   }
@@ -258,8 +279,7 @@
     if (lastIndex !== st.index) {
       if (lastIndex >= 0) blocked = false;
       lastIndex = st.index;
-      sentinel = null;
-      lastPaint = '';
+      dropSentinel();
     }
     if (!st.book || !st.chapters || !st.chapters.length) return;
     makeSentinel();

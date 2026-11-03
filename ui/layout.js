@@ -29,15 +29,10 @@
     '    box-shadow:none}',
     '  .app.side-open .side{transform:none;box-shadow:14px 0 40px rgba(0,0,0,.45)}',
     '  .side .rz{display:none}',
-    '  .side-toggle{display:grid!important}',
     '  .tb-btn{padding:3px 4px}',
     '  .panel,.marks-panel,.stats-panel,.detail{width:min(94vw,420px)!important}',
     '  .crumb{font-size:11.5px}',
     '}',
-    '.side-toggle{display:none;position:fixed;left:8px;top:8px;z-index:60;width:26px;height:26px;',
-    '  place-items:center;border:1px solid var(--line);border-radius:6px;',
-    '  background:var(--bg-elev);color:var(--fg2)}',
-    '.side-toggle:hover{color:var(--fg)}',
   ].join('\n');
   document.head.appendChild(css);
 
@@ -71,16 +66,13 @@
     localStorage.removeItem('moyu.sideW');
   });
 
-  /* ── 小視窗：目錄抽屜開關 ── */
-  var toggle = document.createElement('button');
-  toggle.className = 'side-toggle';
-  toggle.title = '目錄';
-  toggle.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M4 12h16M4 17h16"/></svg>';
-  document.body.appendChild(toggle);
-  toggle.addEventListener('click', function () { app.classList.toggle('side-open'); });
+  /* ── 小視窗：目錄抽屜 ──
+     開關就是頂欄那顆「目錄」圖示（chrome.js），這裡只負責點外面和 Esc 收起來。
+     以前那顆 fixed 在左上角的浮動鍵會蓋住頂欄第一顆按鈕，已移除。 */
   document.addEventListener('click', function (e) {
     if (!app.classList.contains('side-open')) return;
-    if (side.contains(e.target) || toggle.contains(e.target)) return;
+    if (side.contains(e.target)) return;
+    if (e.target.closest && e.target.closest('#tbList')) return;
     app.classList.remove('side-open');
   });
   window.addEventListener('keydown', function (e) {

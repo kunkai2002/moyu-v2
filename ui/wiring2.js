@@ -71,7 +71,7 @@
     });
   }
 
-  /* ── 章節欄：摺疊 / 展開 ──────────────────────────────── */
+  /* ── 章節欄：摺疊（展開由頂欄的「目錄」按鈕負責，不再另外放一顆會蓋住頂欄的浮動鍵）── */
   const head = $('.side-head');
   if (app && head) {
     const collapse = document.createElement('button');
@@ -80,26 +80,11 @@
     collapse.innerHTML = '<svg viewBox="0 0 24 24"><path d="M14 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
     collapse.addEventListener('click', () => {
       app.classList.add('side-hidden');
-      localStorage.setItem('moyu.sideHidden', '1');
-      expand.style.display = 'grid';
+      try { localStorage.setItem('moyu.sideHidden', '1'); } catch {}
     });
     head.insertBefore(collapse, head.firstChild);
 
-    const expand = document.createElement('button');
-    expand.className = 'expand-btn';
-    expand.title = '展開章節欄';
-    expand.innerHTML = '<svg viewBox="0 0 24 24"><path d="M10 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
-    expand.addEventListener('click', () => {
-      app.classList.remove('side-hidden');
-      localStorage.setItem('moyu.sideHidden', '0');
-      expand.style.display = 'none';
-    });
-    document.querySelector('.main')?.appendChild(expand);
-
-    if (localStorage.getItem('moyu.sideHidden') === '1') {
-      app.classList.add('side-hidden');
-      expand.style.display = 'grid';
-    }
+    if (localStorage.getItem('moyu.sideHidden') === '1') app.classList.add('side-hidden');
   }
 
   /* ── 下載按鈕（走 app.js 的 /export 指令）────────────────── */

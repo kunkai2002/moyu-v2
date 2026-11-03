@@ -5,6 +5,10 @@
   'use strict';
 
   const P = {
+    /* 品牌：六芒星（同時是 App 圖示、對話頭像） */
+    mark:    '<path d="M12 1.8 13.9 8.7 20.8 6.9 15.8 12 20.8 17.1 13.9 15.3 12 22.2 10.1 15.3 3.2 17.1 8.2 12 3.2 6.9 10.1 8.7Z" fill="currentColor" stroke="none"/>',
+    help:    '<circle cx="12" cy="12" r="8.4"/><path d="M9.7 9.7a2.4 2.4 0 1 1 3.3 2.2c-.7.3-1 .9-1 1.7"/><circle cx="12" cy="16.4" r=".95" fill="currentColor" stroke="none"/>',
+
     /* 導航 */
     home:    '<path d="M4.2 11.2 12 4.6l7.8 6.6"/><path d="M6.6 10v9.4h10.8V10"/><path d="M10.4 19.4v-4.6h3.2v4.6"/>',
     phone:   '<rect x="7" y="3.2" width="10" height="17.6" rx="2"/><path d="M10.6 18.2h2.8"/>',

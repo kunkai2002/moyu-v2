@@ -1,6 +1,7 @@
 // 驗證：① 章節自動連讀 + 章間細線 ② 記住進度（本機 + 雲端）
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
@@ -34,7 +35,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.mkdirSync(path.join(PROBE, 'chapters'), { recursive: true });
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'flow.log'), 'w');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], { stdio: ['ignore', log, log] });
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], { stdio: ['ignore', log, log], env: appEnv()});
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {
@@ -90,7 +91,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(2800);
   }
   const flow = await page.evaluate(() => ({
-    chaps: document.querySelectorAll('#stream .chap').length,
+    chaps: new Set([...document.querySelectorAll('#stream .pb')].map((b) => b.dataset.chapter)).size,
     seps: document.querySelectorAll('#stream .chap-sep').length,
     index: window.__moyuDebug.state.index,
     chars: [...document.querySelectorAll('#stream .pb .p')].reduce((n, p) => n + p.innerText.trim().length, 0),

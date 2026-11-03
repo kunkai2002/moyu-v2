@@ -70,8 +70,8 @@
   /* ── 1. 翻章鈕：補 tooltip ── */
   function iconizeNav() {
     const prev = $('#cnPrev'), next = $('#cnNext');
-    if (prev && !prev.title) prev.title = '上一章';
-    if (next && !next.title) next.title = '下一章';
+    if (prev && !prev.title) prev.title = '上一則';
+    if (next && !next.title) next.title = '下一則';
     $$('.tb-btn').forEach((b) => { if (!b.title) b.title = b.id; });
   }
 

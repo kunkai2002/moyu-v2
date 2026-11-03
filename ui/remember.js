@@ -96,7 +96,11 @@
     var ci = box ? Number(box.dataset.ci) : NaN;
     var ch = (Number.isFinite(ci) && st.chapters[ci]) ? st.chapters[ci] : st.chapters[st.index];
     var parent = para && para.parentElement;
-    var idx = parent ? Array.prototype.indexOf.call(parent.children, para) : 0;
+    // 段落在整章裡的第幾段：切段後 DOM 位置會重排，data-pi 才是真的
+    var idx = (para && para.dataset && para.dataset.pi !== undefined)
+      ? Number(para.dataset.pi)
+      : (parent ? Array.prototype.indexOf.call(parent.children, para) : 0);
+    if (!Number.isFinite(idx) || idx < 0) idx = 0;
     var text = (para ? para.textContent : '').trim().slice(0, 80);
     var now = Date.now();
 

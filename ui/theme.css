@@ -108,15 +108,27 @@ kbd{
 .thread{max-width:900px;margin:0 auto;padding:26px 30px 8px}
 
 .turn{display:flex;gap:10px;margin-bottom:2px}
-.gutter{width:15px;flex:none;color:var(--acc);line-height:1.75;font-size:13px;text-align:center}
+
+/* 使用者的話：靠右的氣泡，字少 */
+.turn.user{justify-content:flex-end;margin:20px 0 12px}
+.turn.user .bubble{
+  max-width:min(78%,540px);
+  background:var(--bg-elev);border:1px solid var(--line-strong);
+  border-radius:13px 13px 4px 13px;padding:8px 13px;
+  color:var(--fg2);font-size:12.5px;line-height:1.7;font-family:var(--ui-font);
+  white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.turn.user + .turn.user{margin-top:6px}
+
+/* 助手的話：沒有泡泡、整塊給正文，字多 */
+.turn.ai{align-items:flex-start}
+.gutter{width:17px;flex:none;display:flex;justify-content:center;padding-top:6px;
+        color:var(--acc);line-height:1;font-size:13px}
+.gutter svg{display:block}
 .gutter.dim{color:var(--fg3)}
 .gutter.spin{animation:spin 2.2s linear infinite;display:inline-block}
 @keyframes spin{to{transform:rotate(360deg)}}
 .b{flex:1;min-width:0;line-height:var(--lh)}
-
-.who{color:var(--fg2);font-size:12px;margin-bottom:1px}
-.you{color:var(--fg2);padding-bottom:14px;line-height:1.65;font-family:var(--text-font)}
-.you .q{color:var(--fg3)}
 
 .chap{color:var(--acc);font-size:14.5px;margin:1px 0 12px;font-weight:500;letter-spacing:.2px}
 
@@ -127,10 +139,17 @@ kbd{
      margin-left:2px;animation:blink 1.05s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 
-.meta{color:var(--fg3);font-size:11.5px;margin:8px 0 18px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
-.meta .ok{color:var(--ok)}
-.meta .warn{color:var(--acc2)}
+.meta{color:var(--fg3);font-size:11.5px;margin:6px 0 20px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.meta .ok{color:var(--ok);display:inline-flex;align-items:center}
+.meta .ok svg{display:block}
+.meta .warn{color:var(--acc2);display:inline-flex;align-items:center}
 .meta .sep{opacity:.4}
+.meta.loading{margin-bottom:10px}
+.meta.loading .dots::before{
+  content:"";display:inline-block;width:13px;height:13px;border-radius:50%;
+  border:1.5px solid var(--line-strong);border-top-color:var(--acc);
+  animation:spin .9s linear infinite;vertical-align:-2px;
+}
 
 /* tool call 樣式 */
 .tool{color:var(--fg3);font-size:12.5px;margin:0 0 2px;display:flex;align-items:baseline;gap:6px}
@@ -149,8 +168,8 @@ kbd{
 .cm-l{color:var(--fg3);font-size:10.5px;margin-top:1px}
 .cm-l .lk{color:var(--acc2)}
 
-.next{display:flex;align-items:center;gap:9px;color:var(--fg3);font-size:12px;margin:16px 0 4px}
-.next .k{border:1px solid var(--line);border-radius:3px;padding:0 5px;font-size:10.5px;color:var(--fg2)}
+/* 章與章之間：細線（對話流裡的分隔） */
+.chap-sep{border:0;border-top:1px solid var(--line);margin:26px 0 22px;opacity:.85}
 
 /* ── 輸入框 ────────────────────────────────────────────────── */
 .composer{flex:none;padding:0 30px 6px;max-width:900px;width:100%;margin:0 auto}
@@ -407,6 +426,9 @@ body.bossing .bosscreen{display:block}
   border:0;background:none;color:var(--fg3);font:inherit;font-size:10.5px;
   cursor:pointer;padding:2px 4px;border-radius:4px;
 }
+.hint-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:22px;height:20px}
+.hint-btn svg{width:14px;height:14px;flex:none}
+.hint-btn.on{color:var(--acc)}
 .hint-btn:hover{color:var(--fg);background:var(--sel)}
 .pill{cursor:pointer}
 .pill:hover{color:var(--fg);border-color:var(--acc2)}

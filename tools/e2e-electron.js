@@ -2,6 +2,7 @@
 // 用獨立的 probe 資料夾，不碰使用者的真實進度
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
@@ -32,8 +33,7 @@ async function typeCmd(page, text) {
   const logPath = path.join(__dirname, '..', '_probe', 'e2e-electron.log');
   const logFd = fs.openSync(logPath, 'w');
   const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], {
-    stdio: ['ignore', logFd, logFd], detached: false,
-  });
+    stdio: ['ignore', logFd, logFd], detached: false, env: appEnv()});
 
   let browser = null;
   for (let i = 0; i < 40 && !browser; i++) {

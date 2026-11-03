@@ -42,14 +42,6 @@
   if (proj) proj.addEventListener('click', () => D.openShelf());
 
   /* ── 頂部 pill ─────────────────────────────────────────── */
-  const pc = $('#pillChapters');
-  if (pc) pc.addEventListener('click', () => {
-    const n = st.chapters ? st.chapters.length : 0;
-    if (!n) { D.openShelf(); return; }
-    document.querySelector('#tree .ch')?.scrollIntoView({ block: 'nearest' });
-    filter?.focus();
-  });
-
   const pr = $('#pillReviews');
   if (pr) pr.addEventListener('click', () => {
     if (!st.book) { D.openShelf(); return; }
@@ -116,20 +108,24 @@
     refreshLoginState();
   });
 
-  /* ── auto-read 切換 ───────────────────────────────────── */
+  /* ── 自動模式切換（只有圖示）───────────────────────────── */
   const mode = $('#modeTag');
+  const ICONS = window.MOYU_ICONS;
   function paintMode() {
-    if (mode) mode.textContent = st.autoRead ? '⏵⏵ auto-read on' : '⏸ auto-read off';
+    if (!mode) return;
+    mode.innerHTML = ICONS ? ICONS.svg(st.autoRead ? 'pause' : 'auto', 14) : '';
+    mode.title = st.autoRead ? '自動模式：開' : '自動模式：關';
+    mode.dataset.mode = st.autoRead ? 'on' : 'off';
+    mode.classList.toggle('on', !!st.autoRead);
   }
+  window.__moyuPaintMode = paintMode;
   mode?.addEventListener('click', () => { st.autoRead = !st.autoRead; paintMode(); });
   paintMode();
 
-  /* ── 串流裡的「繼續 第 N 章」可點 ──────────────────────── */
-  document.addEventListener('click', (e) => {
-    const next = e.target.closest?.('.next');
-    if (next && st.chapters && st.chapters.length) {
-      D.goChapter(Math.min(st.index + 1, st.chapters.length - 1), true);
-    }
+  /* ── 說明面板（以前叫指令表，現在只剩圖示按鈕）───────────── */
+  $('#helpBtn')?.addEventListener('click', () => {
+    const p = document.getElementById('helpPanel');
+    if (p) p.hidden = !p.hidden;
   });
 
 })();

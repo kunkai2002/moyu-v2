@@ -9,6 +9,7 @@
 //   ⑤ 再發佈原始碼、再 apply() → 檔案恢復原狀
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 const { collect, publish, stamp, shortSha } = require('./publish-app');
@@ -44,7 +45,7 @@ const target = path.join(APP, 'ui', 'polish.js');
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'update.log'), 'w');
   const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'],
-    { stdio: ['ignore', log, log] });
+    { stdio: ['ignore', log, log], env: appEnv()});
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {

@@ -1,6 +1,7 @@
 // 設定持久化驗證：改設定 → 關掉 → 重開（含清掉 localStorage）→ 看有沒有回來
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
@@ -17,8 +18,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function launch() {
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'persist.log'), 'a');
   const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], {
-    stdio: ['ignore', log, log],
-  });
+    stdio: ['ignore', log, log], env: appEnv()});
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {
     await sleep(400);

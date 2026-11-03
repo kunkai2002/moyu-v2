@@ -27,9 +27,9 @@ const BOOK = process.argv[3] || '7373660003258862617';
   }
 
   const before = await page.evaluate(() => ({
-    titles: [...document.querySelectorAll('.chap')].map((e) => e.textContent.trim()),
+    titles: [...document.querySelectorAll('#stream .turn.user .bubble')].map((e) => e.textContent.trim()),
     pos: document.querySelector('#sbChapter')?.textContent || '',
-    auto: document.querySelector('#modeTag')?.textContent || '',
+    auto: document.querySelector('#modeTag')?.dataset.mode || '',
   }));
   console.log('開書後章節數:', before.titles.length, '| 位置:', before.pos, '| 按鈕:', before.auto);
 
@@ -37,7 +37,7 @@ const BOOK = process.argv[3] || '7373660003258862617';
   await page.click('#modeTag');
   await new Promise((r) => setTimeout(r, 400));
   const afterToggle = await page.evaluate(() => ({
-    btn: document.querySelector('#modeTag')?.textContent || '',
+    btn: document.querySelector('#modeTag')?.dataset.mode || '',
     state: window.__moyuDebug?.state?.autoRead,
   }));
   console.log('點擊後 按鈕:', afterToggle.btn, '| state.autoRead:', afterToggle.state);
@@ -46,7 +46,7 @@ const BOOK = process.argv[3] || '7373660003258862617';
   await new Promise((r) => setTimeout(r, 9000));
 
   const after = await page.evaluate(() => ({
-    titles: [...document.querySelectorAll('.chap')].map((e) => e.textContent.trim()),
+    titles: [...document.querySelectorAll('#stream .turn.user .bubble')].map((e) => e.textContent.trim()),
     pos: document.querySelector('#sbChapter')?.textContent || '',
   }));
   console.log('等待後章節數:', after.titles.length, '| 位置:', after.pos);

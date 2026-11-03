@@ -21,6 +21,7 @@ const STEPS = [
   { name: '手機後端', cmd: 'node', args: ['tools/test-worker.js'], skip: quick },
   { name: '手機 PWA', cmd: 'node', args: ['tools/e2e-mobile.js'], skip: quick },
   { name: '雲端熱更新', cmd: 'node', args: ['tools/e2e-update.js', APP], skip: quick },
+  { name: '對話界面驗收', cmd: 'node', args: ['tools/audit-chat-ui.js', APP] },
 ];
 
 console.log('⚙ 魔芋一夏 · 全套檢查' + (quick ? '（quick：跳過雲端）' : ''));

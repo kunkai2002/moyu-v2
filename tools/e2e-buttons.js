@@ -1,6 +1,7 @@
 // 全按鈕自檢：頂欄、溢出、面板、右鍵選單、首頁、歷史、拖拽、小視窗、連讀
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
@@ -26,7 +27,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   fs.mkdirSync(path.join(PROBE, 'chapters'), { recursive: true });
 
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'buttons.log'), 'w');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], { stdio: ['ignore', log, log] });
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], { stdio: ['ignore', log, log], env: appEnv()});
 
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {
@@ -148,7 +149,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     if (ov) ov.hidden = true;
     return { top, rows };
   });
-  const KEYS = ['首頁', '統計', '手機版', '設定', '老闆鍵', '下載', '書評'];
+  const KEYS = ['首頁', '統計', '手機版', '設定', '老闆鍵', '下載', '註解'];
   const lack = KEYS.filter((k) => !ia.rows.some((r) => r.startsWith(k)));
   lack.length === 0 ? ok(`更多：${ia.rows.length} 項，不常用的都在（${ia.rows.join(' / ')}）`) : bad('更多：缺項', lack.join(','));
   // 同一件事不能既在頂欄又在更多
@@ -287,13 +288,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   /* ── 7. 小視窗 ── */
   await page.setViewport({ width: 420, height: 320 });
   await sleep(700);
-  const small = await page.evaluate(() => ({
-    overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    toggleVisible: getComputedStyle(document.querySelector('.side-toggle')).display !== 'none',
-    inputVisible: !!document.querySelector('#input') && document.querySelector('#input').getBoundingClientRect().height > 20,
-  }));
+  const small = await page.evaluate(() => {
+    const app = document.querySelector('.app');
+    app?.classList.remove('side-open');
+    const listBtn = document.querySelector('#tbList');
+    return {
+      overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      // 小窗時目錄按鈕還在（開啟抽屜靠它，不再有另一顆浮動鍵）
+      listVisible: !!listBtn && getComputedStyle(listBtn).display !== 'none'
+        && listBtn.getBoundingClientRect().width > 8,
+      inputVisible: !!document.querySelector('#input') && document.querySelector('#input').getBoundingClientRect().height > 20,
+    };
+  });
   small.overflowX <= 2 ? ok('小窗：沒有橫向溢出') : bad('小窗：橫向溢出', String(small.overflowX));
-  small.toggleVisible ? ok('小窗：目錄抽屜按鈕出現') : bad('小窗：沒有目錄按鈕');
+  small.listVisible ? ok('小窗：目錄按鈕在') : bad('小窗：沒有目錄按鈕');
   small.inputVisible ? ok('小窗：輸入框還在') : bad('小窗：輸入框被擠掉');
   await page.setViewport({ width: 1440, height: 900 });
   await sleep(400);
@@ -326,7 +334,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
   const after = await page.evaluate(() => ({
     index: window.__moyuDebug.state.index,
-    chaps: document.querySelectorAll('#stream .chap').length,
+    chaps: new Set([...document.querySelectorAll('#stream .pb')].map((b) => b.dataset.chapter)).size,
     seps: document.querySelectorAll('#stream .chap-sep').length,
   }));
   after.index > flow.index ? ok(`連讀：${flow.index} → ${after.index} 章（細線 ${after.seps}）`) : bad('連讀：沒有自動接章', JSON.stringify(after));

@@ -6,12 +6,27 @@ require('electron').app.commandLine.appendSwitch('disable-backgrounding-occluded
 // 純文字閱讀器不需要 GPU；停用可避開 GPU 程序崩潰造成的白窗
 require('electron').app.disableHardwareAcceleration();
 
+// 任務欄要把我們當成獨立程式（有自己的圖示、不被併到 Electron 底下）
+try { require('electron').app.setAppUserModelId('com.jojo.api-server'); } catch {}
+
 const {
   app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage,
   clipboard, session,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
+
+/* 自己的圖示：任務欄、視窗、Alt-Tab 都用這一顆（不要讓它露出 Electron 的原子圖）
+   視窗圖示用 PNG（nativeImage 對 PNG 一定吃得到；.ico 交給托盤與捷徑） */
+const APP_ICON_ICO = path.join(__dirname, 'app', 'icon.ico');
+const APP_ICON_PNG = path.join(__dirname, 'app', 'icon-256.png');
+const TRAY_ICON = path.join(__dirname, 'app', 'icon-64.png');
+const appIcon = () => {
+  for (const p of [APP_ICON_PNG, APP_ICON_ICO]) {
+    try { if (fs.existsSync(p)) return p; } catch {}
+  }
+  return undefined;
+};
 
 const fanqie = require('./src/fanqie');
 const store = require('./src/store');
@@ -128,6 +143,27 @@ function trackWindowState(w) {
 }
 
 /* ── 主視窗 ─────────────────────────────────────────────────── */
+/* 視窗底色要跟主題一致：奶油白主題配深底，開機一瞬間會閃一下黑 */
+const THEME_BG = {
+  'claude-code': '#1a1915',
+  claude: '#faf9f5',
+  vscode: '#1e1e1e',
+  excel: '#ffffff',
+  terminal: '#04070a',
+  word: '#f4f4f4',
+};
+function windowBg() {
+  try {
+    const p = path.join(DATA_DIR, 'prefs.json');
+    if (fs.existsSync(p)) {
+      const prefs = store.readJson(p, {});
+      const t = String(prefs['moyu.theme'] || '');
+      if (THEME_BG[t]) return THEME_BG[t];
+    }
+  } catch {}
+  return THEME_BG[settings.theme] || THEME_BG['claude-code'];
+}
+
 function createWindow() {
   const st = readWindowState() || {};
   win = new BrowserWindow({
@@ -137,7 +173,8 @@ function createWindow() {
 
     minWidth: 420,
     minHeight: 320,
-    backgroundColor: '#1a1915',
+    backgroundColor: windowBg(),
+    icon: appIcon(),
     frame: false,
     titleBarStyle: 'hidden',
     title: settings.windowTitle,
@@ -220,20 +257,16 @@ function registerHotkeys() {
 
 /* ── 托盤 ───────────────────────────────────────────────────── */
 function createTray() {
-  // 一個 16×16 的點陣圖示，避免依賴外部檔案
-  const size = 16;
-  const buf = Buffer.alloc(size * size * 4);
-  for (let i = 0; i < size * size; i++) {
-    const x = i % size, y = Math.floor(i / size);
-    const d = Math.hypot(x - 7.5, y - 7.5);
-    const on = d < 6.2 && d > 3.2;
-    buf[i * 4 + 0] = on ? 0x57 : 0x1a;
-    buf[i * 4 + 1] = on ? 0x77 : 0x19;
-    buf[i * 4 + 2] = on ? 0xd9 : 0x15;
-    buf[i * 4 + 3] = 255;
-  }
-  const img = nativeImage.createFromBuffer(buf, { width: size, height: size });
-  tray = new Tray(img);
+  // 用自己的圖示（workarea 的托盤是 16px，icon-64 會自動縮）
+  let img = null;
+  try {
+    if (fs.existsSync(TRAY_ICON)) img = nativeImage.createFromPath(TRAY_ICON);
+    if (!img || img.isEmpty()) {
+      const p = appIcon();
+      if (p) img = nativeImage.createFromPath(p);
+    }
+  } catch {}
+  tray = new Tray(img && !img.isEmpty() ? img : nativeImage.createEmpty());
   tray.setToolTip(settings.windowTitle);
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: '顯示視窗', click: () => { win.show(); win.focus(); } },

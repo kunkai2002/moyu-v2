@@ -1,13 +1,14 @@
 // 視窗狀態記憶驗證：改大小 → 關掉 → 重開 → 尺寸要一樣；最大化也要記得
 const puppeteer = require('D:/dsh desktop/data/profiles/desktop/node_modules/puppeteer-core');
 const { spawn, execSync } = require('child_process');
+const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
 const APP = process.argv[2] || path.join('C:', 'Users', 'Admin', 'AppData', 'Local', 'Programs', '魔芋一夏');
 const EXE = path.join(APP, 'electron', 'electron.exe');
 const PROBE = path.join(__dirname, '..', '_probe', 'e2e-data-window');
-const PORT = 9343;
+let PORT = 9343;   // 每次啟動 +1，避免舊實例還占著埠
 
 const results = [];
 const ok = (n, e = '') => results.push({ pass: true, n, e });
@@ -16,11 +17,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function launch() {
   const log = fs.openSync(path.join(__dirname, '..', '_probe', 'window.log'), 'a');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'], { stdio: ['ignore', log, log] });
+  const port = PORT++;
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${port}`, '--hidden'], { stdio: ['ignore', log, log], env: appEnv()});
   let browser = null;
   for (let i = 0; i < 50 && !browser; i++) {
     await sleep(400);
-    try { browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${PORT}`, defaultViewport: null, protocolTimeout: 600000 }); } catch {}
+    try { browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${port}`, defaultViewport: null, protocolTimeout: 600000 }); } catch {}
   }
   if (!browser) throw new Error('連不上偵錯埠');
   let page = null;
@@ -51,7 +53,10 @@ async function shutdown(app) {
 
 (async () => {
   if (!fs.existsSync(EXE)) { console.error('找不到 electron.exe'); process.exit(2); }
-  fs.rmSync(PROBE, { recursive: true, force: true });
+  for (let i = 0; i < 8; i++) {
+    try { fs.rmSync(PROBE, { recursive: true, force: true }); break; }
+    catch { await sleep(500); }
+  }
   fs.mkdirSync(path.join(PROBE, 'chapters'), { recursive: true });
   for (const f of ['cookie.txt', 'cookies.json', 'settings.json', 'prefs.json', 'sync.json']) {
     const src = path.join(APP, 'data', f);

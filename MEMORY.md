@@ -53,8 +53,38 @@
 
 ## UI 配置（2026-10-28 定案）
 - 頂欄左：前進/後退；中：書名麵包屑；右：目錄 · 歷史 · 標記 · 更多。
-- 「更多」：首頁 · 統計 · 手機版 · 設定 · 老闆鍵，再一條分隔線，下面才是舊膠囊（下載/書評）。
+- 「更多」：首頁 · 統計 · 手機版 · 設定 · 老闆鍵，再一條分隔線，下面才是舊膠囊（下載/註解）。
 - 書籍詳情：書架卡片右鍵（頂欄不再放）。
+
+## 對話界面（2026-11-03 定案，JOJO 指定）
+- **一章＝一則使用者氣泡**（章節標題）＋**助手長回覆**；正文隨機切 1–2 次（共 1–3 段），
+  切點只在**段落之間**（段落結尾就是句尾），段與段之間插一句使用者的「繼續」。
+- 使用者氣泡字少（≤24 字）、靠右；助手回覆沒有泡泡、靠左、整塊給正文；頭像用品牌星芒 SVG。
+- 正文段落一律帶 `data-pi`（全章第幾段）。**切段後 DOM 位置會變，劃線／筆記／進度只看 `data-pi`**，
+  不能再用 `indexOf` 或「這一段裡的第幾個」。
+- chrome 不准出現小說用語（下一章／上一章／指令表／章節 N／auto-read）：
+  翻頁是圖示、接續提示只有箭頭、狀態列寫 `614 / 1359`、訊息尾註是 `2,045 tok · 00:12`。
+- 「書評」改名「註解」；`.next`、`.chap` 已移除（`tools/audit-chat-ui.js` 會驗）。
+
+## App 圖示（2026-11-03）
+- 一個來源：`tools/make-icon.js` → `app/icon.svg`（設計原始檔）、`icon.ico`（托盤／捷徑）、
+  `icon-256.png`／`icon-64.png`（視窗、托盤）。
+- **視窗圖示一定要用 PNG**：`nativeImage` 吃 .ico 不穩，用 .ico 會退回 Electron 的原子圖。
+- 任務欄：`app.setAppUserModelId('com.jojo.api-server')` ＋ `BrowserWindow({icon})`。
+- 捷徑：`%APPDATA%\...\Start Menu\Programs\魔芋一夏.lnk` 的 `IconLocation` 指到 `app\icon.ico`；
+  `tools/autostart.vbs` 建立開機捷徑時也會一起設。
+- 已移除兩顆會蓋住頂欄的浮動鍵（`.expand-btn`、`.side-toggle`）——目錄開關就是頂欄那顆。
+
+## 踩過的坑（續）
+16. **改完檔案一定要先 `publish-app.js` 再啟動程式**。雲端熱更新會在開機 5 秒後把安裝目錄
+    拉回「雲端那一版」，忘記發佈＝自己的新檔被舊版蓋掉（今天就踩到）。
+17. **`ELECTRON_RUN_AS_NODE=1` 會讓 electron.exe 當普通 Node 跑**（main.js 第一行就炸）。
+    所有 spawn 一律用 `tools/app-env.js`（已套用到全部 e2e／audit 工具）。
+18. **`document.querySelector('.pb:last-of-type')` 會抓到第一則**，要多個 `.pb` 就用
+    `[...querySelectorAll('.pb')].pop()`。
+19. **接續哨兵只能有一個**：`flow.js` 換位置時舊元素沒移除就會疊出好幾個箭頭，
+    一律走 `dropSentinel()`。
+
 
 ## 決策記錄
 - 不做手機原生 App、不用 Electron 以外框架；零依賴 Node。

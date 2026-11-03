@@ -152,10 +152,9 @@
         if (f) { f.focus(); f.select?.(); }
       }, 200);
     } else {
-      // 大視窗：直接收起／展開章節欄（跟側欄那顆箭頭同一件事）
-      app.classList.contains('side-hidden')
-        ? document.querySelector('.expand-btn')?.click()
-        : document.querySelector('.side-head .ghost.icon')?.click();
+      // 大視窗：收起／展開章節欄（同一顆鍵，不另外放一顆會蓋住別人的小按鈕）
+      const hidden = app.classList.toggle('side-hidden');
+      try { localStorage.setItem('moyu.sideHidden', hidden ? '1' : '0'); } catch {}
     }
   });
 
@@ -207,9 +206,6 @@
       if (el === moreBtn || el.classList.contains('tb-btn')) continue;
       addToOverflow(el);
     }
-    // 章節數這種純資訊移到狀態列
-    const cb = $('#pillChapters');
-    if (cb) cb.remove();
   }
 
   /* 頂欄已經有的功能，不要再出現在溢出選單裡 */
@@ -260,9 +256,9 @@
     const nav = document.createElement('div');
     nav.className = 'chapter-nav';
     nav.innerHTML = `
-      <button class="cn-btn" id="cnPrev">${I.svg('back', 14)}<span>上一章</span></button>
+      <button class="cn-btn" id="cnPrev" title="上一則">${I.svg('back', 14)}</button>
       <span class="cn-pos" id="cnPos">— / —</span>
-      <button class="cn-btn" id="cnNext"><span>下一章</span>${I.svg('forward', 14)}</button>`;
+      <button class="cn-btn" id="cnNext" title="下一則">${I.svg('forward', 14)}</button>`;
     composer.parentNode.insertBefore(nav, composer);
 
     const prev = nav.querySelector('#cnPrev');
