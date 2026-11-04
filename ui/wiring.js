@@ -37,9 +37,12 @@
     if (tree) new MutationObserver(apply).observe(tree, { childList: true });
   }
 
-  /* ── 專案列 → 書架 ─────────────────────────────────────── */
-  const proj = $('#projRow');
-  if (proj) proj.addEventListener('click', () => D.openShelf());
+  /* ── 品牌列（書名鈕）→ 書架；舊的 #projRow 已經在 2026-11-04 的 DSH 外殼改版移除 ── */
+  const proj = $('#bookName');
+  if (proj && !proj.dataset.projBound) {
+    proj.dataset.projBound = '1';
+    proj.addEventListener('click', () => D.openShelf());
+  }
 
   /* ── 頂部 pill ─────────────────────────────────────────── */
   const pr = $('#pillReviews');

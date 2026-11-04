@@ -202,7 +202,9 @@ function renderTree() {
 function updateCrumb() {
   const c = state.chapters[state.index];
   if (!c || !state.book) return;
-  $('#crumb').innerHTML = `${escapeHtml(state.book.title)} / <b>${escapeHtml(c.title)}</b>`;
+  /* 頂欄標題＝「這一則對話的標題」＝章節名（DSH 的 session title）。
+     不要在頂欄重複書名——書名已經在左下品牌列（JOJO 最討厭重複入口）。 */
+  $('#crumb').innerHTML = `<b>${escapeHtml(c.title)}</b>`;
   const pos = `${c.no} / ${state.chapters.length}`;
   $('#sbChapter').textContent = pos;
   $('#meTxt').textContent = pos;
@@ -275,25 +277,30 @@ function fakeDiff(n) {
 function streamParagraphs(container, paras, onDone, piBase) {
   stopStreaming();
   const base = Number(piBase) || 0;
+  /* 一段「章節」會被切成 1–3 個回覆（人工切段），所以每塊可能只有 3–5 段。
+     步進列與假 diff 的節奏要跟著塊的大小縮，不然小塊永遠看不到「工具感」
+     （JOJO 的產品定義：這兩樣是偽裝的關鍵細節）。 */
+  const perDiff = currentShell() === 'dsh' ? 9 : 6;   // 假 diff：DSH 稀一點，不要搶正文
+  const maxSteps = Math.min(4, Math.max(1, Math.floor(paras.length / 3)));
   // 預設一次畫完；只有開啟「慢讀」才逐字吐
   if (!state.slowRead) {
     let sinceStep = 0;
     let steps = 0;
-    let gap = 4 + Math.floor(Math.random() * 2);
+    let gap = Math.max(2, Math.min(5, Math.ceil(paras.length / 3)));
     paras.forEach((t, idx) => {
       const p = el('p', 'p', t);
       p.dataset.pi = String(base + idx);   // 全章第幾段（切段後仍然對得回原文）
       container.appendChild(p);
       sinceStep++;
-      // 終端風：每 6 段插一塊假 diff（像剛改完檔案）
-      if (currentShell() === 'cc' && (idx + 1) % 6 === 0 && idx < paras.length - 1) {
-        container.appendChild(fakeDiff(idx + 1));
+      // 假 diff 用「全章第幾段」對齊節奏，跨小塊才不會斷掉
+      if (idx < paras.length - 1 && (base + idx + 1) % perDiff === 0) {
+        container.appendChild(fakeDiff(base + idx + 1));
       }
-      // 每 4–6 段插一列「分析中… → 已完成分析」
-      if (sinceStep >= gap && steps < 4 && idx < paras.length - 1) {
+      // 每 gap 段插一列「分析中… → 已完成分析」（塊小時 gap 也會變小）
+      if (sinceStep >= gap && steps < maxSteps && idx < paras.length - 1) {
         sinceStep = 0;
         steps++;
-        gap = 4 + Math.floor(Math.random() * 3);
+        gap = Math.max(2, Math.min(5, Math.ceil(paras.length / 3)));
         addStepLine(container);
       }
     });

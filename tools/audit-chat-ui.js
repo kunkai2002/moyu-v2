@@ -78,6 +78,26 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await sleep(500);
     if (await page.evaluate(() => document.querySelectorAll('#stream .p').length > 5)) break;
   }
+  /* JOJO 邊測邊讀，進度會自己變（MEMORY 第 2 條）：他可能停在很短的一章，或停在「試讀」
+     的付費章節（那條路徑只有正文、沒有步進列與假 diff）。驗收要驗「機制」不是「他今天讀到哪」，
+     所以逐一把前段章節試到「正文 ≥8 段且步進列 ≥1」為止。 */
+  const probe = async () => page.evaluate(() => ({
+    p: document.querySelectorAll('#stream .p').length,
+    step: document.querySelectorAll('#stream .step').length,
+  }));
+  for (const idx of [0, 1, 2, 3, 5, 8, 12]) {
+    let s = await probe();
+    if (s.p >= 8 && s.step >= 1) break;
+    await page.evaluate((i) => {
+      const D = window.__moyuDebug;
+      if (D && D.state && D.state.chapters && D.state.chapters.length > i) D.goChapter(i);
+    }, idx);
+    for (let i = 0; i < 20; i++) {
+      await sleep(400);
+      s = await probe();
+      if (s.p >= 8 && s.step >= 1) break;
+    }
+  }
   await sleep(1200);
 
   const shot = async (w, h, mine) => {
@@ -482,8 +502,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     : bad('可點性：有假按鈕', fakeClicks.slice(0, 6).join(' | '));
 
   /* ── 新主題（DSH）：截圖三種尺寸，版面不可以撐破或被蓋 ── */
-  await page.evaluate(() => window.__moyuDebug.setTheme('dsh'));
-  await sleep(400);
+  await page.evaluate(() => {
+    const D = window.__moyuDebug;
+    D.setTheme('dsh');
+    // 前面的「假按鈕」測試會把抽屜／面板開起來；量版面之前先收乾淨，
+    // 否則遮罩本身會被算成「按鈕被蓋住」（2026-11-04 加 <1024 右欄抽屜後踩到）
+    document.querySelector('.app')?.classList.remove('toc-open');
+    document.querySelectorAll('.panel:not([hidden]), .marks-panel:not([hidden]), .stats-panel:not([hidden]), .hist-panel:not([hidden]), .phone-panel:not([hidden]), .overflow:not([hidden]), .theme-menu:not([hidden]), .ctx.on, .cmdk:not([hidden])').forEach((el) => {
+      if (el.classList.contains('ctx')) el.classList.remove('on'); else el.hidden = true;
+    });
+    document.body.classList.remove('bossing');
+  });
+  await sleep(500);
   for (const { w, h } of [{ w: 1440, h: 900 }, { w: 1920, h: 1080 }, { w: 820, h: 620 }]) {
     await page.evaluate((st) => window.moyu?.win?.setState?.(st), { width: w, height: h });
     await sleep(650);

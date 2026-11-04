@@ -1,0 +1,94 @@
+/* 思考鏈（reasoning block）— 樣式
+   ─────────────────────────────────────────────────────────────
+   顏色一律走主題代幣（--fg3/--fg2/--line/--acc，主題各自定義），
+   尺寸與動效走 ui/dsh-tokens.css 的 --dsh-*（真值產生檔）。
+   不做氣泡、不用襯線、不置中，維持「工具」的樣子。
+   對應行為：ui/reasoning.js（規格：docs/思考鏈_20261104.md）。
+   ───────────────────────────────────────────────────────────── */
+
+.think{
+  margin:2px 0 12px;
+  font-family:var(--dsh-font-code, var(--mono, monospace));
+  /* 尺度：12 / 20（11 太小、14 會跟正文搶），行高固定 20px，不要用比例（會出現 19.8px 這種抖動值） */
+  font-size:12px;
+  line-height:20px;
+  color:var(--fg3);
+  max-width:100%;
+}
+
+/* 註：這個元件的根 class 是 .think。
+   .rz 在 ui/layout.js / ui/wiring2.js / theme.css 已經是側欄拖曳柄的 class
+   （position:absolute／width:6px／cursor:col-resize），不要再拿來當別名，
+   否則推理塊會變成一條 6px 的細直條。 */
+
+/* ── header：spinner／完成勾 ＋ 狀態字 ＋ 跳秒 ＋ token ＋ 收合箭頭 ── */
+.think-h{
+  display:flex;align-items:center;gap:7px;
+  width:100%;padding:3px 0;margin:0;
+  font:inherit;color:var(--fg3);
+  text-align:left;cursor:pointer;user-select:none;
+  background:none;border:0;border-radius:var(--dsh-radius-sm, 8px);
+}
+.think-h:hover{color:var(--fg2)}
+.think-h:focus-visible{outline:1px solid var(--acc);outline-offset:2px}
+.think-ico{width:13px;height:13px;flex:none;display:grid;place-items:center;color:var(--fg3)}
+.think-ico svg{display:block}
+.think[data-state="done"] .think-ico{color:var(--ok, var(--acc))}
+
+.think-spin{
+  width:11px;height:11px;border-radius:50%;
+  border:1.5px solid var(--line-strong);
+  border-top-color:var(--acc);
+  animation:thinkspin .9s linear infinite;
+  display:block;
+}
+@keyframes thinkspin{to{transform:rotate(360deg)}}
+
+.think-t{color:var(--fg2);white-space:nowrap}
+.think[data-state="done"] .think-t{color:var(--fg3)}
+.think-dot{opacity:.45;flex:none}
+.think-sec,.think-tok{font-variant-numeric:tabular-nums;white-space:nowrap}
+.think-sec{color:var(--fg3)}
+.think-tok{color:var(--fg3)}
+.think-car{margin-left:2px;flex:none;display:grid;place-items:center;color:var(--fg3);
+  transition:transform var(--dsh-dur, .2s) var(--dsh-ease, cubic-bezier(.4,0,.2,1))}
+.think[data-open="0"] .think-car{transform:rotate(-90deg)}
+
+/* ── 內文：2–5 行推理，逐行淡入；收合時整塊收掉 ── */
+.think-body{
+  margin:4px 0 2px 1px;padding-left:12px;
+  border-left:2px solid var(--line-strong);
+  display:flex;flex-direction:column;gap:1px;
+}
+.think[data-open="0"] .think-body{display:none}
+.think-l{
+  display:flex;align-items:flex-start;gap:6px;
+  min-height:0;
+  animation:thinkline var(--dsh-dur, .2s) var(--dsh-ease, cubic-bezier(.4,0,.2,1)) both;
+}
+@keyframes thinkline{from{opacity:0;transform:translateY(2px)}to{opacity:1;transform:none}}
+.think-bu{color:var(--fg3);opacity:.45;flex:none;line-height:inherit}
+.think-tx{color:var(--fg3);overflow-wrap:anywhere}
+
+/* 進行中：字面掃光（shimmer），看起來像還在想 */
+.think[data-state="run"] .think-tx{
+  background-image:linear-gradient(90deg,
+    var(--fg3) 0%, var(--fg3) 38%, var(--fg2) 50%, var(--fg3) 62%, var(--fg3) 100%);
+  background-size:220% 100%;
+  -webkit-background-clip:text;background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:thinkshim 2.4s linear infinite;
+}
+@keyframes thinkshim{from{background-position:180% 0}to{background-position:-80% 0}}
+
+/* 減少動態：不 shimmer、不淡入、不閃（JS 也直接全部顯示） */
+@media (prefers-reduced-motion: reduce){
+  .think-spin{animation:none}
+  .think-car{transition:none;transition-property:none;transition-duration:0s}
+  .think-l{animation:none;opacity:1;transform:none}
+  .think[data-state="run"] .think-tx{
+    background:none;
+    -webkit-text-fill-color:currentColor;
+    animation:none;
+  }
+}

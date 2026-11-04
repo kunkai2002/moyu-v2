@@ -1,0 +1,176 @@
+/* 由 tools/gen-a11y.js 從 ui/theme.css + ui/dsh-tokens.css 產生，請勿手改。
+   重新產生：node tools/gen-a11y.js
+   ───────────────────────────────────────────────────────────────
+   8 個主題的次要文字／狀態列／主鍵字色，全部算到 WCAG AA（≥4.6:1）。
+   只改「顏色代幣」，不碰字級、行高、間距；正文 --fg 一律不動。
+   除代幣外只帶 5 條「套用」規則（分頁選中／主鍵／狀態列），
+   因為那些元素的顏色原本寫死在別人的檔案裡。 */
+
+:root{
+  /* 主題沒設 data-theme 時的退路（等於原色，不改任何外觀） */
+  --a11y-acc-ink:var(--acc);
+  --a11y-acc-bg:var(--acc);
+  --a11y-acc-on:#ffffff;
+  --a11y-status-fg:var(--fg2);
+  --a11y-status-strong:var(--fg);
+}
+
+/* dsh（底色 #151517；文字可能落在這幾個底色上：#151517 #1b1b1c #232324 #2c2c2e #353638）
+     --fg3               #adb2b8 → #adb2b8（5.67:1）
+     --a11y-acc-ink      #7aaaff → #7aaaff（5.2:1）
+     --a11y-acc-bg       #7aaaff → #7aaaff（8.35:1，dark）
+     --a11y-acc-on       #0c0d10 → #0c0d10（8.35:1）
+     --a11y-status-fg    #adb2b8 → #adb2b8（8.54:1）
+     --a11y-status-strong#cfd3d6 → #cfd3d6（12.11:1）
+ */
+:root[data-theme="dsh"]{
+  --fg3:#adb2b8;
+  --a11y-acc-ink:#7aaaff;
+  --a11y-acc-bg:#7aaaff;
+  --a11y-acc-on:#0c0d10;
+  --a11y-status-fg:#adb2b8;
+  --a11y-status-strong:#cfd3d6;
+}
+
+/* dsh-light（底色 #ffffff；文字可能落在這幾個底色上：#ffffff #f9fafb）
+     --fg3               #81858c → #6e7178（4.67:1，混 17%）
+     --a11y-acc-ink      #4176e6 → #3d6dd3（4.65:1，混 9%）
+     --a11y-acc-bg       #4176e6 → #4377e6（4.66:1，dark+bg）
+     --a11y-acc-on       #0c0d10 → #0c0d10（4.66:1）
+     --a11y-status-fg    #81858c → #72757b（4.62:1）
+     --a11y-status-strong#61666b → #61666b（5.8:1）
+ */
+:root[data-theme="dsh-light"]{
+  --fg3:#6e7178;
+  --a11y-acc-ink:#3d6dd3;
+  --a11y-acc-bg:#4377e6;
+  --a11y-acc-on:#0c0d10;
+  --a11y-status-fg:#72757b;
+  --a11y-status-strong:#61666b;
+}
+
+/* claude-code（底色 #1a1915；文字可能落在這幾個底色上：#1a1915 #151410 #211f1a）
+     --fg3               #6d685d → #8c877d（4.6:1，混 25%）
+     --a11y-acc-ink      #d97757 → #d97757（5.27:1）
+     --a11y-acc-bg       #d97757 → #d97757（6.22:1，dark）
+     --a11y-acc-on       #0c0d10 → #0c0d10（6.22:1）
+     --a11y-status-fg    #6d685d → #817d74（4.61:1）
+     --a11y-status-strong#a8a294 → #a8a294（7.42:1）
+ */
+:root[data-theme="claude-code"]{
+  --fg3:#8c877d;
+  --a11y-acc-ink:#d97757;
+  --a11y-acc-bg:#d97757;
+  --a11y-acc-on:#0c0d10;
+  --a11y-status-fg:#817d74;
+  --a11y-status-strong:#a8a294;
+}
+
+/* claude（底色 #faf9f5；文字可能落在這幾個底色上：#faf9f5 #f2f0e9 #ffffff）
+     --fg3               #98937f → #6f6b5d（4.67:1，混 39%）
+     --a11y-acc-ink      #c96442 → #a4573c（4.6:1，混 24%）
+     --a11y-acc-bg       #c96442 → #c96442（4.98:1，dark）
+     --a11y-acc-on       #0c0d10 → #0c0d10（4.98:1）
+     --a11y-status-fg    #8b8675 → #6c695b（4.68:1）
+     --a11y-status-strong#615d51 → #615d51（5.56:1）
+ */
+:root[data-theme="claude"]{
+  --fg3:#6f6b5d;
+  --a11y-acc-ink:#a4573c;
+  --a11y-acc-bg:#c96442;
+  --a11y-acc-on:#0c0d10;
+  --a11y-status-fg:#6c695b;
+  --a11y-status-strong:#615d51;
+}
+
+/* vscode（底色 #1e1e1e；文字可能落在這幾個底色上：#1e1e1e #252526）
+     --fg3               #6a6a6a → #8d8d8d（4.61:1，混 33%）
+     --a11y-acc-ink      #4fc1ff → #4fc1ff（7.59:1）
+     --a11y-acc-bg       #4fc1ff → #4fc1ff（9.63:1，dark）
+     --a11y-acc-on       #0c0d10 → #0c0d10（9.63:1）
+     --a11y-status-fg    #ffffff → #ffffff（4.51:1）
+     --a11y-status-strong#9d9d9d → #ffffff（4.51:1）
+ */
+:root[data-theme="vscode"]{
+  --fg3:#8d8d8d;
+  --a11y-acc-ink:#4fc1ff;
+  --a11y-acc-bg:#4fc1ff;
+  --a11y-acc-on:#0c0d10;
+  --a11y-status-fg:#ffffff;
+  --a11y-status-strong:#ffffff;
+}
+
+/* excel（底色 #ffffff；文字可能落在這幾個底色上：#ffffff #f3f3f3）
+     --fg3               #767676 → #6d6d6d（4.64:1，混 10%）
+     --a11y-acc-ink      #217346 → #217346（5.25:1）
+     --a11y-acc-bg       #217346 → #217346（5.82:1，white）
+     --a11y-acc-on       #ffffff → #ffffff（5.82:1）
+     --a11y-status-fg    #ffffff → #ffffff（5.82:1）
+     --a11y-status-strong#ffffff → #ffffff（5.82:1）
+ */
+:root[data-theme="excel"]{
+  --fg3:#6d6d6d;
+  --a11y-acc-ink:#217346;
+  --a11y-acc-bg:#217346;
+  --a11y-acc-on:#ffffff;
+  --a11y-status-fg:#ffffff;
+  --a11y-status-strong:#ffffff;
+}
+
+/* terminal（底色 #04070a；文字可能落在這幾個底色上：#04070a #050a0d #060d11）
+     --fg3               #2d7d63 → #388a6d（4.66:1，混 11%）
+     --a11y-acc-ink      #33ff99 → #33ff99（14.82:1）
+     --a11y-acc-bg       #33ff99 → #33ff99（14.72:1，dark）
+     --a11y-acc-on       #0c0d10 → #0c0d10（14.72:1）
+     --a11y-status-fg    #2d7d63 → #3a856c（4.62:1）
+     --a11y-status-strong#4fbf92 → #4fbf92（8.97:1）
+ */
+:root[data-theme="terminal"]{
+  --fg3:#388a6d;
+  --a11y-acc-ink:#33ff99;
+  --a11y-acc-bg:#33ff99;
+  --a11y-acc-on:#0c0d10;
+  --a11y-status-fg:#3a856c;
+  --a11y-status-strong:#4fbf92;
+}
+
+/* word（底色 #f4f4f4；文字可能落在這幾個底色上：#f4f4f4 #fbfbfb #ffffff）
+     --fg3               #7d7d7d → #6e6e6e（4.63:1，混 16%）
+     --a11y-acc-ink      #2b579a → #2b579a（6.51:1）
+     --a11y-acc-bg       #2b579a → #2b579a（7.16:1，white）
+     --a11y-acc-on       #ffffff → #ffffff（7.16:1）
+     --a11y-status-fg    #ffffff → #ffffff（7.16:1）
+     --a11y-status-strong#ffffff → #ffffff（7.16:1）
+ */
+:root[data-theme="word"]{
+  --fg3:#6e6e6e;
+  --a11y-acc-ink:#2b579a;
+  --a11y-acc-bg:#2b579a;
+  --a11y-acc-on:#ffffff;
+  --a11y-status-fg:#ffffff;
+  --a11y-status-strong:#ffffff;
+}
+
+/* ══ 套用：只覆蓋 ui-lint 點名的那幾個元素 ═══════════════════ */
+
+/* 分頁「選中」用 accent 當字色（claude 3.1:1、dsh-light 4.1:1 → 拉暗一階） */
+:root[data-shell="dsh"] .head-tabs > .head-tab.on{color:var(--a11y-acc-ink)}
+
+/* 主鍵：實心 accent 底 + 白字（白字在淺色 accent 上只有 2.3–4.2:1 → 換成算過的組合） */
+:root[data-shell="dsh"] .dt-btn.primary{
+  background:var(--a11y-acc-bg);border-color:var(--a11y-acc-bg);color:var(--a11y-acc-on);
+}
+:root[data-shell="dsh"] .dt-btn.primary:hover{
+  background:var(--a11y-acc-bg);border-color:var(--a11y-acc-bg);color:var(--a11y-acc-on);
+}
+/* 送出一樣是 accent 底（圖示不是文字，但對比一樣要夠） */
+:root[data-shell="dsh"] .composer .hint-btn[data-act="send"]{
+  background:var(--a11y-acc-bg);color:var(--a11y-acc-on);
+}
+
+/* 狀態列：底色是實色的主題（vscode/excel/word 的藍與綠、claude 的米色），
+   原本吃 --fg3／--fg2，在飽和底色上只有 1.2–3.4:1 → 改用對底色算過的字色 */
+:root[data-shell="dsh"] .statusbar,
+:root[data-shell="dsh"] .statusbar .sb-item{color:var(--a11y-status-fg)}
+:root[data-shell="dsh"] .statusbar #sbChapter,
+:root[data-shell="dsh"] .statusbar .sb-item.branch{color:var(--a11y-status-strong)}

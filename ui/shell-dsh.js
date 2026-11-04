@@ -99,8 +99,29 @@
       tocBtn.dataset.bound = '1';
       tocBtn.addEventListener('click', function () {
         var app = document.querySelector('.app');
+        // 窄視窗（<1024）：右欄是浮層抽屜，開關用 .toc-open（不佔中欄寬度）
+        if (window.innerWidth < 1024) {
+          app.classList.toggle('toc-open');
+          return;
+        }
+        app.classList.remove('toc-open');
         app.dataset.toc = app.dataset.toc === '0' ? '1' : '0';
         layoutPass();
+      });
+    }
+    // 抽屜模式：點章節、點遮罩就關
+    if (!document.__moyuTocBound) {
+      document.__moyuTocBound = 1;
+      document.addEventListener('click', function (e) {
+        var app = document.querySelector('.app');
+        if (!app || !app.classList.contains('toc-open')) return;
+        if (e.target.closest && (e.target.closest('#tree .ch') || e.target.closest('#tocBtn'))) return;
+        app.classList.remove('toc-open');
+      });
+      document.addEventListener('keydown', function (e) {
+        if (e.key !== 'Escape') return;
+        var app = document.querySelector('.app');
+        if (app) app.classList.remove('toc-open');
       });
     }
     var brandToggle = $('#brandToggle');
@@ -138,8 +159,9 @@
       : clamp(num('--dsh-sidebar-w', 280), num('--dsh-sidebar-min', 264), num('--dsh-sidebar-max', 420));
     var available = vw - s - num('--dsh-right-reserve', 400);
     var wantRight = app.dataset.toc !== '0';
+    var overlay = narrow;   // <1024：右欄是浮層抽屜，不佔中欄寬度（CSS 的 @media 負責定位）
     var r = 0;
-    if (wantRight && available >= 300) {
+    if (!overlay && wantRight && available >= 300) {
       // DSH 的公式是 clamp(45% 視窗, 300, 70% 視窗)；但那是給「文件／變更」預覽用的寬度，
       // 這裡的右欄是章節清單，用真值下限 300（= --dsh-right-min）才不會把正文擠到 512px。
       // 想回到 45% 就把下面這行換成 clamp(ratio*vw, min, max) 那版。
@@ -151,7 +173,10 @@
       num('--dsh-content-min', 680), num('--dsh-content-max', 920));
 
     app.classList.toggle('side-rail', rail);
-    app.classList.toggle('toc-collapsed', r === 0);
+    app.classList.toggle('toc-overlay', overlay);
+    // 抽屜模式不能用 toc-collapsed（那是 display:none，抽屜就開不起來）
+    app.classList.toggle('toc-collapsed', !overlay && r === 0);
+    if (!overlay) app.classList.remove('toc-open');
     app.style.setProperty('--dsh-col-side', s + 'px');
     app.style.setProperty('--dsh-col-right', r + 'px');
     app.style.setProperty('--dsh-content-w', content + 'px');
