@@ -145,3 +145,23 @@
 ## 測試現況（`node tools/check-all.js`）
 13 套全綠：自檢、桌機開機+設定、設定持久化、連讀+記住進度、**一次滑動只接一章**、書架（真帳號）、
 **全按鈕**、**頂欄與更多選單**、視窗記憶、手機後端、手機 PWA、**雲端熱更新**、**對話界面驗收**。
+
+## DSH 外殼＝真值（2026-11-04，JOJO 定的「不准近似」）
+- **唯一真值 `docs/DSH-真值.json`**（從 `E:\DeepSeek\resources\app.asar` 的
+  `dsh-client-ui-layout/sidebar/conversation/chat/theme` 解析，每項都有 `src`）。
+  `ui/theme.css`／`ui/index.html` 不准再手寫 px；要改數字就
+  `node tools/dsh-truth.js` → `node tools/dsh-tokens.js`（產生 `ui/dsh-tokens.css` 的 `--dsh-*`）。
+- 關鍵真值：側欄 **280**（264–420）、收合軌 **56**、**<1024 自動收合**、右欄下限 **300**、
+  側欄內距 `6px 12px`、品牌列 **60**、新對話 **38**、面板列 **36**、圖示 **28**、溢出選單 **288**、
+  頂欄 `min-height 76`＋`padding 10/28/0/20`、輸入卡片圓角 **28**、輸入框 `min-height 36`、
+  內容寬 `clamp(680px, 64%, 920px)`、圓角 4/8/12/16/20/28、正文 **14/24**。
+- 骨架：側欄（品牌列→新對話→插件/自動化任務/更多→最近→底部設置列）｜中欄（頂欄 76 含
+  `對話/原文` tab＋stream＋輸入卡片）｜右欄 `#tocPanel`（**章節樹 `#tree` 已搬到右欄**，側欄放最近讀過的書）。
+  `ui/shell-dsh.js` 按 DSH `computeColumns` 算三欄寬（`--dsh-col-side/right`、`--dsh-content-w`）。
+- 閘門：`node tools/layout-gate.js`（17 項 ±2px，`--selftest` 先自證量測引擎誤差 0）已接進 `check-all` 第 2 步；
+  `node tools/click-check.js` 會把介面每個能點的東西點一遍（dev 版 e2e-buttons，不用先打包）。
+- 刻意偏離（別當 bug）：右欄用真值下限 300 而非 DSH 的 45% 視窗（目錄是清單，45% 會把正文擠到 512）；
+  `#pillReviews`/`#bossBtn` 開機被 `chrome.js` 的 `sweep()` 收進「更多」（JOJO 要頂欄只留四顆）。
+- **`ui/index.html` 現在也要過 `disguise-gate`**：外殼文字不准有 目錄/書架/第 N 章/閱讀器，
+  所以右欄叫「文件」、狀態列寫 `614 / 1359`。文件：`docs/DSH外殼_20261104.md`。
+

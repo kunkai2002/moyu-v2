@@ -1,0 +1,685 @@
+{
+  "meta": {
+    "what": "DeepSeek Harness（DSH）真實版面數值。魔芋一夏的 DSH 外殼只准讀這份，不准手寫近似值。",
+    "asar": "E:/DeepSeek/resources/app.asar",
+    "asarMtime": "2026-10-29T14:02:52.000Z",
+    "extractedAt": "2026-11-04T06:42:41.477Z",
+    "how": "node tools/dsh-truth.js（從 asar 內的 client.js CSS 字串與 JS 常數解析）",
+    "packages": [
+      "@deepseek-ai/dsh-client-ui-layout",
+      "@deepseek-ai/dsh-client-ui-sidebar",
+      "@deepseek-ai/dsh-client-ui-conversation",
+      "@deepseek-ai/dsh-client-ui-chat",
+      "@deepseek-ai/dsh-client-ui-theme"
+    ],
+    "rules": [
+      "每個值都有 src（套件 :: 選擇器或常數），沒有出處就不准加。",
+      "「近似值」不算真值：解析不到就讓 tools/dsh-truth.js 紅燈，不要自己填。"
+    ]
+  },
+  "geometry": {
+    "frame": {
+      "sidebarWidth": {
+        "value": 280,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: sidebarPreference",
+        "note": "側欄預設寬（不是 248px）"
+      },
+      "sidebarMin": {
+        "value": 264,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: clampWidth(sidebar,264,420)"
+      },
+      "sidebarMax": {
+        "value": 420,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: clampWidth(sidebar,264,420)"
+      },
+      "railWidth": {
+        "value": 56,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: computeColumns(collapsedWidth = 56)",
+        "note": "收合時的圖示軌"
+      },
+      "autoCollapse": {
+        "value": 1024,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: SIDEBAR_AUTO_COLLAPSE",
+        "note": "視窗小於這個寬度就自動收成軌"
+      },
+      "rightbarMin": {
+        "value": 300,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: clampWidth(rightbar,300,...)"
+      },
+      "rightbarRatio": {
+        "value": 0.45,
+        "unit": "ratio",
+        "src": "dsh-client-ui-layout :: RIGHTBAR_DEFAULT_RATIO"
+      },
+      "rightbarMaxRatio": {
+        "value": 0.7,
+        "unit": "ratio",
+        "src": "dsh-client-ui-layout :: RIGHTBAR_MAX_RATIO"
+      },
+      "rightbarReserve": {
+        "value": 400,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: available = viewport - s - 400"
+      },
+      "sidebarBorder": {
+        "value": ".5px solid var(--dsw-alias-border-l3)",
+        "src": "dsh-client-ui-layout :: .mP3x-q_sidebarCol"
+      },
+      "handleWidth": {
+        "value": 8,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: .mP3x-q_handle"
+      },
+      "handleOverlap": {
+        "value": 4,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: .mP3x-q_handle margin-left"
+      },
+      "leadingSeatTop": {
+        "value": 11,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: .mP3x-q_leadingSeat"
+      },
+      "leadingSeatLeft": {
+        "value": 88,
+        "unit": "px",
+        "src": "dsh-client-ui-layout :: .mP3x-q_leadingSeat"
+      }
+    },
+    "sidebar": {
+      "padding": {
+        "value": "6px var(--dsh-sidebar-inline-padding)",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_root"
+      },
+      "inlinePadding": {
+        "value": 12,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: --dsh-sidebar-inline-padding"
+      },
+      "fontSize": {
+        "value": 14,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_root"
+      },
+      "topStripHeight": {
+        "value": 52,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_topStrip"
+      },
+      "logoRowHeight": {
+        "value": 60,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_logoRow"
+      },
+      "logoRowGap": {
+        "value": 8,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_logoRow"
+      },
+      "brandIdentityHeight": {
+        "value": 24,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_brandIdentity"
+      },
+      "brandFontSize": {
+        "value": 18,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_brandName"
+      },
+      "brandLineHeight": {
+        "value": 24,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_brandName"
+      },
+      "brandWeight": {
+        "value": 600,
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_brandName"
+      },
+      "iconButtonSize": {
+        "value": 28,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_iconButton"
+      },
+      "newSessionHeight": {
+        "value": 38,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_newSession"
+      },
+      "newSessionMargin": {
+        "value": "0 2px 12px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_newSession"
+      },
+      "newSessionPadding": {
+        "value": "8px 12px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_newSession"
+      },
+      "newSessionBorder": {
+        "value": ".5px solid var(--dsw-alias-border-l3)",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_newSession"
+      },
+      "newSessionFontSize": {
+        "value": 14,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_newSession"
+      },
+      "newSessionLineHeight": {
+        "value": 22,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_newSession"
+      },
+      "newSessionWeight": {
+        "value": 500,
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_newSession"
+      },
+      "panelListGap": {
+        "value": 2,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_panelList"
+      },
+      "panelListBottom": {
+        "value": 8,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_panelList"
+      },
+      "panelRowMinHeight": {
+        "value": 36,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_panelRow"
+      },
+      "panelRowPadding": {
+        "value": "7px 8px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_panelRow"
+      },
+      "panelRowMargin": {
+        "value": "0 2px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_panelRow"
+      },
+      "panelRowGap": {
+        "value": 8,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_panelRow"
+      },
+      "panelRowLineHeight": {
+        "value": 22,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_panelRow"
+      },
+      "moreMenuWidth": {
+        "value": 288,
+        "unit": "px",
+        "src": "dsh-client-ui-sidebar :: .wtg9ga_moreMenu"
+      }
+    },
+    "header": {
+      "minHeight": {
+        "value": 76,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .an3WzG_header"
+      },
+      "padding": {
+        "value": "10px 28px 0 20px",
+        "src": "dsh-client-ui-conversation :: .an3WzG_header"
+      },
+      "borderBottom": {
+        "value": ".5px solid var(--dsw-alias-border-l3)",
+        "src": "dsh-client-ui-conversation :: .an3WzG_header"
+      },
+      "leadingGap": {
+        "value": 8,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .an3WzG_headerLeading"
+      },
+      "utilitiesMarginLeft": {
+        "value": 20,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .an3WzG_headerUtilities"
+      },
+      "cornerMarginRight": {
+        "value": 16,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .an3WzG_headerCorner"
+      }
+    },
+    "composer": {
+      "radius": {
+        "value": "var(--dsw-radius-panel)",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_card",
+        "note": "= --dsw-radius-panel 28px"
+      },
+      "background": {
+        "value": "var(--dsw-specific-input-major)",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_card"
+      },
+      "boxShadow": {
+        "value": "var(--dsw-elevation-soft)",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_card"
+      },
+      "gap": {
+        "value": 12,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_card"
+      },
+      "paddingTop": {
+        "value": 8,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_card"
+      },
+      "fontSize": {
+        "value": "var(--dsh-content-font-size,14px)",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_card"
+      },
+      "lineHeight": {
+        "value": "calc(24px + var(--dsh-content-font-delta,0px))",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_card"
+      },
+      "inputMinHeight": {
+        "value": 36,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_input"
+      },
+      "inputHeroMinHeight": {
+        "value": 52,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_hero .GRgSLq_input"
+      },
+      "inputPadding": {
+        "value": "4px 8px 0 14px",
+        "src": "dsh-client-ui-conversation :: .GRgSLq_input"
+      },
+      "sideClearance": {
+        "value": 16,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: --dsh-composer-side-clearance"
+      },
+      "dockInset": {
+        "value": 8,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: --dsh-composer-dock-inset"
+      },
+      "stackGap": {
+        "value": 6,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: --dsh-composer-stack-gap"
+      },
+      "textMaxHeight": {
+        "value": 336,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: --dsh-composer-text-max-height"
+      },
+      "maxWidthExtra": {
+        "value": 32,
+        "unit": "px",
+        "src": "dsh-client-ui-conversation :: --dsh-composer-card-max-width"
+      },
+      "contentWidth": {
+        "value": "clamp(680px, .64 × 欄寬, 920px)",
+        "src": "dsh-client-ui-conversation :: --dsh-chat-content-width"
+      }
+    },
+    "tokens": {
+      "radius": {
+        "xs": {
+          "value": 4,
+          "unit": "px",
+          "src": "dsh-client-ui-theme :: base.css --dsw-radius-xs"
+        },
+        "sm": {
+          "value": 8,
+          "unit": "px",
+          "src": "dsh-client-ui-theme :: base.css --dsw-radius-sm"
+        },
+        "md": {
+          "value": 12,
+          "unit": "px",
+          "src": "dsh-client-ui-theme :: base.css --dsw-radius-md"
+        },
+        "lg": {
+          "value": 16,
+          "unit": "px",
+          "src": "dsh-client-ui-theme :: base.css --dsw-radius-lg"
+        },
+        "xl": {
+          "value": 20,
+          "unit": "px",
+          "src": "dsh-client-ui-theme :: base.css --dsw-radius-xl"
+        },
+        "panel": {
+          "value": 28,
+          "unit": "px",
+          "src": "dsh-client-ui-theme :: base.css --dsw-radius-panel"
+        }
+      },
+      "transition": {
+        "base": {
+          "value": ".2s",
+          "src": "dsh-client-ui-theme :: --ds-transition-duration"
+        },
+        "fast": {
+          "value": ".1s",
+          "src": "dsh-client-ui-theme :: --ds-transition-duration-fast"
+        },
+        "slow": {
+          "value": ".3s",
+          "src": "dsh-client-ui-theme :: --ds-transition-duration-slow"
+        },
+        "ease": {
+          "value": "cubic-bezier(.4, 0, .2, 1)",
+          "src": "dsh-client-ui-theme :: --ds-ease-in-out"
+        }
+      },
+      "font": {
+        "textFamily": {
+          "value": "-apple-system, BlinkMacSystemFont, \\\"Segoe UI\\\", \\\"PingFang SC\\\", \\\"Hiragino Sans GB\\\", \\\"Microsoft YaHei\\\", \\\"Helvetica Neue\\\", Helvetica, Arial, sans-serif",
+          "src": "dsh-client-ui-theme :: base.css --dsh-font-family-text-default"
+        },
+        "codeFamily": {
+          "value": "\\\"SF Mono\\\", \\\"JetBrains Mono\\\", \\\"Fira Code\\\", Consolas, \\\"Liberation Mono\\\", Menlo, Courier, \\\"PingFang SC\\\", \\\"Microsoft YaHei\\\"",
+          "src": "dsh-client-ui-theme :: base.css --dsh-font-family-code-default"
+        },
+        "contentSize": {
+          "value": "14px",
+          "src": "dsh-client-ui-theme :: --dsh-content-font-size 預設"
+        },
+        "codeSize": {
+          "value": "11px",
+          "src": "dsh-client-ui-theme :: --dsh-code-font-size 預設"
+        },
+        "markdownBase": {
+          "value": "var(--dsh-content-font-size,14px) / calc(24px + var(--dsh-content-font-delta)) var(--dsw-font-family)",
+          "src": "dsh-client-ui-theme :: --dsw-font-markdown-base",
+          "note": "正文：14px / 24px / 400"
+        },
+        "markdownBaseLineHeight": {
+          "value": 24,
+          "unit": "px",
+          "src": "dsh-client-ui-theme :: --dsw-font-markdown-base-line-height"
+        },
+        "markdownH1": {
+          "value": "700 calc(21px + var(--dsh-content-font-delta)) / calc(30px + var(--dsh-content-font-delta)) var(--dsw-font-family)",
+          "src": "dsh-client-ui-theme :: --dsw-font-markdown-h1"
+        },
+        "markdownH2": {
+          "value": "700 calc(19px + var(--dsh-content-font-delta)) / calc(28px + var(--dsh-content-font-delta)) var(--dsw-font-family)",
+          "src": "dsh-client-ui-theme :: --dsw-font-markdown-h2"
+        },
+        "markdownH3": {
+          "value": "700 calc(18px + var(--dsh-content-font-delta)) / calc(26px + var(--dsh-content-font-delta)) var(--dsw-font-family)",
+          "src": "dsh-client-ui-theme :: --dsw-font-markdown-h3"
+        }
+      }
+    }
+  },
+  "colors": {
+    "light": {
+      "bg-base": {
+        "static": "neutral-bluish-00",
+        "hex": "#fff"
+      },
+      "bg-layer-1": {
+        "static": "neutral-bluish-00",
+        "hex": "#fff"
+      },
+      "bg-layer-2": {
+        "static": "neutral-bluish-00",
+        "hex": "#fff"
+      },
+      "bg-overlay": {
+        "static": "neutral-bluish-150",
+        "hex": "#e9ecf2"
+      },
+      "bg-module-platform": {
+        "static": "neutral-bluish-60",
+        "hex": "#f9fafb"
+      },
+      "border-l1": {
+        "raw": "#0000000a",
+        "hex": "#0000000a"
+      },
+      "border-l2": {
+        "raw": "#0000001a",
+        "hex": "#0000001a"
+      },
+      "border-l3": {
+        "raw": "#0000001f",
+        "hex": "#0000001f"
+      },
+      "border-l4": {
+        "raw": "#00000029",
+        "hex": "#00000029"
+      },
+      "label-primary": {
+        "static": "neutral-bluish-1000",
+        "hex": "#0f1115"
+      },
+      "label-secondary": {
+        "static": "neutral-bluish-700",
+        "hex": "#61666b"
+      },
+      "label-tertiary": {
+        "static": "neutral-bluish-600",
+        "hex": "#81858c"
+      },
+      "label-caption": {
+        "static": "neutral-bluish-400",
+        "hex": "#adb2b8"
+      },
+      "label-dimmed": {
+        "static": "neutral-bluish-200",
+        "hex": "#e1e5ee"
+      },
+      "brand-primary": {
+        "static": "neutral-bluish-1000",
+        "hex": "#0f1115"
+      },
+      "state-business-primary": {
+        "static": "deepseek-500",
+        "hex": "#4176e6"
+      },
+      "interactive-bg-hover": {
+        "raw": "#2631480f",
+        "hex": "#2631480f"
+      },
+      "button-elevated-fill": {
+        "static": "neutral-bluish-00",
+        "hex": "#fff"
+      },
+      "button-floating-hover": {
+        "static": "neutral-bluish-75",
+        "hex": "#f1f3f5"
+      }
+    },
+    "dark": {
+      "bg-base": {
+        "static": "neutral-bluish-950",
+        "hex": "#151517"
+      },
+      "bg-layer-1": {
+        "static": "neutral-bluish-875",
+        "hex": "#232324"
+      },
+      "bg-layer-2": {
+        "static": "neutral-bluish-850",
+        "hex": "#2c2c2e"
+      },
+      "bg-overlay": {
+        "static": "neutral-bluish-700",
+        "hex": "#61666b"
+      },
+      "bg-module-platform": {
+        "static": "neutral-bluish-800",
+        "hex": "#353638"
+      },
+      "border-l1": {
+        "raw": "#ffffff0f",
+        "hex": "#ffffff0f"
+      },
+      "border-l2": {
+        "raw": "#ffffff1f",
+        "hex": "#ffffff1f"
+      },
+      "border-l3": {
+        "raw": "#ffffff29",
+        "hex": "#ffffff29"
+      },
+      "border-l4": {
+        "raw": "#fff3",
+        "hex": "#fff3"
+      },
+      "label-primary": {
+        "static": "neutral-bluish-50",
+        "hex": "#f9fafb"
+      },
+      "label-secondary": {
+        "static": "neutral-bluish-300",
+        "hex": "#cfd3d6"
+      },
+      "label-tertiary": {
+        "static": "neutral-bluish-400",
+        "hex": "#adb2b8"
+      },
+      "label-caption": {
+        "static": "neutral-bluish-600",
+        "hex": "#81858c"
+      },
+      "label-dimmed": {
+        "static": "neutral-bluish-750",
+        "hex": "#43454a"
+      },
+      "brand-primary": {
+        "static": "neutral-bluish-50",
+        "hex": "#f9fafb"
+      },
+      "state-business-primary": {
+        "static": "deepseek-400",
+        "hex": "#7aaaff"
+      },
+      "interactive-bg-hover": {
+        "raw": "#ffffff14",
+        "hex": "#ffffff14"
+      },
+      "button-elevated-fill": {
+        "static": "neutral-bluish-750",
+        "hex": "#43454a"
+      },
+      "button-floating-hover": {
+        "static": "neutral-bluish-800",
+        "hex": "#353638"
+      }
+    }
+  },
+  "specifics": {
+    "light": {
+      "sidebar-fill": {
+        "static": "neutral-bluish-50",
+        "hex": "#f9fafb"
+      },
+      "input-major": {
+        "static": "neutral-bluish-00",
+        "hex": "#fff"
+      },
+      "selector": {
+        "static": "neutral-bluish-60",
+        "hex": "#f9fafb"
+      }
+    },
+    "dark": {
+      "sidebar-fill": {
+        "static": "neutral-bluish-900",
+        "hex": "#1b1b1c"
+      },
+      "input-major": {
+        "static": "neutral-bluish-850",
+        "hex": "#2c2c2e"
+      },
+      "selector": {
+        "static": "neutral-bluish-800",
+        "hex": "#353638"
+      }
+    }
+  },
+  "palette": {
+    "amber-100": "#fef5e7",
+    "amber-400": "#f7ad31",
+    "amber-500": "#f59e0b",
+    "amber-600": "#dd8629",
+    "amber-900": "#27241f",
+    "blue-100": "#dbeafe",
+    "blue-300": "#93c5fd",
+    "blue-400": "#60a5fa",
+    "blue-450": "#4d93f8",
+    "blue-500": "#3b82f6",
+    "blue-50": "#eff6ff",
+    "blue-50p": "#eaf3ff",
+    "blue-600": "#2563eb",
+    "blue-75": "#e5f0ff",
+    "blue-800": "#1e40af",
+    "blue-900": "#0e3074",
+    "blue-950": "#172554",
+    "deepseek-100": "#e4edfd",
+    "deepseek-200": "#d3e2ff",
+    "deepseek-300": "#b7c8fe",
+    "deepseek-400": "#7aaaff",
+    "deepseek-450": "#5686fe",
+    "deepseek-500": "#4176e6",
+    "deepseek-50": "#edf3fe",
+    "deepseek-600": "#4868b2",
+    "deepseek-700-delete": "#2f4c8f",
+    "deepseek-800": "#34415b",
+    "deepseek-900": "#283142",
+    "green-100": "#e6faed",
+    "green-400": "#4ed17e",
+    "green-500": "#22c55e",
+    "green-500-a08": "#22c55e14",
+    "green-500-a12": "#22c55e1f",
+    "green-900": "#233c2c",
+    "neutral-00": "#fff",
+    "neutral-1000": "#000",
+    "neutral-100": "#f5f5f5",
+    "neutral-150": "#ededed",
+    "neutral-200": "#e5e5e5",
+    "neutral-250": "#dcdcdc",
+    "neutral-300": "#d4d4d4",
+    "neutral-400": "#a2a4a6",
+    "neutral-500": "#7f8287",
+    "neutral-50": "#fafafa",
+    "neutral-550": "#65676b",
+    "neutral-600": "#545557",
+    "neutral-700": "#3c3c3d",
+    "neutral-800": "#292929",
+    "neutral-850": "#212123",
+    "neutral-900": "#0f0f0f",
+    "neutral-bluish-00": "#fff",
+    "neutral-bluish-1000": "#0f1115",
+    "neutral-bluish-100": "#ebeef2",
+    "neutral-bluish-150": "#e9ecf2",
+    "neutral-bluish-200": "#e1e5ee",
+    "neutral-bluish-300": "#cfd3d6",
+    "neutral-bluish-400": "#adb2b8",
+    "neutral-bluish-500": "#979da6",
+    "neutral-bluish-50": "#f9fafb",
+    "neutral-bluish-600": "#81858c",
+    "neutral-bluish-60": "#f9fafb",
+    "neutral-bluish-700": "#61666b",
+    "neutral-bluish-750": "#43454a",
+    "neutral-bluish-75": "#f1f3f5",
+    "neutral-bluish-800": "#353638",
+    "neutral-bluish-850": "#2c2c2e",
+    "neutral-bluish-875": "#232324",
+    "neutral-bluish-900": "#1b1b1c",
+    "neutral-bluish-950": "#151517",
+    "red-100": "#fee2e2",
+    "red-400": "#f25a5a",
+    "red-400-a12": "#f25a5a1f",
+    "red-500": "#ef4444",
+    "red-50": "#fef2f2",
+    "red-600": "#ec1313",
+    "red-600-a08": "#ec131314",
+    "red-900": "#570c0c"
+  }
+}

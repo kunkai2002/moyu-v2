@@ -1,0 +1,138 @@
+/* 由 tools/dsh-tokens.js 從 docs/DSH-真值.json 產生，請勿手改。
+   真值出處：E:/DeepSeek/resources/app.asar（2026-10-29）
+   重新產生：node tools/dsh-truth.js && node tools/dsh-tokens.js */
+
+:root{
+  /* ── 骨架（三欄）── */
+  --dsh-sidebar-w:280px;
+  --dsh-sidebar-min:264px;
+  --dsh-sidebar-max:420px;
+  --dsh-rail-w:56px;
+  --dsh-auto-collapse:1024px;
+  --dsh-right-min:300px;
+  --dsh-right-ratio:0.45;
+  --dsh-right-max-ratio:0.7;
+  --dsh-right-reserve:400px;
+  --dsh-handle-w:8px;
+  --dsh-handle-overlap:4px;
+
+  /* ── 側欄 ── */
+  --dsh-side-pad:6px var(--dsh-sidebar-inline-padding);
+  --dsh-side-inline:12px;
+  --dsh-side-font:14px;
+  --dsh-topstrip-h:52px;
+  --dsh-logo-h:60px;
+  --dsh-logo-gap:8px;
+  --dsh-brand-h:24px;
+  --dsh-brand-size:18px;
+  --dsh-brand-lh:24px;
+  --dsh-brand-weight:600;
+  --dsh-icon:28px;
+  --dsh-new-h:38px;
+  --dsh-new-margin:0 2px 12px;
+  --dsh-new-pad:8px 12px;
+  --dsh-new-border:.5px solid var(--dsw-alias-border-l3);
+  --dsh-new-size:14px;
+  --dsh-new-lh:22px;
+  --dsh-new-weight:500;
+  --dsh-panels-gap:2px;
+  --dsh-panels-mb:8px;
+  --dsh-row-h:36px;
+  --dsh-row-pad:7px 8px;
+  --dsh-row-margin:0 2px;
+  --dsh-row-gap:8px;
+  --dsh-row-lh:22px;
+  --dsh-menu-w:288px;
+
+  /* ── 頂欄 ── */
+  --dsh-head-h:76px;
+  --dsh-head-pad:10px 28px 0 20px;
+  --dsh-head-gap:8px;
+  --dsh-head-utils-ml:20px;
+  --dsh-head-corner-mr:-16pxpx;
+
+  /* ── 輸入卡片 ── */
+  --dsh-card-r:28px;
+  --dsh-card-gap:12px;
+  --dsh-card-pad-top:8px;
+  --dsh-input-h:36px;
+  --dsh-input-hero-h:52px;
+  --dsh-input-pad:4px 8px 0 14px;
+  --dsh-clearance:16px;
+  --dsh-inset:8px;
+  --dsh-stack-gap:6px;
+  --dsh-text-max:336px;
+  --dsh-card-extra:32px;
+  --dsh-content-min:680px;
+  --dsh-content-ratio:0.64;
+  --dsh-content-max:920px;
+
+  /* ── 圓角／字／動效代幣 ── */
+  --dsh-radius-xs:4px;
+  --dsh-radius-sm:8px;
+  --dsh-radius-md:12px;
+  --dsh-radius-lg:16px;
+  --dsh-radius-xl:20px;
+  --dsh-radius-panel:28px;
+  --dsh-dur:.2s;
+  --dsh-dur-fast:.1s;
+  --dsh-dur-slow:.3s;
+  --dsh-ease:cubic-bezier(.4, 0, .2, 1);
+  --dsh-font:-apple-system, BlinkMacSystemFont, \"Segoe UI\", \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", \"Helvetica Neue\", Helvetica, Arial, sans-serif;
+  --dsh-font-code:\"SF Mono\", \"JetBrains Mono\", \"Fira Code\", Consolas, \"Liberation Mono\", Menlo, Courier, \"PingFang SC\", \"Microsoft YaHei\";
+  --dsh-content-size:14px;
+  --dsh-content-lh:24px;
+  --dsh-code-size:11px;
+}
+
+/* ── 顏色（DSH 深色 = [data-theme="dsh"]）── */
+:root[data-theme="dsh"]{
+  --dsh-color-bg:#151517;
+  --dsh-color-bg-side:#151517;
+  --dsh-color-bg-elev:#232324;
+  --dsh-color-sel:#2c2c2e;
+  --dsh-color-line:#ffffff0f;
+  --dsh-color-line-strong:#ffffff29;
+  --dsh-color-fg:#f9fafb;
+  --dsh-color-fg2:#cfd3d6;
+  --dsh-color-fg3:#adb2b8;
+  --dsh-color-acc:#7aaaff;
+  --dsh-color-sidebar-fill:#1b1b1c;
+  --dsh-color-input:#2c2c2e;
+  --dsh-color-selector:#353638;
+  --dsh-color-border-l2:#ffffff1f;
+  --dsh-color-border-l4:#fff3;
+  --dsh-color-hover:#ffffff14;
+  --dsh-color-elevated:#43454a;
+  --dsh-color-float-hover:#353638;
+  --dsh-color-caption:#81858c;
+  --dsh-color-dimmed:#43454a;
+  --dsh-color-module:#353638;
+  --dsh-color-overlay:#61666b;
+}
+
+:root[data-theme="dsh-light"]{
+  --dsh-color-bg:#fff;
+  --dsh-color-bg-side:#fff;
+  --dsh-color-bg-elev:#fff;
+  --dsh-color-sel:#fff;
+  --dsh-color-line:#0000000a;
+  --dsh-color-line-strong:#0000001f;
+  --dsh-color-fg:#0f1115;
+  --dsh-color-fg2:#61666b;
+  --dsh-color-fg3:#81858c;
+  --dsh-color-acc:#4176e6;
+  --dsh-color-sidebar-fill:#f9fafb;
+  --dsh-color-input:#fff;
+  --dsh-color-selector:#f9fafb;
+  --dsh-color-border-l2:#0000001a;
+  --dsh-color-border-l4:#00000029;
+  --dsh-color-hover:#2631480f;
+  --dsh-color-elevated:#fff;
+  --dsh-color-float-hover:#f1f3f5;
+  --dsh-color-caption:#adb2b8;
+  --dsh-color-dimmed:#e1e5ee;
+  --dsh-color-module:#f9fafb;
+  --dsh-color-overlay:#e9ecf2;
+}
+

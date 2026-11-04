@@ -10,6 +10,7 @@ const quick = process.argv.includes('--quick');
 
 const STEPS = [
   { name: '自檢（語法/DOM/打包）', cmd: 'node', args: ['tools/selfcheck.js'] },
+  { name: '幾何閘門（DSH 真值 ±2px）', cmd: 'node', args: ['tools/layout-gate.js'] },
   { name: '桌面版開機 + 設定/登入', cmd: 'node', args: ['tools/e2e-electron.js', APP] },
   { name: '設定持久化', cmd: 'node', args: ['tools/e2e-persist.js', APP] },
   { name: '連讀 + 記住進度', cmd: 'node', args: ['tools/e2e-flow.js', APP] },

@@ -4,8 +4,22 @@
   if (window.moyu) { window.moyuMode = 'electron'; return; }
   if (!/^https?:$/.test(location.protocol)) { window.moyuMode = 'file'; return; }
 
+  /* 鏡像站（Cloudflare Worker）要 Bearer：token 由網址 `#t=<token>` 帶進來，
+     存進 localStorage 後每一次 /api/* 都附上；本機 server.js 沒 token 就不帶。 */
+  const TOKEN_KEY = 'moyu.token';
+  const token = (() => {
+    try {
+      const m = /(?:^|[#&])t=([^&]+)/.exec(location.hash || '');
+      if (m) { localStorage.setItem(TOKEN_KEY, decodeURIComponent(m[1])); return decodeURIComponent(m[1]); }
+      return localStorage.getItem(TOKEN_KEY) || '';
+    } catch { return ''; }
+  })();
+  const authHeaders = token ? { Authorization: 'Bearer ' + token } : {};
+
   const api = async (path, opts) => {
-    const r = await fetch(path, opts);
+    const o = Object.assign({}, opts || {});
+    o.headers = Object.assign({}, authHeaders, o.headers || {});
+    const r = await fetch(path, o);
     const j = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`);
     return j;

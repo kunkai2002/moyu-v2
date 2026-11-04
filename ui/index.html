@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>~/work/api-server — node — 120×36</title>
+<link rel="stylesheet" href="dsh-tokens.css">
 <link rel="stylesheet" href="theme.css">
 </head>
 <body>
@@ -19,38 +20,43 @@
 </div>
 
 <div class="app">
-  <!-- ══ 側欄 ══ -->
+  <!-- ══ 側欄（DSH 三段式：品牌列 → 新對話 → 面板列 → 最近 → 底部登錄列）══ -->
   <aside class="side">
-    <div class="side-head">
-      <span class="side-title" id="sideTitle">工作區</span>
+    <div class="side-top">
       <span class="side-count" id="sideCount">611</span>
       <button class="ghost icon" id="themeBtn" title="切換主題">
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4v16" stroke="currentColor" stroke-width="1.6"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
       </button>
     </div>
 
-    <div class="proj" id="projRow" role="button" tabindex="0" title="回到書架">
-      <span class="proj-ico"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></span>
-      <span class="proj-name" id="bookName">停尸房兼职，搬出了前女友？</span>
+    <div class="side-brand">
+      <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></span>
+      <button class="brand-name" id="bookName" title="換一本">api-server</button>
+      <button class="ghost icon" id="brandToggle" title="收合側欄">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
     </div>
+
+    <button class="sa sa-new" id="saNew">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg>
+      <span>新對話</span>
+    </button>
 
     <div class="side-actions" id="sideActions">
-      <button class="sa" id="saNew"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg><span>新對話</span></button>
       <button class="sa" id="saPlug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3v6M15 3v6"/><rect x="6" y="9" width="12" height="8" rx="2"/><path d="M12 17v4"/></svg><span>插件</span></button>
       <button class="sa" id="saAuto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5"/><path d="M18 3v4h-4M6 21v-4h4"/></svg><span>自動化任務</span></button>
+      <button class="sa" id="saMore"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg><span>更多</span></button>
     </div>
 
-    <div class="tree" id="tree"><!-- 章節由 app.js 灌入 --></div>
+    <div class="side-region">
+      <div class="side-region-head"><span id="sideTitle">最近</span></div>
+      <div class="side-recent" id="sideRecent"><!-- 最近讀過的書：shell-dsh.js 灌入 --></div>
+    </div>
 
     <div class="side-foot">
-      <div class="find">
-        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8"/></svg>
-        <input id="chFilter" placeholder="篩選章節…" spellcheck="false" autocomplete="off">
-        <kbd>Ctrl+K</kbd>
-      </div>
-      <button class="me" id="meRow" title="設定">
+      <button class="me" id="meRow" title="設置">
         <span class="av" id="av">姜</span>
-        <span class="me-txt" id="meTxt">第 3 / 611 章</span>
+        <span class="me-txt" id="meTxt">614 / 1359</span>
         <span class="me-pct" id="mePct">1.2%</span>
       </button>
     </div>
@@ -61,13 +67,17 @@
     <div class="tabs" id="tabs"></div>
 
     <div class="topbar">
-      <span class="crumb" id="crumb">停尸房兼职，搬出了前女友？ / <b>第 3 章 信手拈来</b></span>
+      <span class="crumb" id="crumb">~/work/api-server / <b>src/gateway/report.ts</b></span>
       <span class="topbar-r">
         <button class="pill" id="pillReviews" title="註解">註解</button>
         <button class="ghost icon" id="bossBtn" title="老闆鍵 Alt+Q">
           <svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V7z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
       </span>
+      <div class="head-tabs" id="headTabs">
+        <button class="head-tab on" data-view="chat">對話</button>
+        <button class="head-tab" data-view="src">原文</button>
+      </div>
     </div>
 
     <div class="stream" id="stream"><!-- 對話由 app.js 灌入 --></div>
@@ -136,13 +146,30 @@
       <span class="sb-item" id="sbTime">⏱ 03:12</span>
       <span class="sb-item" id="sbTok">▍ 42 tok/s</span>
       <span class="sb-r">
-        <span class="sb-item" id="sbChapter">第 3 / 611 章</span>
+        <span class="sb-item" id="sbChapter">614 / 1359</span>
         <span class="sb-item">UTF-8</span>
         <span class="sb-item" id="sbCpu">CPU 12%</span>
         <span class="sb-item" id="sbNet">↑ 8ms ↓ 3ms</span>
       </span>
     </div>
   </main>
+
+  <!-- ══ 右側面板：目錄（DSH 的右欄，點章跳章）══ -->
+  <section class="dsh-right" id="tocPanel">
+    <div class="panel-head">
+      <b>文件</b>
+      <span class="toc-count" id="tocCount"></span>
+      <button class="ghost icon" id="tocBtn" title="收合文件">
+        <svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+    </div>
+    <div class="find">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8"/></svg>
+      <input id="chFilter" placeholder="篩選檔案…" spellcheck="false" autocomplete="off">
+      <kbd>Ctrl+K</kbd>
+    </div>
+    <div class="tree" id="tree"><!-- 章節由 app.js 灌入 --></div>
+  </section>
 </div>
 
 <!-- 主題選單 -->
@@ -179,5 +206,6 @@
 <script src="ghost.js"></script>
 <script src="settings-tabs.js"></script>
 <script src="palette.js"></script>
+<script src="shell-dsh.js"></script>
 </body>
 </html>
