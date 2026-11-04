@@ -313,6 +313,31 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       ? ok(`開章位置：停在章首（距頂 ${openPos.top}px，離底 ${openPos.gapToBottom}px）`)
       : bad('開章位置：還是跳到底', JSON.stringify(openPos)));
 
+  /* ── 命令面板（⌘K）：開得起來、搜得到、執行得到 ── */
+  const cmdk = await page.evaluate(async () => {
+    const C = window.__moyuCmdk;
+    if (!C) return { err: '沒有 __moyuCmdk' };
+    C.open();
+    await new Promise((r) => setTimeout(r, 120));
+    const opened = C.isOpen();
+    const count = C.items.length;
+    const first = C.items.slice(0, 6);
+    const inp = document.querySelector('#cmdkInput');
+    inp.value = '隱身';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 80));
+    const filtered = C.items.slice();
+    C.close();
+    await new Promise((r) => setTimeout(r, 80));
+    return { opened, count, first, filtered, closed: !C.isOpen() };
+  });
+  if (cmdk.err) bad('命令面板：沒載入', cmdk.err);
+  else {
+    cmdk.opened && cmdk.count >= 10 ? ok(`命令面板：${cmdk.count} 條命令（${cmdk.first.slice(0, 4).join('、')}…）`) : bad('命令面板：開不起來或命令太少', JSON.stringify(cmdk));
+    cmdk.filtered.length === 1 && /隱身/.test(cmdk.filtered[0]) ? ok('命令面板：搜尋會收斂') : bad('命令面板：搜尋沒收斂', JSON.stringify(cmdk.filtered));
+    cmdk.closed ? ok('命令面板：Esc／關閉正常') : bad('命令面板：關不掉');
+  }
+
   /* ── 設定面板：五分頁、版本號不留空括號 ── */
   const setPanel = await page.evaluate(async () => {
     document.querySelector('#panel') && (document.querySelector('#panel').hidden = true);

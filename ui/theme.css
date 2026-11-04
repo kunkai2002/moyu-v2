@@ -589,6 +589,24 @@ body.bossing .bosscreen{display:block}
 }
 .panel .btn:hover{background:var(--sel)}
 .panel .muted{color:var(--fg3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+/* 命令面板（⌘K） */
+.cmdk{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.36);
+  display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;font-family:var(--ui)}
+.cmdk[hidden]{display:none}
+.cmdk-card{width:min(560px,calc(100vw - 32px));background:var(--bg-elev);color:var(--fg);
+  border:1px solid var(--line-strong);border-radius:var(--r-md);box-shadow:var(--shadow-pop);overflow:hidden}
+.cmdk-in{width:100%;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--fg);
+  font:inherit;font-size:var(--fs-14);padding:14px 16px;outline:none}
+.cmdk-in::placeholder{color:var(--fg3)}
+.cmdk-list{max-height:min(46vh,360px);overflow:auto;padding:var(--sp-1)}
+.cmdk-row{display:flex;align-items:center;gap:var(--sp-3);padding:8px 10px;border-radius:var(--r-sm);cursor:pointer}
+.cmdk-row.on{background:var(--sel)}
+.cmdk-l{font-size:var(--fs-13);color:var(--fg)}
+.cmdk-h{margin-left:auto;font-size:var(--fs-11);color:var(--fg3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmdk-empty{padding:16px;color:var(--fg3);font-size:var(--fs-12)}
+.cmdk-foot{display:flex;gap:var(--sp-4);padding:8px 14px;border-top:1px solid var(--line);color:var(--fg3);font-size:var(--fs-11)}
+.cmdk-foot kbd{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:3px;padding:0 4px;margin-right:2px}
+
 /* 設定分頁 */
 .st-tabs{display:flex;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3) 0;
   border-bottom:1px solid var(--line);flex:none}
