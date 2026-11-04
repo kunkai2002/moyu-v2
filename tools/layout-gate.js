@@ -9,12 +9,18 @@
    自己如果有誤差，上面的 ±2px 全是假的。selftest 在合成頁量已知尺寸，誤差必須 0，才准報真實結果。
 
    用法：
-     node tools/layout-gate.js                    # 量 ui/ 真實渲染（無頭 Electron）
+     node tools/layout-gate.js                    # 量 ui/ 真實渲染（無頭 Electron，三輪視窗）
      node tools/layout-gate.js --selftest         # 只驗量測引擎（合成頁，容差 0）
      node tools/layout-gate.js --port=9357        # 換偵錯埠
      node tools/layout-gate.js --shell=dsh --theme=dsh-light
      node tools/layout-gate.js --theme=boot   # 不覆寫主題，量應用程式預設外觀
      node tools/layout-gate.js --tol=2        # 容差（預設 ±2px）
+
+   三輪視窗（V2）：
+     1440×900 基準（側欄 280、右欄 300、頂欄 76、正文 14/24、圓角代幣 …）
+     1024×768 臨界寬（頂欄還是 76；變 104 就是換行 bug）
+     900×800 收合（.side 56＝railWidth、#tree 不橫向溢出）
+
    報告：
      _probe/layout-gate.json            （真實量測）
      _probe/layout-gate-selftest.json   （引擎自檢）
@@ -123,6 +129,10 @@ function measureInPage(items) {
     }
     const rect = node.getBoundingClientRect();
     r.rect = { width: round4(rect.width), height: round4(rect.height), top: round4(rect.top), left: round4(rect.left) };
+    r.overflow = {
+      'overflow-x': node.scrollWidth - node.clientWidth,
+      'overflow-y': node.scrollHeight - node.clientHeight,
+    };
     if (it.computed && it.computed.length) {
       const cs = getComputedStyle(node);
       for (const p of it.computed) r.computed[p] = cs.getPropertyValue(p);
@@ -148,6 +158,11 @@ function buildRealSpec(truth) {
     id: 'sidebar-width', label: '側欄寬', selector: '.side', metric: 'rect',
     expect: { width: g.frame.sidebarWidth.value }, src: g.frame.sidebarWidth.src,
     note: 'data-shell=dsh',
+  });
+  add({
+    id: 'right-column-width', label: '右欄寬', selector: '[data-shell="dsh"] .dsh-right', metric: 'rect',
+    expect: { width: g.frame.rightbarMin.value }, src: g.frame.rightbarMin.src,
+    note: '目錄欄＝真值下限 300（DSH 公式 260→300）',
   });
   add({
     id: 'side-brand-height', label: '側欄品牌列高', selector: '.side-brand', metric: 'rect',
@@ -211,10 +226,38 @@ function buildRealSpec(truth) {
     },
     computed: ['font-size', 'line-height'],
     src: 'dsh-client-ui-theme :: --dsw-font-markdown-base 14px / 24px',
+    skin: true,
     inject: { into: '#stream', tag: 'div', cls: 'p', html: '樣本段落 Sample paragraph' },
   });
 
   return items;
+}
+
+/* V2：窄視窗／臨界寬度的版面契約（不是新真值，是同一份真值在不同視窗的落地） */
+function buildMidSpec(truth) {
+  const g = truth.geometry;
+  return [{
+    id: 'mid-topbar-height', label: '頂欄實際高（1024×768）', selector: '.topbar', metric: 'rect',
+    expect: { height: g.header.minHeight.value }, src: g.header.minHeight.src,
+    note: '1024 寬時應該是 76；變 104 就是頂欄換行 bug',
+  }];
+}
+
+function buildNarrowSpec(truth) {
+  const g = truth.geometry;
+  return [
+    {
+      id: 'rail-side-width', label: '收合軌寬', selector: '.side', metric: 'rect',
+      expect: { width: g.frame.railWidth.value }, src: g.frame.railWidth.src,
+      note: '視窗 900×800 < autoCollapse 1024 → 收成 56',
+    },
+    {
+      id: 'rail-tree-overflow', label: '清單橫向溢出', selector: '#tree', metric: 'overflow',
+      expect: { 'overflow-x': 0 }, tol: 1,
+      src: '版面契約：收合時清單不橫向溢出（scrollWidth − clientWidth ≤ 1）',
+      note: '900×800 時 #tree 不該出現橫向捲軸',
+    },
+  ];
 }
 
 function buildTokenSpec(truth) {
@@ -253,11 +296,12 @@ function loadTokens() {
    比對
    ────────────────────────────────────────────────────────────── */
 function evaluateItem(item, res, tol) {
+  const t = item.tol != null ? item.tol : tol;
   const out = {
     id: item.id, label: item.label, selector: item.selector, metric: item.metric,
     src: item.src || '', found: !!(res && res.found), injected: !!(res && res.injected),
-    pass: false, checks: [], rect: res ? res.rect : null,
-    computedRaw: res ? res.computed : null,
+    skin: !!item.skin, pass: false, checks: [], rect: res ? res.rect : null,
+    overflow: res ? res.overflow : null, computedRaw: res ? res.computed : null,
   };
   if (!out.found) {
     out.error = (res && res.error) || 'SELECTOR_MISSING';
@@ -269,10 +313,12 @@ function evaluateItem(item, res, tol) {
   let ok = true;
   for (const key of Object.keys(item.expect)) {
     const exp = item.expect[key];
-    const raw = item.metric === 'rect' ? (res.rect ? res.rect[key] : null) : (res.computed ? res.computed[key] : null);
-    const actual = item.metric === 'rect' ? raw : parseNum(raw);
+    const raw = item.metric === 'rect' ? (res.rect ? res.rect[key] : null)
+      : item.metric === 'overflow' ? (res.overflow ? res.overflow[key] : null)
+        : (res.computed ? res.computed[key] : null);
+    const actual = item.metric === 'computed' ? parseNum(raw) : raw;
     const diff = (actual == null) ? null : round2(actual - exp);
-    const good = actual != null && Math.abs(diff) <= tol;
+    const good = actual != null && Math.abs(diff) <= t;
     out.checks.push({ key, expect: exp, actual, diff, raw: raw == null ? null : String(raw), pass: good });
     if (!good) ok = false;
   }
@@ -378,23 +424,25 @@ function checkDiff(it) {
   return it.checks.map((c) => signed(c.diff)).join('/');
 }
 
+function printRow(it) {
+  const mark = it.pass ? '✅' : '❌';
+  const tag = it.injected ? '（注入樣本）' : '';
+  if (!it.found) {
+    console.log(mark + ' ' + pad(it.label, 24) + pad('—', 12) + pad('—', 12) + pad(it.note || '不存在', 22) + it.selector);
+    return;
+  }
+  console.log(mark + ' ' + pad(it.label + tag, 24)
+    + ' 真值 ' + pad(checkSummary(it), 12)
+    + ' 實測 ' + pad(checkActual(it), 12)
+    + ' 差 ' + pad(checkDiff(it), 10)
+    + shortSrc(it.src));
+}
+
 function printTable(items, title, subtitle) {
   console.log('\n════ ' + title + ' ════');
   for (const s of subtitle) console.log('  ' + s);
   console.log('');
-  for (const it of items) {
-    const mark = it.pass ? '✅' : '❌';
-    const tag = it.injected ? '（注入樣本）' : '';
-    if (!it.found) {
-      console.log(mark + ' ' + pad(it.label, 20) + pad('—', 10) + pad('—', 10) + pad(it.note || '不存在', 18) + it.selector);
-      continue;
-    }
-    console.log(mark + ' ' + pad(it.label + tag, 20)
-      + ' 真值 ' + pad(checkSummary(it), 12)
-      + ' 實測 ' + pad(checkActual(it), 12)
-      + ' 差 ' + pad(checkDiff(it), 10)
-      + shortSrc(it.src));
-  }
+  for (const it of items) printRow(it);
   console.log('');
 }
 
@@ -411,7 +459,8 @@ function printFailures(items) {
   for (const it of bad) {
     const why = !it.found ? (it.note || '選擇器不存在') : it.checks.filter((c) => !c.pass)
       .map((c) => c.key + ' 真值 ' + fmt(c.expect) + '／實測 ' + (c.actual == null ? '—' : fmt(c.actual)) + '（' + signed(c.diff) + '）').join('；');
-    console.log('   · ' + it.label + '：' + why + (it.selector ? '  [' + it.selector + ']' : ''));
+    const note = it.note ? '　（' + it.note + '）' : '';
+    console.log('   · ' + it.label + '：' + why + note + (it.selector ? '  [' + it.selector + ']' : ''));
   }
   console.log('');
 }
@@ -515,6 +564,46 @@ async function runSelftest() {
 /* ──────────────────────────────────────────────────────────────
    真實量測：ui/ 渲染 box vs DSH 真值
    ────────────────────────────────────────────────────────────── */
+/* 1024 寬時頂欄若變高，把子項位置記下來（回報換行 bug 用，不影響 pass/fail） */
+function midDiagnostic() {
+  const top = document.querySelector('.topbar');
+  if (!top) return null;
+  const r0 = top.getBoundingClientRect();
+  const out = { topbar: { w: r0.width, h: r0.height }, flexWrap: getComputedStyle(top).flexWrap, kids: {} };
+  const map = { crumb: '.crumb', utils: '.topbar-r', tabs: '.head-tabs' };
+  for (const k in map) {
+    const n = document.querySelector(map[k]);
+    if (!n) { out.kids[k] = null; continue; }
+    const r = n.getBoundingClientRect();
+    out.kids[k] = { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) };
+  }
+  return out;
+}
+
+async function applyViewport(page, w, h) {
+  // 先改「真的視窗大小」（跟使用者看到的一致）；隱藏視窗改不動時才退回 emulated viewport
+  await page.evaluate(({ w, h }) => {
+    try { if (window.moyu && window.moyu.win && window.moyu.win.setState) window.moyu.win.setState({ width: w, height: h }); } catch (e) {}
+  }, { w, h });
+
+  let got = { w: 0, h: 0 };
+  for (let i = 0; i < 25; i++) {
+    await sleep(120);
+    got = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+    if (Math.abs(got.w - w) <= 2 && Math.abs(got.h - h) <= 2) break;
+  }
+  let how = 'window';
+  if (Math.abs(got.w - w) > 2 || Math.abs(got.h - h) > 2) {
+    how = 'emulated';
+    await page.setViewport({ width: w, height: h });
+    got = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+  }
+  // shell-dsh.js 的 layoutPass 監聽 resize（120ms debounce）→ 自己補一發，確保真的重算
+  await page.evaluate(() => { try { window.dispatchEvent(new Event('resize')); } catch (e) {} });
+  await sleep(450);
+  return { w: got.w, h: got.h, how };
+}
+
 async function runGate(tol, shell, theme) {
   let truth;
   try {
@@ -524,60 +613,122 @@ async function runGate(tol, shell, theme) {
     process.exit(2);
   }
 
-  const spec = buildRealSpec(truth);
   const tokenSpec = buildTokenSpec(truth);
   const tokens = loadTokens();
+  const passes = [
+    { id: 'base', label: '1440×900（基準）', w: 1440, h: 900, spec: buildRealSpec(truth) },
+    { id: 'mid', label: '1024×768（臨界寬）', w: 1024, h: 768, spec: buildMidSpec(truth) },
+    { id: 'narrow', label: '900×800（<1024 收合）', w: 900, h: 800, spec: buildNarrowSpec(truth) },
+  ];
 
   const { child, browser, page, port } = await launch();
-  let pageInfo = {};
+  let boot = {};
+  const passesInfo = [];
   let items = [];
   try {
     await page.waitForFunction(
       'document.readyState === "complete" && !!document.querySelector(".app")',
       { timeout: 15000 }).catch(() => {});
+
+    // 先記下「開機原樣」，再覆寫成量測環境（boot 殼沒設好是產品問題，不是量測問題）
+    boot = await page.evaluate(() => ({
+      shell: document.documentElement.getAttribute('data-shell'),
+      theme: document.documentElement.getAttribute('data-theme'),
+      w: innerWidth, h: innerHeight,
+    }));
+
     await page.evaluate(({ sh, th }) => {
       const root = document.documentElement;
       // boot = 不覆寫，量應用程式自己開起來的樣子（用來對照預設主題）
       if (sh !== 'boot') root.setAttribute('data-shell', sh);
       if (th !== 'boot') root.setAttribute('data-theme', th);
     }, { sh: shell, th: theme });
-    await sleep(600);
+    await sleep(500);
 
-    pageInfo = await page.evaluate(() => ({
-      w: innerWidth, h: innerHeight, dpr: devicePixelRatio, url: location.href,
-      title: document.title,
-      shell: document.documentElement.getAttribute('data-shell'),
-      theme: document.documentElement.getAttribute('data-theme'),
+    for (const pass of passes) {
+      const actual = await applyViewport(page, pass.w, pass.h);
+      const raw = await page.evaluate(measureInPage, pass.spec);
+      let detail = null;
+      if (pass.id === 'mid') detail = await page.evaluate(midDiagnostic);
+      const passItems = pass.spec.map((it, i) => {
+        const r = evaluateItem(it, raw[i], tol);
+        r.passId = pass.id;
+        r.passLabel = pass.label;
+        return r;
+      });
+      passesInfo.push({ id: pass.id, label: pass.label, requested: { w: pass.w, h: pass.h }, actual, detail });
+      items = items.concat(passItems);
+    }
+
+    // 圓角代幣是寫死的常數，不是渲染出來的 box → 容差 0（8px 就是 8px），掛在基準那一輪
+    items = items.concat(tokenSpec.map((it) => {
+      const r = evaluateTokenItem(it, tokens, 0);
+      r.passId = 'base';
+      r.passLabel = passes[0].label;
+      return r;
     }));
-
-    const raw = await page.evaluate(measureInPage, spec);
-    items = spec.map((it, i) => evaluateItem(it, raw[i], tol));
-    // 圓角代幣是寫死的常數，不是渲染出來的 box → 容差 0（8px 就是 8px）
-    items = items.concat(tokenSpec.map((it) => evaluateTokenItem(it, tokens, 0)));
   } finally {
     try { browser.disconnect(); } catch (e) {}
     killTree(child.pid);
   }
 
+  // 皮膚差異：每個皮膚的字級/行高本來就不一樣，紅了要標「皮膚差異」不是「版面錯」
+  const themeShown = theme === 'boot' ? ('boot=' + (boot.theme || '?')) : theme;
+  const dshSkin = theme === 'boot'
+    ? (boot.theme === 'dsh' || boot.theme === 'dsh-light')
+    : (theme === 'dsh' || theme === 'dsh-light');
+  if (!dshSkin) {
+    for (const it of items) {
+      if (it.skin && !it.pass) {
+        it.skinDiff = true;
+        it.note = (it.note ? it.note + '；' : '')
+          + '皮膚差異：主題 ' + themeShown + ' 的字級／行高與 DSH 不同（設計，不是誤差），不是版面錯';
+      }
+    }
+  }
+
   const fails = items.filter((x) => !x.pass).length;
   const missing = items.filter((x) => !x.found).length;
+  const skinDiffs = items.filter((x) => x.skinDiff).length;
 
-  printTable(items, '魔芋一夏 · 幾何閘門（DSH 真值 ±' + tol + 'px）', [
-    '真值：docs/DSH-真值.json（抽出 ' + ((truth.meta && truth.meta.extractedAt) || '?') + '）',
-    '環境：data-shell=' + shell + ' · data-theme=' + theme + ' · 視窗 ' + (pageInfo.w || '?') + '×' + (pageInfo.h || '?')
-      + ' · DPR ' + (pageInfo.dpr || '?') + ' · 偵錯埠 ' + port,
-    '用法：node tools/layout-gate.js --selftest（先證明量測引擎誤差 0）',
-  ]);
+  const title = '魔芋一夏 · 幾何閘門（DSH 真值 ±' + tol + 'px）';
+  console.log('\n════ ' + title + ' ════');
+  console.log('  真值：docs/DSH-真值.json（抽出 ' + ((truth.meta && truth.meta.extractedAt) || '?') + '）');
+  console.log('  環境：data-shell=' + shell + ' · data-theme=' + themeShown
+    + ' · 皮膚：' + (dshSkin ? 'DSH' : '非 DSH（正文紅燈會標「皮膚差異」）')
+    + ' · 偵錯埠 ' + port);
+  console.log('  開機原樣：data-shell=' + (boot.shell || 'null') + ' · data-theme=' + (boot.theme || 'null'));
+  if (boot.shell !== 'dsh') {
+    console.log('  ⚠ 開機預設沒有 data-shell=dsh（全新 pref 會是 null）→ 殼的 CSS 不會套用，需要 app.js 開機就 applyShell(\'dsh\')');
+  }
+  for (const p of passesInfo) {
+    const its = items.filter((x) => x.passId === p.id);
+    console.log('\n▸ ' + p.label + '　實測視窗 ' + p.actual.w + '×' + p.actual.h + '（' + p.actual.how + '）');
+    for (const it of its) printRow(it);
+    if (p.detail && its.some((x) => !x.pass)) {
+      const d = p.detail;
+      const k = d.kids;
+      const box = (b) => (b ? b.x + ',' + b.y + ' ' + b.w + '×' + b.h : '—');
+      console.log('  ↳ 頂欄拆解：高 ' + fmt(d.topbar.h) + ' · flex-wrap:' + d.flexWrap
+        + ' · crumb ' + box(k.crumb) + ' · 工具 ' + box(k.utils) + ' · 分頁 ' + box(k.tabs));
+    }
+  }
+  console.log('');
 
+  const bad = items.filter((x) => !x.pass);
   if (fails === 0) {
     console.log('✅ 幾何全部通過（' + items.length + ' 項，誤差 ≤ ±' + tol + 'px）');
   } else {
     printFailures(items);
-    console.log('❌ ' + fails + ' 項不合格' + (missing ? '（其中 ' + missing + ' 項選擇器不存在）' : ''));
+    const brief = bad.slice(0, 3).map((x) => x.label
+      + x.checks.filter((c) => !c.pass).map((c) => ' ' + signed(c.diff)).join('')).join('、');
+    console.log('❌ ' + fails + ' 項不合格：' + brief + (bad.length > 3 ? '…' : '')
+      + (missing ? '（其中 ' + missing + ' 項選擇器不存在）' : '')
+      + (skinDiffs ? '（其中 ' + skinDiffs + ' 項是皮膚差異，不是版面錯）' : ''));
   }
 
   writeReport(REPORT_FILE, {
-    schema: 1,
+    schema: 2,
     at: new Date().toISOString(),
     mode: 'real',
     ok: fails === 0,
@@ -585,13 +736,17 @@ async function runGate(tol, shell, theme) {
     truth: { file: 'docs/DSH-真值.json', extractedAt: truth.meta && truth.meta.extractedAt },
     env: {
       ui: 'ui/index.html',
-      shell, theme,
-      viewport: pageInfo,
+      shell,
+      theme: themeShown,
+      skin: dshSkin ? 'dsh' : 'other',
+      boot,
+      viewport: passesInfo.length ? passesInfo[0].actual : null,
+      passes: passesInfo,
       electron: path.relative(ROOT, EXE).replace(/\\/g, '/'),
       dataDir: '_probe/layout-data',
       port,
     },
-    summary: { total: items.length, pass: items.length - fails, fail: fails, missing },
+    summary: { total: items.length, pass: items.length - fails, fail: fails, missing, skinDiff: skinDiffs },
     items,
   });
 

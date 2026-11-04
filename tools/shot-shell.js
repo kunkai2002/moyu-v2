@@ -106,6 +106,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     box('composerBox', '.composer .box');
     box('input', '#input');
     box('p', '.p');
+    box('main', '.main');
+    box('stream', '#stream');
+    box('thread', '.thread');
+    box('turn', '.turn');
+    box('b', '.turn .b');
     out.shell = document.documentElement.getAttribute('data-shell');
     out.theme = document.documentElement.getAttribute('data-theme');
     out.rail = document.querySelector('.app').classList.contains('rail');
@@ -114,6 +119,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       right: getComputedStyle(document.querySelector('.app')).getPropertyValue('--dsh-col-right').trim(),
       content: getComputedStyle(document.querySelector('.app')).getPropertyValue('--dsh-content-w').trim(),
     };
+    const appEl = document.querySelector('.app');
+    const cs = getComputedStyle(appEl);
+    out.app = { w: Math.round(appEl.getBoundingClientRect().width), display: cs.display, dir: cs.flexDirection, wrap: cs.flexWrap };
+    out.win = { iw: innerWidth, ih: innerHeight, dw: document.documentElement.clientWidth };
+    out.rightBox = (() => { const e = document.querySelector('.dsh-right'); if (!e) return null; const r = e.getBoundingClientRect(); return { w: Math.round(r.width), x: Math.round(r.left), display: getComputedStyle(e).display }; })();
     out.overflowX = document.documentElement.scrollWidth - document.documentElement.clientWidth;
     out.recent = document.querySelectorAll('#sideRecent .sr-row').length;
     out.chapters = document.querySelectorAll('#tree .ch').length;

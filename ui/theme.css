@@ -788,7 +788,7 @@ body.bossing .bosscreen{display:block}
   display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;
 }
 [data-shell="dsh"] .topbar .crumb{
-  flex:1 1 auto;min-width:0;
+  flex:1 1 0;min-width:0;
   min-height:30px;display:flex;align-items:center;
   font-size:13px;color:var(--fg2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
@@ -869,22 +869,22 @@ body.bossing .bosscreen{display:block}
 .dsh-right .vol{padding:10px 8px 4px;color:var(--fg3);font-size:11.5px}
 
 /* ── 收合狀態：rail（56px 圖示軌）／toc-collapsed ── */
-[data-shell="dsh"] .app.rail .side{padding:18px 6px 6px;width:var(--dsh-col-side,var(--dsh-rail-w))}
-[data-shell="dsh"] .app.rail .side-top{height:0;margin:0;padding:0;overflow:hidden}
-[data-shell="dsh"] .app.rail .side-brand{height:36px;margin-bottom:12px;padding:0;justify-content:flex-start}
-[data-shell="dsh"] .app.rail .brand-name,
-[data-shell="dsh"] .app.rail .side-actions .sa span,
-[data-shell="dsh"] .app.rail .sa-new span,
-[data-shell="dsh"] .app.rail .side-region,
-[data-shell="dsh"] .app.rail .side-foot .me-txt,
-[data-shell="dsh"] .app.rail .side-foot .me-pct{display:none}
-[data-shell="dsh"] .app.rail .sa-new,
-[data-shell="dsh"] .app.rail .side-actions .sa{
+[data-shell="dsh"] .app.side-rail .side{padding:18px 6px 6px;width:var(--dsh-col-side,var(--dsh-rail-w))}
+[data-shell="dsh"] .app.side-rail .side-top{height:0;margin:0;padding:0;overflow:hidden}
+[data-shell="dsh"] .app.side-rail .side-brand{height:36px;margin-bottom:12px;padding:0;justify-content:flex-start}
+[data-shell="dsh"] .app.side-rail .brand-name,
+[data-shell="dsh"] .app.side-rail .side-actions .sa span,
+[data-shell="dsh"] .app.side-rail .sa-new span,
+[data-shell="dsh"] .app.side-rail .side-region,
+[data-shell="dsh"] .app.side-rail .side-foot .me-txt,
+[data-shell="dsh"] .app.side-rail .side-foot .me-pct{display:none}
+[data-shell="dsh"] .app.side-rail .sa-new,
+[data-shell="dsh"] .app.side-rail .side-actions .sa{
   width:36px;height:36px;min-height:36px;margin:0 0 12px;padding:0;
   border-color:transparent;background:none;justify-content:center;
 }
-[data-shell="dsh"] .app.rail .side-actions{gap:12px;margin-bottom:12px}
-[data-shell="dsh"] .app.rail .side-foot .me{justify-content:center}
+[data-shell="dsh"] .app.side-rail .side-actions{gap:12px;margin-bottom:12px}
+[data-shell="dsh"] .app.side-rail .side-foot .me{justify-content:center}
 [data-shell="dsh"] .app.toc-collapsed .dsh-right{display:none}
 
 /* ── 原文視圖（對話／原文 tab 的「原文」）── */

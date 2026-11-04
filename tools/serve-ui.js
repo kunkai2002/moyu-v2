@@ -192,11 +192,15 @@ async function verify() {
     const side = document.querySelector('.side');
     const main = document.querySelector('.main');
     const right = document.querySelector('.dsh-right');
+    const statusbar = document.querySelector('.statusbar');
+    const topbar = document.querySelector('.topbar');
+    const box = document.querySelector('.composer .box');
     const rect = (el) => {
       if (!el) return null;
       const r = el.getBoundingClientRect();
       return { left: +r.left.toFixed(1), top: +r.top.toFixed(1), width: +r.width.toFixed(1), height: +r.height.toFixed(1), right: +r.right.toFixed(1) };
     };
+    const scrollx = (el) => (el ? { sw: el.scrollWidth, cw: el.clientWidth } : null);
     const overflowEls = [];
     for (const el of document.querySelectorAll('body *')) {
       const r = el.getBoundingClientRect();
@@ -216,22 +220,85 @@ async function verify() {
       docScrollWidth: de.scrollWidth,
       docClientWidth: de.clientWidth,
       appClass: app ? String(app.className) : '',
+      appDisplay: app ? getComputedStyle(app).display : 'missing',
       appScrollWidth: app ? app.scrollWidth : 0,
       appClientWidth: app ? app.clientWidth : 0,
       side: rect(side),
       main: rect(main),
       right: right ? Object.assign(rect(right), { display: getComputedStyle(right).display }) : null,
+      statusbar: scrollx(statusbar),
+      topbar: scrollx(topbar),
+      box: scrollx(box),
+      stream: scrollx(document.querySelector('.stream')),
       composeVisible: !!document.querySelector('.composer .box'),
       streamLines: document.querySelectorAll('#stream .p').length,
       overflowEls,
     };
   });
 
-  const shot = async (file) => {
-    const p = path.join(PROBE, file);
-    await page.screenshot({ path: p });
-    return p;
-  };
+  /* 隱藏視窗的 Electron 在 Windows 不進 compositor，Page.captureScreenshot 會卡死
+     （實測 8s timeout 也拿不到畫面），所以截圖改由 Chrome headless 拍同一份 ui/；
+     版面數字仍然由上面的 Electron 量。 */
+  const CHROME_CANDIDATES = [
+    'C:/Program Files/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Google/Chrome/Application/chrome.exe',
+    'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+    'C:/Program Files/Microsoft/Edge/Application/msedge.exe',
+  ];
+
+  async function chromeShots() {
+    const exe = CHROME_CANDIDATES.find((f) => fs.existsSync(f));
+    if (!exe) return { error: '找不到 Chrome/Edge，無法截圖' };
+    const chrome = await puppeteer.launch({
+      executablePath: exe,
+      headless: 'new',
+      args: ['--hide-scrollbars', '--no-first-run', '--no-default-browser-check', '--disable-gpu'],
+    });
+    const out = { engine: exe };
+    try {
+      const p = await chrome.newPage();
+      const grab = async (name) => { const f = path.join(PROBE, name); await p.screenshot({ path: f }); return f; };
+      const chromeMetrics = () => p.evaluate(() => {
+        const de = document.documentElement;
+        const app = document.querySelector('.app');
+        const side = document.querySelector('.side');
+        const statusbar = document.querySelector('.statusbar');
+        const r = side ? side.getBoundingClientRect() : null;
+        return {
+          title: document.title,
+          mode: window.moyuMode || '',
+          shell: de.getAttribute('data-shell'),
+          innerWidth: window.innerWidth,
+          docScrollWidth: de.scrollWidth,
+          docClientWidth: de.clientWidth,
+          appClass: app ? String(app.className) : '',
+          appDisplay: app ? getComputedStyle(app).display : 'missing',
+          sideWidth: r ? +r.width.toFixed(1) : null,
+          sideLeft: r ? +r.left.toFixed(1) : null,
+          statusbar: statusbar ? { sw: statusbar.scrollWidth, cw: statusbar.clientWidth } : null,
+        };
+      });
+      await p.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
+      await p.goto(origin + '/', { waitUntil: 'load', timeout: 30000 });
+      await sleep(1300);
+      out.clean = { shot: await grab('mirror-390x844-clean.png'), metrics: await chromeMetrics() };
+      await p.evaluate(() => {
+        try {
+          localStorage.setItem('moyu.shell', 'dsh');
+          localStorage.setItem('moyu.theme', 'dsh');
+        } catch {}
+      });
+      await p.reload({ waitUntil: 'load' });
+      await sleep(1500);
+      out.dsh390 = { shot: await grab('mirror-390x844.png'), metrics: await chromeMetrics() };
+      await p.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
+      await sleep(900);
+      out.dsh1280 = { shot: await grab('mirror-1280x720.png'), metrics: await chromeMetrics() };
+    } finally {
+      try { await chrome.close(); } catch {}
+    }
+    return out;
+  }
 
   const scenarios = [];
 
@@ -239,9 +306,10 @@ async function verify() {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
   await sleep(700);
   let m = await measure();
-  scenarios.push({ name: 'clean', shot: await shot('mirror-390x844-clean.png'), m });
+  scenarios.push({ name: 'clean', m });
   check(m.mode === 'http', '[clean 390] window.moyuMode = http', m.mode || '(空)');
   check(!!String(m.title || '').trim(), '[clean 390] document.title 有內容', JSON.stringify(m.title));
+  check(m.appDisplay !== 'none' && m.appDisplay !== 'missing', '[clean 390] .app 有顯示（不是 display:none）', String(m.appDisplay));
   check(m.docScrollWidth <= m.docClientWidth, '[clean 390] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
   check(m.appScrollWidth <= m.appClientWidth, '[clean 390] .app 不橫向溢出', `${m.appScrollWidth} > ${m.appClientWidth}`);
   check(m.overflowEls.length === 0, '[clean 390] 沒有元素超出視窗右緣', JSON.stringify(m.overflowEls.slice(0, 4)));
@@ -259,35 +327,58 @@ async function verify() {
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
   await sleep(700);
   m = await measure();
-  scenarios.push({ name: 'dsh-390', shot: await shot('mirror-390x844.png'), m });
+  scenarios.push({ name: 'dsh-390', m });
   check(m.mode === 'http', '[dsh 390] window.moyuMode = http', m.mode || '(空)');
   check(!!String(m.title || '').trim(), '[dsh 390] document.title 有內容', JSON.stringify(m.title));
   check(m.shell === 'dsh', '[dsh 390] html[data-shell=dsh]', String(m.shell));
-  check(/rail/.test(m.appClass), '[dsh 390] .app 加上 rail（<1024 收合）', m.appClass);
+  check(m.appDisplay !== 'none' && m.appDisplay !== 'missing', '[dsh 390] .app 有顯示（不是 display:none）', String(m.appDisplay));
+  check(/side-rail/.test(m.appClass), '[dsh 390] .app 加上 side-rail（<1024 收合）', m.appClass);
   check(m.side && Math.abs(m.side.width - 56) <= 1, '[dsh 390] 側欄收成 56px 圖示軌', m.side ? String(m.side.width) : '(找不到 .side)');
+  check(m.side && m.side.left >= -1, '[dsh 390] 側欄在畫面內（不是被抽屜推到左邊外）', m.side ? `left=${m.side.left}` : '(找不到 .side)');
+  check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[dsh 390] 底部狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(找不到 .statusbar)');
+  check(m.topbar && m.topbar.sw <= m.topbar.cw + 1, '[dsh 390] 頂欄沒有被切掉', m.topbar ? `${m.topbar.sw} > ${m.topbar.cw}` : '(找不到 .topbar)');
   check(m.docScrollWidth <= m.docClientWidth, '[dsh 390] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
   check(m.appScrollWidth <= m.appClientWidth, '[dsh 390] .app 不橫向溢出', `${m.appScrollWidth} > ${m.appClientWidth}`);
   check(m.main && m.main.right <= m.innerWidth + 1, '[dsh 390] 主欄沒有超出視窗右緣', m.main ? `${m.main.right} > ${m.innerWidth}` : '(找不到 .main)');
   check(m.overflowEls.length === 0, '[dsh 390] 沒有元素超出視窗右緣', JSON.stringify(m.overflowEls.slice(0, 4)));
   check(m.composeVisible, '[dsh 390] 輸入卡片有渲染');
 
-  /* ③ 桌機寬度：不能因為手機的 rail 邏輯把桌面也收掉 */
+  /* ③ 桌機寬度：重新載入一次（讓 shell-dsh 在 1280 下重新算欄寬），桌面不能被收合 */
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 });
-  await sleep(800);
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForSelector('.app', { timeout: 15000 }).catch(() => {});
+  await sleep(1400);
   m = await measure();
-  scenarios.push({ name: 'dsh-1280', shot: await shot('mirror-1280x720.png'), m });
-  check(!/rail/.test(m.appClass), '[dsh 1280] 桌面不收合', m.appClass);
+  scenarios.push({ name: 'dsh-1280', m });
+  check(!/side-rail/.test(m.appClass), '[dsh 1280] 桌面不收合', m.appClass);
   check(m.side && m.side.width >= 264 && m.side.width <= 420, '[dsh 1280] 側欄回到 264–420 區間', m.side ? String(m.side.width) : '(none)');
   check(m.docScrollWidth <= m.docClientWidth, '[dsh 1280] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
+  check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[dsh 1280] 狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(none)');
 
   check(pageErrors.length === 0, '沒有 pageerror（/api/* 缺席被 ui 接住）', pageErrors.slice(0, 3).join(' | '));
 
+  /* 截圖（Chrome headless，同一份 ui/；只當人看的證據，數字以上面 Electron 為準） */
+  const shots = await chromeShots();
+  check(!shots.error, '截圖引擎可用（Chrome/Edge headless）', shots.error || shots.engine);
+  if (shots.dsh390) {
+    check(shots.dsh390.metrics.appDisplay !== 'none', '[截圖頁] .app 有顯示', String(shots.dsh390.metrics.appDisplay));
+    check(shots.dsh390.metrics.sideWidth !== null && Math.abs(shots.dsh390.metrics.sideWidth - 56) <= 1,
+      '[截圖頁] 側欄 56px', String(shots.dsh390.metrics.sideWidth));
+    check(shots.dsh390.metrics.sideLeft !== null && shots.dsh390.metrics.sideLeft >= -1,
+      '[截圖頁] 側欄在畫面內', String(shots.dsh390.metrics.sideLeft));
+    check(shots.dsh390.metrics.docScrollWidth <= shots.dsh390.metrics.docClientWidth,
+      '[截圖頁] 390 頁面不橫向溢出', `${shots.dsh390.metrics.docScrollWidth} > ${shots.dsh390.metrics.docClientWidth}`);
+    check(shots.dsh390.metrics.statusbar && shots.dsh390.metrics.statusbar.sw <= shots.dsh390.metrics.statusbar.cw + 1,
+      '[截圖頁] 狀態列沒有被切掉', JSON.stringify(shots.dsh390.metrics.statusbar));
+  }
+
   /* ── 報告 ── */
   const fails = results.filter((r) => !r.pass).length;
-  console.log('\n===== 鏡像站本機驗證（' + origin + '，無頭 Electron） =====');
+  const shotFiles = [shots.clean && shots.clean.shot, shots.dsh390 && shots.dsh390.shot, shots.dsh1280 && shots.dsh1280.shot].filter(Boolean);
+  console.log('\n===== 鏡像站本機驗證（' + origin + '，無頭 Electron 量測 + Chrome headless 截圖） =====');
   for (const r of results) console.log(`${r.pass ? '✅' : '❌'} ${r.n}${r.e ? '  → ' + r.e : ''}`);
   console.log(`\n${fails === 0 ? '✅ 全部通過' : `❌ ${fails} 項失敗`} (${results.length} 項)`);
-  console.log('截圖：' + scenarios.map((s) => path.relative(ROOT, s.shot)).join('、'));
+  if (shotFiles.length) console.log('截圖：' + shotFiles.map((f) => path.relative(ROOT, f)).join('、'));
 
   fs.writeFileSync(path.join(PROBE, 'mirror-web.json'), JSON.stringify({
     at: new Date().toISOString(),
@@ -296,6 +387,13 @@ async function verify() {
     total: results.length,
     fails,
     scenarios,
+    shots: {
+      engine: shots.engine || null,
+      error: shots.error || null,
+      clean: shots.clean ? { shot: path.relative(ROOT, shots.clean.shot), metrics: shots.clean.metrics } : null,
+      dsh390: shots.dsh390 ? { shot: path.relative(ROOT, shots.dsh390.shot), metrics: shots.dsh390.metrics } : null,
+      dsh1280: shots.dsh1280 ? { shot: path.relative(ROOT, shots.dsh1280.shot), metrics: shots.dsh1280.metrics } : null,
+    },
     pageErrors,
     results,
   }, null, 2), 'utf8');

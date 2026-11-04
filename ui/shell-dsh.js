@@ -150,7 +150,7 @@
     var content = clamp(num('--dsh-content-ratio', 0.64) * center,
       num('--dsh-content-min', 680), num('--dsh-content-max', 920));
 
-    app.classList.toggle('rail', rail);
+    app.classList.toggle('side-rail', rail);
     app.classList.toggle('toc-collapsed', r === 0);
     app.style.setProperty('--dsh-col-side', s + 'px');
     app.style.setProperty('--dsh-col-right', r + 'px');
