@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>魔芋一夏 · 外殼映射表（DSH 殼 → 閱讀器功能）</title>
+<style>
+  :root{--ink:#16181c;--ink2:#3f444c;--ink3:#6b7079;--rule:#e3e5e9;--tint:#f5f6f8;--acc:#1f4e8c}
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--ink);font:14.5px/1.72 "Microsoft YaHei",sans-serif}
+  .wrap{max-width:1080px;margin:0 auto;padding:56px 36px 80px}
+  h1{font:400 34px/1.25 "Times New Roman",serif;margin:0 0 8px}
+  .sub{color:var(--ink3);font-size:13.5px;margin:0 0 32px}
+  h2{font:400 22px/1.3 "Times New Roman",serif;margin:40px 0 8px;padding-top:16px;border-top:1px solid var(--rule)}
+  table{width:100%;border-collapse:collapse;margin:10px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{background:var(--tint);font-weight:600;color:var(--ink2)}
+  td.hi{color:var(--acc);font-weight:600}
+  code{font-family:Consolas,monospace;font-size:12.5px;background:var(--tint);border:1px solid var(--rule);border-radius:3px;padding:1px 5px}
+  ol,ul{padding-left:20px}
+  .note{border-left:3px solid var(--acc);padding:2px 0 2px 14px;color:var(--ink2);margin:14px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>外殼映射表：DSH 殼 → 閱讀器功能</h1>
+<p class="sub">2026-11-04　原則：外殼 100% 照抄 DSH（含位置、字級、間距、圖示），只把「文字與行為」換成閱讀器。</p>
+
+<h2>一、每一格對應</h2>
+<table>
+  <thead><tr><th style="width:24%">DSH 原生元素（截圖）</th><th style="width:30%">換成（閱讀器）</th><th>點下去會怎樣</th></tr></thead>
+  <tbody>
+    <tr><td>左上「工作區 · kun-workspace」</td><td class="hi">書名（十日终焉）</td><td>點名稱 → 換書（等同書架）</td></tr>
+    <tr><td>「新對話」按鈕</td><td class="hi">書架</td><td>中間對話區整塊換成書架列表</td></tr>
+    <tr><td>「插件」</td><td class="hi">標記 / 劃線</td><td>右側展開標記面板（書籤、劃線、筆記）</td></tr>
+    <tr><td>「自動化任務」</td><td class="hi">自動連讀</td><td>開關：滑到底自動接下一章</td></tr>
+    <tr><td>「更多」</td><td class="hi">更多</td><td>統計、匯出、手機版、老闆鍵、設定</td></tr>
+    <tr><td>工作區底下的「最近」會話清單</td><td class="hi">最近讀過的書</td><td>點一列 → 開到上次那一章（章首）</td></tr>
+    <tr><td>頂部 tab「對話 / 軌跡 / ⋯」</td><td class="hi">對話 / 原文</td><td>對話＝小說正文；原文＝純文字視圖（含段落索引）</td></tr>
+    <tr><td>中間對話流（使用者氣泡＋助手長回覆）</td><td class="hi">小說內容</td><td>一章＝助手一段回覆；滾動閱讀、點段落劃線</td></tr>
+    <tr><td>右側面板「文件 / 變更」</td><td class="hi">目錄（章節）</td><td>點章 → 跳到該章開頭；顯示「上次讀到」</td></tr>
+    <tr><td>底部輸入框「發消息或創建任務／<code>/</code> 調用指令」</td><td class="hi">假輸入框（真的能用）</td><td><code>/next</code> <code>/toc</code> <code>/mark</code> <code>/boss</code> <code>/theme</code></td></tr>
+    <tr><td>左下「已登錄 DeepSeek」／設置齒輪</td><td class="hi">閱讀器設置</td><td>主題、字級、行距、段距、欄寬、同步</td></tr>
+    <tr><td>底部狀態列（10 輪 700 步 · 259M tok · 緩存命中 99%）</td><td class="hi">章節位置</td><td>只顯示：<code>§614 / 1359 · 2,045 tok</code>，不可點</td></tr>
+    <tr><td>右上「智能體團隊 / 創造模式」</td><td class="hi">字級 / 主題</td><td>字級 A− A+、深淺切換</td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <p><b>為什麼要照抄位置與尺寸：</b>同事認的是「形狀」不是「內容」——側欄寬度、左側三段結構（工作區→最近→底部登錄）、右側面板、底部輸入框、狀態列。形狀對，內容看不清楚也不會被懷疑。</p>
+</div>
+
+<h2>二、要改的檔案（照順序，每步都可驗）</h2>
+<ol>
+  <li><code>ui/index.html</code> ＋ <code>ui/theme.css</code>：外殼改成 DSH 的三段式側欄（工作區列、最近清單、底部登錄列），尺寸照 <code>--side-w:248px</code>、<code>topbar 44px</code>。</li>
+  <li><code>ui/shell.js</code>／<code>chrome.js</code>：把「新對話」「插件」「自動化任務」「更多」四顆綁到書架／標記／連讀／溢出面板。</li>
+  <li>右側面板：現在只有標記/統計，新增「目錄」面板（章節列表＋上次讀到），預設收合、點章跳章。</li>
+  <li>標題與狀態列的字：<code>~/work/api-server</code> → 書名；<code>614 / 1359</code> → <code>§614 / 1359</code>；不得出現「章」「書」字樣。</li>
+  <li>跑 <code>node tools/disguise-gate.js</code> ＋ 桌面 51 項驗收，兩邊都綠才推。</li>
+</ol>
+
+<h2>三、維持不變的規矩</h2>
+<ul>
+  <li>正文是內容，不是界面：正文可以出現「第 614 章」，但**外殼**（側欄、頂欄、狀態列、面板標題）不准。</li>
+  <li>所有看似可點的元件都要真的能點，且功能是閱讀器功能（不能有假按鈕）。</li>
+  <li>不新增 DSH 沒有的元素；DSH 有的就照抄，包括圖示形狀。</li>
+</ul>
+
+</div>
+</body>
+</html>
