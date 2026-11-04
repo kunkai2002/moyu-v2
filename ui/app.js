@@ -15,6 +15,7 @@ const THEMES = [
   { id: 'excel', name: 'Excel 報表', bg: '#ffffff', acc: '#217346' },
   { id: 'terminal', name: '終端機綠', bg: '#04070a', acc: '#33ff99' },
   { id: 'word', name: 'Word 文件', bg: '#f4f4f4', acc: '#2b579a' },
+  { id: 'dsh', name: 'DeepSeek Harness', bg: '#151517', acc: '#5686fe' },
 ];
 
 const $ = (s) => document.querySelector(s);
@@ -199,15 +200,56 @@ function updateCrumb() {
 /* ──────────────────────────────────────────────────────────────
    串流播放
    ────────────────────────────────────────────────────────────── */
+
+/* 「分析中… → 已完成」的預置詞（假裝 AI 正在處理段落） */
+const STEP_WORDS = [
+  ['思考中…', '已完成思考'],
+  ['分析中…', '已完成分析'],
+  ['整理段落中…', '段落已整理'],
+  ['比對上下文中…', '比對完成'],
+];
+let stepSeq = 0;
+
+function addStepLine(container) {
+  const pair = STEP_WORDS[stepSeq++ % STEP_WORDS.length];
+  const line = el('div', 'step');
+  line.dataset.step = pair[0];
+  line.innerHTML = `<span class="st-ico"><span class="st-run"></span></span><span class="st-t">${pair[0]}</span>`;
+  container.appendChild(line);
+  // 看起來真的跑完了：0.9–2.1 秒後換成「已完成」
+  const done = 900 + Math.random() * 1200;
+  setTimeout(() => {
+    if (!line.isConnected) return;
+    line.classList.add('done');
+    const ico = line.querySelector('.st-ico');
+    if (ico) ico.innerHTML = window.MOYU_ICONS ? window.MOYU_ICONS.svg('check', 12) : '';
+    const t = line.querySelector('.st-t');
+    if (t) t.textContent = pair[1];
+    line.dataset.step = pair[1];
+  }, done);
+  return line;
+}
+
 function streamParagraphs(container, paras, onDone, piBase) {
   stopStreaming();
   const base = Number(piBase) || 0;
   // 預設一次畫完；只有開啟「慢讀」才逐字吐
   if (!state.slowRead) {
+    let sinceStep = 0;
+    let steps = 0;
+    let gap = 4 + Math.floor(Math.random() * 2);
     paras.forEach((t, idx) => {
       const p = el('p', 'p', t);
       p.dataset.pi = String(base + idx);   // 全章第幾段（切段後仍然對得回原文）
       container.appendChild(p);
+      sinceStep++;
+      // 每 4–6 段插一列「分析中… → 已完成分析」
+      if (sinceStep >= gap && steps < 4 && idx < paras.length - 1) {
+        sinceStep = 0;
+        steps++;
+        gap = 4 + Math.floor(Math.random() * 3);
+        addStepLine(container);
+      }
     });
     scrollBottom();
     onDone && onDone();
@@ -576,6 +618,7 @@ async function handleInput(raw) {
     return;
   }
   if (/^\/grep\s+/i.test(text)) { searchInBook(text.replace(/^\/grep\s+/i, '').trim()); return; }
+  if (/^\/ghost$/i.test(text)) { window.__moyuGhost?.toggle?.(); return; }
   if (/^\/boss$/i.test(text)) { bridge?.boss(true); return; }
   if (/^\/hide$/i.test(text)) { bridge?.hide(); return; }
   if (/^\/(login|qr)$/i.test(text)) { showLoginPanel(); return; }
@@ -743,7 +786,7 @@ function welcome() {
     <div class="p">要開始讀嗎？可以這樣開：</div>
     <div class="p">　· 貼上番茄的書頁網址或書號（例如 <code>7373660003258862617</code>）</div>
     <div class="p">　· 打 <code>/shelf</code> 抓你自己的書架（要先登入，<code>/login</code>）</div>
-    <div class="p">　· 打 <code>/theme vscode</code> 換皮，或按 <code>Alt+1～6</code></div>
+    <div class="p">　· 打 <code>/theme vscode</code> 換皮，或按 <code>Alt+1～7</code></div>
     <div class="p">　· <code>Alt+Q</code> 是老闆鍵</div>`;
 }
 
@@ -853,7 +896,7 @@ async function boot() {
 
   // 全域快捷
   document.addEventListener('keydown', (e) => {
-    if (e.altKey && /^[1-6]$/.test(e.key)) { setTheme(THEMES[+e.key - 1].id); return; }
+    if (e.altKey && /^[1-7]$/.test(e.key)) { setTheme(THEMES[+e.key - 1].id); return; }
     if (e.key === 'Escape') {
       stopStreaming();
       return;

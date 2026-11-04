@@ -11,7 +11,7 @@ try { require('electron').app.setAppUserModelId('com.jojo.api-server'); } catch 
 
 const {
   app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage,
-  clipboard, session,
+  clipboard, session, desktopCapturer, screen,
 } = require('electron');
 const path = require('path');
 const fs = require('fs');
@@ -134,12 +134,124 @@ function saveWindowState(w) {
 
 function trackWindowState(w) {
   let t = null;
-  const later = () => { clearTimeout(t); t = setTimeout(() => saveWindowState(w), 400); };
+  let g = null;
+  const later = () => {
+    clearTimeout(t);
+    t = setTimeout(() => saveWindowState(w), 400);
+    // 隱身模式要跟著視窗跑：移動/縮放停下來 500ms 後通知畫面重抓背景
+    clearTimeout(g);
+    g = setTimeout(() => {
+      try { if (w && !w.isDestroyed()) w.webContents.send('win:moved'); } catch {}
+    }, 500);
+  };
   w.on('resize', later);
   w.on('move', later);
   w.on('maximize', later);
   w.on('unmaximize', later);
   w.on('close', () => saveWindowState(w));
+}
+
+/* ── 隱身模式：抓「視窗背後」那一塊畫面 ───────────────────────
+   做法：把視窗透明一瞬（setOpacity 0）→ 抓整個螢幕 → 裁出視窗那一塊 → 還原。
+   回傳：主色、是不是純色、以及裁切圖（畫面端會貼在自己底下，看起來就像穿透）。
+   圖只存在記憶體，不落地。 */
+function analyzePixels(img) {
+  const size = img.getSize();
+  const buf = img.getBitmap();            // BGRA
+  const w = size.width, h = size.height;
+  if (!w || !h) return { solid: false, color: '#1a1915' };
+  const stepX = Math.max(1, Math.floor(w / 40));
+  const stepY = Math.max(1, Math.floor(h / 40));
+  let n = 0, sr = 0, sg = 0, sb = 0;
+  const hist = new Map();
+  const samples = [];
+  for (let y = 0; y < h; y += stepY) {
+    for (let x = 0; x < w; x += stepX) {
+      const i = (y * w + x) * 4;
+      const b = buf[i], g = buf[i + 1], r = buf[i + 2];
+      sr += r; sg += g; sb += b; n++;
+      samples.push([r, g, b]);
+      const q = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+      hist.set(q, (hist.get(q) || 0) + 1);
+    }
+  }
+  if (!n) return { solid: false, color: '#1a1915' };
+  const mr = Math.round(sr / n), mg = Math.round(sg / n), mb = Math.round(sb / n);
+
+  // 變異量：任何通道離平均超過門檻就當「不是純色」
+  let maxDev = 0;
+  for (const [r, g, b] of samples) {
+    maxDev = Math.max(maxDev, Math.abs(r - mr), Math.abs(g - mg), Math.abs(b - mb));
+  }
+  // 出現最多的那個顏色（純色桌布時就是它）
+  let best = null, bestN = -1;
+  for (const [q, c] of hist) if (c > bestN) { bestN = c; best = q; }
+  const br = ((best >> 10) & 31) << 3, bg2 = ((best >> 5) & 31) << 3, bb = (best & 31) << 3;
+  const hex = (r, g, b) => '#' + [r, g, b].map((v) => Math.max(0, Math.min(255, v)).toString(16).padStart(2, '0')).join('');
+
+  const solid = maxDev <= 8;              // 幾乎沒有變化 → 純色
+  return {
+    solid,
+    color: hex(mr, mg, mb),
+    dominant: hex(br, bg2, bb),
+    dominantShare: +(bestN / n).toFixed(3),
+    maxDev,
+  };
+}
+
+async function captureBehind() {
+  if (!win || win.isDestroyed()) return { ok: false, error: '沒有視窗' };
+  const b = win.getBounds();
+  const disp = screen.getDisplayNearestPoint({
+    x: Math.round(b.x + b.width / 2), y: Math.round(b.y + b.height / 2),
+  });
+  const scale = disp.scaleFactor || 1;
+  let restored = false;
+  const restore = () => { if (!restored) { restored = true; try { win.setOpacity(1); } catch {} } };
+
+  try {
+    win.setOpacity(0);
+    await new Promise((r) => setTimeout(r, 240));   // 等 DWM 真的把視窗畫成透明
+    const sources = await desktopCapturer.getSources({
+      types: ['screen'],
+      thumbnailSize: {
+        width: Math.round(disp.size.width * scale),
+        height: Math.round(disp.size.height * scale),
+      },
+      fetchWindowIcons: false,
+    });
+    restore();
+    const src = sources.find((s) => String(s.display_id) === String(disp.id)) || sources[0];
+    if (!src || src.thumbnail.isEmpty()) return { ok: false, error: '抓不到螢幕（可能被鎖定或沒有桌面）' };
+
+    const full = src.thumbnail;
+    const fs0 = full.getSize();
+    let rx = Math.round((b.x - disp.bounds.x) * scale);
+    let ry = Math.round((b.y - disp.bounds.y) * scale);
+    let rw = Math.round(b.width * scale);
+    let rh = Math.round(b.height * scale);
+    rx = Math.max(0, Math.min(rx, Math.max(0, fs0.width - 1)));
+    ry = Math.max(0, Math.min(ry, Math.max(0, fs0.height - 1)));
+    rw = Math.max(1, Math.min(rw, fs0.width - rx));
+    rh = Math.max(1, Math.min(rh, fs0.height - ry));
+
+    const crop = full.crop({ x: rx, y: ry, width: rw, height: rh });
+    const info = analyzePixels(crop);
+    const png = crop.toPNG();
+    return {
+      ok: true,
+      ...info,
+      width: rw,
+      height: rh,
+      scale,
+      png: 'data:image/png;base64,' + png.toString('base64'),
+    };
+  } catch (e) {
+    restore();
+    return { ok: false, error: e.message };
+  } finally {
+    restore();
+  }
 }
 
 /* ── 主視窗 ─────────────────────────────────────────────────── */
@@ -151,6 +263,7 @@ const THEME_BG = {
   excel: '#ffffff',
   terminal: '#04070a',
   word: '#f4f4f4',
+  dsh: '#151517',
 };
 function windowBg() {
   try {
@@ -639,6 +752,13 @@ ipcMain.handle('shelf:raw', async () => {
   ipcMain.handle('app:boss', (_e, on) => { setBoss(!!on); return isBoss; });
   ipcMain.handle('app:hide', () => { if (win) win.hide(); return true; });
   ipcMain.handle('app:quit', () => { app.isQuitting = true; app.quit(); });
+
+  /* 隱身模式：抓視窗背後那一塊畫面（純色就回主色，不然連圖一起回） */
+  ipcMain.handle('ghost:capture', () => captureBehind());
+  ipcMain.handle('ghost:bg', (_e, color) => {
+    try { if (win && !win.isDestroyed() && typeof color === 'string') win.setBackgroundColor(color); } catch {}
+    return true;
+  });
 
   /* 自訂標題列用的視窗控制 */
   ipcMain.handle('win:state', () => {

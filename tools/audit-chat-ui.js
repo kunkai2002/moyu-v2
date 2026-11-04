@@ -215,6 +215,162 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   });
   icon.svg && !icon.text ? ok('助手頭像用 SVG 品牌記號') : bad('助手頭像還是字元', JSON.stringify(icon));
 
+  /* 「分析中… → 已完成」處理列 */
+  const steps = await page.evaluate(() => {
+    const list = [...document.querySelectorAll('#stream .step')].map((s) => ({
+      text: (s.querySelector('.st-t')?.textContent || '').trim(),
+      hasIcon: !!s.querySelector('.st-ico'),
+    }));
+    return list;
+  });
+  const POOL = ['思考中…', '已完成思考', '分析中…', '已完成分析', '整理段落中…', '段落已整理', '比對上下文中…', '比對完成'];
+  steps.length >= 1
+    ? ok(`處理列：${steps.length} 列（${steps.slice(0, 3).map((s) => s.text).join('、')}）`)
+    : bad('處理列：一列都沒有');
+  const badStep = steps.find((s) => !POOL.includes(s.text) || !s.hasIcon);
+  badStep ? bad('處理列：用了預置詞以外的字', JSON.stringify(badStep)) : ok('處理列：字都在預置詞裡、都有圖示');
+
+  /* 「點段落選取」已經拿掉：點正文不該長出劃線 */
+  const clickTest = await page.evaluate(async () => {
+    const p = document.querySelector('#stream .pb .p');
+    if (!p) return { err: '沒有段落' };
+    const before = document.querySelectorAll('#stream .p.marked').length;
+    p.click();
+    await new Promise((r) => setTimeout(r, 400));
+    const after = document.querySelectorAll('#stream .p.marked').length;
+    return { before, after, noteOpen: !!document.querySelector('#mkNoteBox') && !document.querySelector('#mkNoteBox').hidden };
+  });
+  clickTest.err ? bad('點段落：找不到段落', clickTest.err)
+    : (clickTest.after === clickTest.before && !clickTest.noteOpen
+      ? ok('點段落：不再選取／劃線')
+      : bad('點段落：還會選取', JSON.stringify(clickTest)));
+
+  /* 隱身模式：餵一個顏色，看色階有沒有跟著換、字看不看得清楚 */
+  const ghost = await page.evaluate(() => {
+    const G = window.__moyuGhost;
+    if (!G) return { err: '沒有 __moyuGhost' };
+    const css = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+    const before = css('--bg');
+    G.applySolid('#2b3a4a');
+    const dark = { attr: document.documentElement.getAttribute('data-ghost'), bg: css('--bg'), fg: css('--fg') };
+    G.applySolid('#f0ece4');
+    const light = { bg: css('--bg'), fg: css('--fg') };
+    const png = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    const applied = G.applyImage(png, '#7a6a5a');
+    const layerEl = document.querySelector('.ghost-bg');
+    const image = {
+      applied: !!applied,
+      layer: !!layerEl && !layerEl.hidden,
+      hasUrl: !!layerEl && /url\("data:image\/png/.test(layerEl.style.backgroundImage),
+      bg: css('--bg'),
+    };
+    G.set(false);
+    const after = css('--bg');
+    const restored = document.documentElement.getAttribute('data-ghost');
+    return { before, dark, light, image, after, restored };
+  });
+  const lum = (hex) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || '');
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    const f = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f((n >> 16) & 255) + 0.7152 * f((n >> 8) & 255) + 0.0722 * f(n & 255);
+  };
+  if (ghost.err) bad('隱身：模組沒載入', ghost.err);
+  else {
+    ghost.dark.attr === '1' && ghost.dark.bg === '#2b3a4a'
+      ? ok('隱身：純色直接沿用（' + ghost.dark.bg + '）')
+      : bad('隱身：底色沒照抓到的顏色', JSON.stringify(ghost.dark));
+    const dl = lum(ghost.dark.fg), ll = lum(ghost.light.fg);
+    const darkOk = dl !== null && dl > 0.5;
+    const lightOk = ll !== null && ll < 0.45;
+    darkOk && lightOk
+      ? ok('隱身：字色自動反差（深底字 ' + ghost.dark.fg + '／亮底字 ' + ghost.light.fg + '）')
+      : bad('隱身：字色反差不足', JSON.stringify({ dark: ghost.dark, light: ghost.light }));
+    ghost.image.applied && ghost.image.layer && ghost.image.hasUrl && /rgba\(/.test(ghost.image.bg)
+      ? ok('隱身：非純色走圖片模式（圖層貼上、面板半透明 ' + ghost.image.bg + '）')
+      : bad('隱身：圖片模式沒生效', JSON.stringify(ghost.image));
+    ghost.after === ghost.before && ghost.restored === null
+      ? ok('隱身：關掉後回到原本主題')
+      : bad('隱身：關掉後沒還原', JSON.stringify({ before: ghost.before, after: ghost.after, attr: ghost.restored }));
+  }
+
+
+  /* ── 主題矩陣：七套主題每一套都要真的有自己的顏色（不是寫在清單裡卻沒樣式） ── */
+  const themeMatrix = await page.evaluate(async () => {
+    const D = window.__moyuDebug;
+    const themes = [
+      ['claude-code', '#1a1915'], ['claude', '#faf9f5'], ['vscode', '#1e1e1e'],
+      ['excel', '#ffffff'], ['terminal', '#04070a'], ['word', '#f4f4f4'], ['dsh', '#151517'],
+    ];
+    const out = [];
+    for (const [id, want] of themes) {
+      D.setTheme(id);
+      await new Promise((r) => setTimeout(r, 220));
+      const got = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim().toLowerCase();
+      out.push({
+        id, want, got,
+        attr: document.documentElement.getAttribute('data-theme'),
+        ok: got === want,
+      });
+    }
+    return out;
+  });
+  const themeBad = themeMatrix.filter((t) => !t.ok || t.attr !== t.id);
+  themeBad.length === 0
+    ? ok('主題：7 套都有實際樣式（顏色與清單一致）')
+    : bad('主題：有清單寫了但沒樣式的', JSON.stringify(themeBad));
+
+  /* ── 可點擊不代表都是功能：畫面上任何 cursor:pointer 都必須是真的控制項 ── */
+  const fakeClicks = await page.evaluate(() => {
+    const OK_TAG = new Set(['BUTTON', 'INPUT', 'SELECT', 'TEXTAREA', 'A', 'LABEL', 'SUMMARY']);
+    const OK_CLS = ['ch', 'tm-item', 'ov-row', 'ctx-row', 'shelf-card', 'home-row', 'home-card',
+      'hist-row', 'mk-row', 'grep-row', 'flow-more', 'proj', 'me', 'dt-btn', 'help-row', 'ov-sep'];
+    const out = [];
+    for (const el of document.querySelectorAll('body *')) {
+      if (el.closest('[hidden]')) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 2 || r.height < 2) continue;
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+      if (cs.cursor !== 'pointer') continue;
+      if (OK_TAG.has(el.tagName)) continue;
+      if (el.getAttribute('role') === 'button') continue;
+      // 控制項裡面的 svg/path/rect 會繼承 pointer，那不算假按鈕
+      const host = el.parentElement && el.parentElement.closest('button, a, label, [role=button], .ch, .tm-item, .ov-row, .ctx-row, .shelf-card, .home-row, .hist-row, .mk-row, .grep-row, .flow-more, .proj');
+      if (host) continue;
+      if (OK_CLS.some((c) => el.classList.contains(c))) continue;
+      out.push(el.tagName.toLowerCase() + '.' + [...el.classList].join('.') + '「' + (el.textContent || '').trim().slice(0, 12) + '」');
+    }
+    return out;
+  });
+  fakeClicks.length === 0
+    ? ok('可點性：沒有「看起來能點卻不是功能」的東西')
+    : bad('可點性：有假按鈕', fakeClicks.slice(0, 6).join(' | '));
+
+  /* ── 新主題（DSH）：截圖三種尺寸，版面不可以撐破或被蓋 ── */
+  await page.evaluate(() => window.__moyuDebug.setTheme('dsh'));
+  await sleep(400);
+  for (const { w, h } of [{ w: 1440, h: 900 }, { w: 1920, h: 1080 }, { w: 820, h: 620 }]) {
+    await page.evaluate((st) => window.moyu?.win?.setState?.(st), { width: w, height: h });
+    await sleep(650);
+    const probe = await page.evaluate(() => {
+      const de = document.documentElement;
+      const cov = [];
+      for (const b of document.querySelectorAll('.tb-btn, .hint-btn, .cn-btn')) {
+        const r = b.getBoundingClientRect();
+        if (r.width < 4) continue;
+        const hit = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+        if (hit && hit !== b && !b.contains(hit)) cov.push(b.id || b.className);
+      }
+      return { ox: de.scrollWidth - de.clientWidth, cov, theme: de.getAttribute('data-theme') };
+    });
+    await page.screenshot({ path: path.join(OUT, `dsh-${w}x${h}.png`) });
+    probe.theme === 'dsh' && probe.ox <= 0 && probe.cov.length === 0
+      ? ok(`DSH 主題 ${w}×${h}：版面正常、按鈕沒被蓋`)
+      : bad(`DSH 主題 ${w}×${h}：有問題`, JSON.stringify(probe));
+  }
+
   errors.length === 0 ? ok('全程無 pageerror') : bad('有 pageerror', errors.slice(0, 2).join(' | '));
 
   console.log('\n===== 對話界面驗收 =====');

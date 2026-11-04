@@ -15,7 +15,7 @@
   const css = document.createElement('style');
   css.textContent = `
   .p{cursor:text}
-  .p.marked{background:var(--hl,#33291c);box-shadow:0 0 0 3px var(--hl,#33291c);border-radius:2px;cursor:pointer}
+  .p.marked{background:var(--hl,#33291c);box-shadow:0 0 0 3px var(--hl,#33291c);border-radius:2px}
   .p.marked::selection{background:transparent}
   .mk-note{display:block;font-size:11.5px;color:var(--acc2);border-left:2px solid var(--acc2);
     padding:1px 0 1px 8px;margin-top:4px;font-style:normal}
@@ -162,14 +162,8 @@
     return true;
   }
 
-  document.addEventListener('click', async (e) => {
-    const p = e.target.closest?.('#stream .p');
-    if (!p) return;
-    const markedNow = await togglePara(p);
-    // 新劃線就順手開筆記欄，取消劃線時收起來
-    if (markedNow) { noteBox.hidden = false; noteIn.focus(); }
-    else { noteBox.hidden = true; }
-  });
+  /* 段落「點一下就選取／劃線」在 2026-11-04 拿掉了（JOJO：完全沒用）。
+     劃線、筆記一律走右鍵選單，正文就是純文字，點它不會有任何反應。 */
 
   window.__moyuMarks = {
     toggle: togglePara,

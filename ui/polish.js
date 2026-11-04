@@ -18,13 +18,8 @@
   .chapter-nav{gap:10px}
   .cn-btn:hover{border-color:var(--acc);color:var(--acc)}
 
-  /* 段落 hover 提示 */
-  #stream .p{position:relative;transition:background .12s}
-  #stream .p:hover{background:color-mix(in srgb, var(--fg) 5%, transparent);border-radius:3px}
-  #stream .p:hover::after{
-    content:"";position:absolute;left:-14px;top:8px;width:4px;height:14px;
-    border-radius:2px;background:var(--acc);opacity:.7;
-  }
+  /* 段落不再可以點（JOJO 說那個選取功能沒用，2026-11-04 刪掉）：
+     不要 hover 底色、不要左側色條、不要 pointer 游標 */
 
   /* 詳情面板 */
   .detail{position:absolute;inset:44px 18px 34px 18px;z-index:48;background:var(--bg);

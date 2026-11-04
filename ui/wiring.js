@@ -68,7 +68,8 @@
   const sel = $('#setTheme');
   if (sel) {
     const list = [['claude-code', 'Claude Code'], ['claude', 'Claude 奶油白'], ['vscode', 'VS Code'],
-      ['excel', 'Excel 報表'], ['terminal', '終端機綠'], ['word', 'Word 文件']];
+      ['excel', 'Excel 報表'], ['terminal', '終端機綠'], ['word', 'Word 文件'],
+        ['dsh', 'DeepSeek Harness']];
     sel.innerHTML = list.map(([id, n]) => `<option value="${id}">${n}</option>`).join('');
     sel.value = document.documentElement.dataset.theme;
     sel.addEventListener('change', () => D.setTheme(sel.value));

@@ -68,4 +68,9 @@ contextBridge.exposeInMainWorld('moyu', {
     apply: () => ipcRenderer.invoke('update:apply'),
     onReady: (cb) => ipcRenderer.on('update:ready', (_e, r) => cb(r)),
   },
+  ghost: {
+    capture: () => ipcRenderer.invoke('ghost:capture'),
+    bg: (color) => ipcRenderer.invoke('ghost:bg', color),
+    onMoved: (cb) => ipcRenderer.on('win:moved', () => cb()),
+  },
 });

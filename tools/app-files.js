@@ -13,7 +13,7 @@ const FILES = [
   'src/sign/index.js', 'src/sign/sm3.js', 'src/sign/cipher.js', 'src/sign/protobuf.js',
   'ui/index.html', 'ui/prefs.js', 'ui/icons.js', 'ui/chrome.js', 'ui/motion.js',
   'ui/polish.js', 'ui/flow.js', 'ui/layout.js', 'ui/shell.js', 'ui/phone.js',
-  'ui/remember.js', 'ui/theme.css', 'ui/app.js', 'ui/bridge-http.js',
+  'ui/remember.js', 'ui/theme.css', 'ui/app.js', 'ui/bridge-http.js', 'ui/ghost.js',
   '開機自動啟動.cmd', 'tools/autostart.vbs', 'tools/start.vbs', 'tools/launch.vbs',
   'tools/update.cmd',
   'ui/wiring.js', 'ui/wiring2.js', 'ui/wiring3.js', 'ui/wiring4.js', 'ui/wiring5.js',

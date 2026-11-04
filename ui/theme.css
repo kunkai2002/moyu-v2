@@ -139,6 +139,16 @@ kbd{
      margin-left:2px;animation:blink 1.05s steps(1) infinite}
 @keyframes blink{50%{opacity:0}}
 
+/* 「分析中… → 已完成分析」這種處理列（假裝 AI 在跑） */
+.step{display:flex;align-items:center;gap:7px;margin:15px 0 16px;color:var(--fg3);
+  font-size:11.5px;line-height:1.4;letter-spacing:.2px}
+.step .st-ico{width:12px;height:12px;flex:none;display:grid;place-items:center;color:var(--fg3)}
+.step .st-ico svg{display:block;width:12px;height:12px}
+.step .st-run{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--line-strong);
+  border-top-color:var(--acc);animation:spin .9s linear infinite;display:block}
+.step.done{opacity:.92}
+.step.done .st-ico{color:var(--ok)}
+
 .meta{color:var(--fg3);font-size:11.5px;margin:6px 0 20px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 .meta .ok{color:var(--ok);display:inline-flex;align-items:center}
 .meta .ok svg{display:block}
@@ -317,6 +327,53 @@ kbd{
 :root[data-theme="word"] .box{border-radius:0}
 :root[data-theme="word"] .composer{padding-bottom:6px}
 :root[data-theme="word"] .statusbar{background:var(--status-bg)}
+
+/* ══════════════════════════════════════════════════════════════
+   主題 7 ── DeepSeek Harness（DSH）
+   顏色不是猜的：直接取自 Harness 本體 @deepseek-ai/dsh-client-ui-theme 的 token
+   · 底色      neutral-bluish-950 #151517 / 900 #1b1b1c
+   · 圖層      layer-1 875 #232324 / layer-2 850 #2c2c2e / layer-3 800 #353638
+   · 邊框      border-l2 #ffffff1f / l3 #ffffff29
+   · 文字      100 #ebeef2 / 400 #adb2b8 / 600 #81858c
+   · 品牌藍    deepseek-450 #5686fe（深色主題用這階）
+   · 圓角      radius-sm 8 / md 12 / lg 16
+   ══════════════════════════════════════════════════════════════ */
+:root[data-theme="dsh"]{
+  --bg:#151517; --bg-side:#1b1b1c; --bg-elev:#232324; --sel:#2c2c2e;
+  --line:#ffffff14; --line-strong:#ffffff29;
+  --fg:#ebeef2; --fg2:#adb2b8; --fg3:#81858c;
+  --acc:#5686fe; --acc2:#f59e0b; --ok:#4ed17e; --hl:#1e2f52;
+  --status-bg:#0f1115; --status-fg:#81858c;
+  --radius:12px; --text-font:var(--ui); --ui-font:var(--ui);
+  --fs:14.5px; --lh:1.9; --side-w:236px;
+}
+:root[data-theme="dsh"]{--ui:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif}
+
+/* DSH 的形狀語言：小元件 8、面板 12、氣泡 16 */
+:root[data-theme="dsh"] .tb-btn,
+:root[data-theme="dsh"] .pill,
+:root[data-theme="dsh"] .hint-btn,
+:root[data-theme="dsh"] .ov-row,
+:root[data-theme="dsh"] .ctx-row,
+:root[data-theme="dsh"] .tm-item{border-radius:8px}
+:root[data-theme="dsh"] .ch{border-radius:6px}
+:root[data-theme="dsh"] .box{border-radius:12px;background:var(--bg-elev)}
+:root[data-theme="dsh"] .panel,
+:root[data-theme="dsh"] .marks-panel,
+:root[data-theme="dsh"] .stats-panel,
+:root[data-theme="dsh"] .hist-panel,
+:root[data-theme="dsh"] .phone-panel,
+:root[data-theme="dsh"] .detail,
+:root[data-theme="dsh"] .overflow,
+:root[data-theme="dsh"] .ctx,
+:root[data-theme="dsh"] .theme-menu{border-radius:12px}
+:root[data-theme="dsh"] .find{border-radius:8px;background:var(--bg-elev)}
+:root[data-theme="dsh"] .turn.user .bubble{
+  border-radius:16px 16px 6px 16px;background:var(--bg-elev);border-color:var(--line-strong);
+}
+:root[data-theme="dsh"] .gutter{color:var(--acc)}
+:root[data-theme="dsh"] .step .st-run{border-top-color:var(--acc)}
+:root[data-theme="dsh"] .statusbar{border-top:1px solid var(--line)}
 
 /* ══════════════════════════════════════════════════════════════
    主題選單
