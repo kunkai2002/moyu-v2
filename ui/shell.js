@@ -234,7 +234,11 @@
 
   document.addEventListener('click', function (e) {
     if (panel.hidden) return;
-    if (!panel.contains(e.target) && e.target.id !== 'tbHistory') panel.hidden = true;
+    // 點在圖示（svg/path）上時 e.target 不是按鈕本身，要看最近的祖先，
+    // 不然第一次點「歷史」會開了又立刻被自己關掉（JOJO 回報的 bug）
+    if (!panel.contains(e.target) && !(e.target.closest && e.target.closest('#tbHistory'))) {
+      panel.hidden = true;
+    }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') panel.hidden = true; });
 

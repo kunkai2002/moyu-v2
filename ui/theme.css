@@ -345,19 +345,79 @@ kbd{
   --acc:#5686fe; --acc2:#f59e0b; --ok:#4ed17e; --hl:#1e2f52;
   --status-bg:#0f1115; --status-fg:#81858c;
   --radius:12px; --text-font:var(--ui); --ui-font:var(--ui);
-  --fs:14.5px; --lh:1.9; --side-w:236px;
+  --fs:14px; --lh:1.62; --side-w:248px;
 }
 :root[data-theme="dsh"]{--ui:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif}
 
-/* DSH 的形狀語言：小元件 8、面板 12、氣泡 16 */
+/* ── DSH 的版面與元件（不是只換色：內容欄、氣泡、側欄、輸入框都照 Harness 的量）──
+   實際數值來自 Harness 的 chat client CSS：
+   · 內容欄 max-width 748px、左右 16–20px、置中
+   · 使用者氣泡 border-radius 20px、padding 10px 16px、字 14px / 行高 22px、底 #2c2c2e
+   · 氣泡最大寬 min(748 × .702, 82%) ≈ 525px
+   · 助手訊息沒有頭像、沒有名字列，就是純段落
+   · 元件圓角：小 8 / 面板 12 / 氣泡 20                                     */
+
+:root[data-theme="dsh"] .stream{padding:0 20px}
+:root[data-theme="dsh"] .thread{max-width:748px!important;padding:20px 0 10px}
+:root[data-theme="dsh"] .composer{max-width:748px;padding:0 0 10px}
+:root[data-theme="dsh"] .turn{margin-bottom:6px}
+:root[data-theme="dsh"] .turn.ai .gutter{display:none}
+:root[data-theme="dsh"] .who{display:none}
+:root[data-theme="dsh"] .turn.ai .b{padding-left:0}
+:root[data-theme="dsh"] .p{
+  font-size:14px;line-height:1.62;text-align:left;margin-bottom:12px;letter-spacing:.1px;
+}
+:root[data-theme="dsh"] .turn.user{margin:16px 0 8px}
+:root[data-theme="dsh"] .turn.user .bubble{
+  background:#2c2c2e;border:0;border-radius:20px;padding:10px 16px;
+  max-width:min(525px,82%);font-size:14px;line-height:22px;color:#f9fafb;
+}
+:root[data-theme="dsh"] .meta{font-size:12px;margin:6px 0 18px}
+:root[data-theme="dsh"] .step{font-size:12.5px;margin:14px 0 10px}
+:root[data-theme="dsh"] .step .st-run{border-top-color:var(--acc)}
+
+/* 頂欄：沒有下框線、矮一點、字小一號（Harness 的標題列） */
+:root[data-theme="dsh"] .topbar{height:46px;border-bottom:0;padding:0 20px}
+:root[data-theme="dsh"] .crumb{font-size:13px;color:#adb2b8}
 :root[data-theme="dsh"] .tb-btn,
 :root[data-theme="dsh"] .pill,
 :root[data-theme="dsh"] .hint-btn,
 :root[data-theme="dsh"] .ov-row,
 :root[data-theme="dsh"] .ctx-row,
 :root[data-theme="dsh"] .tm-item{border-radius:8px}
-:root[data-theme="dsh"] .ch{border-radius:6px}
-:root[data-theme="dsh"] .box{border-radius:12px;background:var(--bg-elev)}
+:root[data-theme="dsh"] .tb-btn:hover{background:#ffffff14}
+
+/* 側欄：248px、沒有分隔線、每個項目是圓角卡片（Harness 的會話列表） */
+:root[data-theme="dsh"] .side{width:248px;background:#1b1b1c;border-right:0}
+:root[data-theme="dsh"] .side-head{height:46px;padding:0 12px}
+:root[data-theme="dsh"] .side-title{font-size:12px;letter-spacing:.2px;color:#adb2b8;text-transform:none}
+:root[data-theme="dsh"] .proj{border-radius:8px;margin:0 8px;padding:6px 8px;font-size:13px}
+:root[data-theme="dsh"] .vol{font-size:11px;letter-spacing:.3px;color:#adb2b8;margin:10px 16px 4px}
+:root[data-theme="dsh"] .ch{
+  border-radius:8px;margin:1px 8px;padding:6px 8px;font-size:13px;color:#cfd3d6;
+}
+:root[data-theme="dsh"] .ch:hover{background:#ffffff14}
+:root[data-theme="dsh"] .ch.on{background:#2c2c2e;color:#f9fafb}
+:root[data-theme="dsh"] .find{border-radius:10px;background:#232324;border:1px solid #ffffff14}
+:root[data-theme="dsh"] .side-foot{border-top:0}
+:root[data-theme="dsh"] .me{border-radius:8px;margin:0 8px}
+
+/* 輸入框：16px 圓角的大卡片（Harness 的 composer） */
+:root[data-theme="dsh"] .box{
+  border-radius:16px;background:#232324;border:1px solid #ffffff1f;padding:10px 12px 8px;
+}
+:root[data-theme="dsh"] .box:focus-within{border-color:#ffffff29}
+:root[data-theme="dsh"] #input{font-size:14px;line-height:1.6}
+:root[data-theme="dsh"] .box-foot{color:#81858c;font-size:11px}
+:root[data-theme="dsh"] .hintline{padding:6px 2px 0}
+
+/* 翻頁列：圓形 ghost 鍵（Harness 沒有這排，做得越低調越好） */
+:root[data-theme="dsh"] .cn-btn{
+  width:28px;height:28px;border-radius:999px;background:transparent;border-color:#ffffff1f;color:#adb2b8;
+}
+:root[data-theme="dsh"] .cn-pos{font-size:12px;color:#81858c;min-width:72px}
+
+/* 面板：Harness 的設定卡（12px 圓角、#232324） */
 :root[data-theme="dsh"] .panel,
 :root[data-theme="dsh"] .marks-panel,
 :root[data-theme="dsh"] .stats-panel,
@@ -366,14 +426,33 @@ kbd{
 :root[data-theme="dsh"] .detail,
 :root[data-theme="dsh"] .overflow,
 :root[data-theme="dsh"] .ctx,
-:root[data-theme="dsh"] .theme-menu{border-radius:12px}
-:root[data-theme="dsh"] .find{border-radius:8px;background:var(--bg-elev)}
-:root[data-theme="dsh"] .turn.user .bubble{
-  border-radius:16px 16px 6px 16px;background:var(--bg-elev);border-color:var(--line-strong);
+:root[data-theme="dsh"] .theme-menu{border-radius:12px;border-color:#ffffff1f}
+:root[data-theme="dsh"] .panel-head{border-bottom:1px solid #ffffff14;font-size:13px;color:#f9fafb}
+:root[data-theme="dsh"] .panel .btn,
+:root[data-theme="dsh"] .panel select{
+  border-radius:8px;background:#2c2c2e;border-color:#ffffff1f;color:#f9fafb;
 }
-:root[data-theme="dsh"] .gutter{color:var(--acc)}
-:root[data-theme="dsh"] .step .st-run{border-top-color:var(--acc)}
-:root[data-theme="dsh"] .statusbar{border-top:1px solid var(--line)}
+:root[data-theme="dsh"] .help-row{border-bottom:1px solid #ffffff0f}
+
+/* 狀態列：Harness 沒有這條，做成幾乎看不見的一行（保留編輯器偽裝的資訊） */
+:root[data-theme="dsh"] .statusbar{
+  background:transparent;border-top:1px solid #ffffff0f;color:#81858c;height:22px;
+}
+
+/* 首頁／引導卡：Harness 的空狀態卡片 */
+:root[data-theme="dsh"] .home{max-width:748px}
+:root[data-theme="dsh"] .home-h{font-size:17px;letter-spacing:0;color:#f9fafb}
+:root[data-theme="dsh"] .home-sub{font-size:13px;color:#adb2b8}
+:root[data-theme="dsh"] .home-card,
+:root[data-theme="dsh"] .ob-step{
+  background:#232324;border:1px solid #ffffff14;border-radius:12px;
+}
+:root[data-theme="dsh"] .home-card:hover{border-color:#ffffff29}
+:root[data-theme="dsh"] .home-book{background:#232324;border:1px solid #ffffff14;border-radius:10px}
+:root[data-theme="dsh"] .home-act{border-radius:8px;background:#232324;border-color:#ffffff1f}
+:root[data-theme="dsh"] .home-sec{color:#adb2b8;letter-spacing:.2px;text-transform:none;font-size:12px}
+:root[data-theme="dsh"] .home-row{border-radius:8px;font-size:13px}
+:root[data-theme="dsh"] .home-row:hover{background:#ffffff14}
 
 /* ══════════════════════════════════════════════════════════════
    主題選單

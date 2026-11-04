@@ -60,6 +60,8 @@ function buildThemeMenu() {
 }
 
 function setTheme(id) {
+  // 隱身模式是 inline 色階，會蓋掉主題；換主題就代表使用者要回主題，先把隱身關掉
+  try { if (window.__moyuGhost && window.__moyuGhost.state.on) window.__moyuGhost.set(false); } catch {}
   document.documentElement.dataset.theme = id;
   state.config.theme = id;
   try { localStorage.setItem('moyu.theme', id); } catch {}

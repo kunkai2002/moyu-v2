@@ -250,6 +250,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const G = window.__moyuGhost;
     if (!G) return { err: '沒有 __moyuGhost' };
     const css = (k) => getComputedStyle(document.documentElement).getPropertyValue(k).trim();
+    G.set(false);                                  // 先確保關著，才量得到主題原本的底色
     const before = css('--bg');
     G.applySolid('#2b3a4a');
     const dark = { attr: document.documentElement.getAttribute('data-ghost'), bg: css('--bg'), fg: css('--fg') };
@@ -295,6 +296,38 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       : bad('隱身：關掉後沒還原', JSON.stringify({ before: ghost.before, after: ghost.after, attr: ghost.restored }));
   }
 
+
+  /* ── DSH 主題的元素形狀（不是只換色）── */
+  const dshLook = await page.evaluate(async () => {
+    window.__moyuDebug.setTheme('dsh');
+    await new Promise((r) => setTimeout(r, 300));
+    const thread = document.querySelector('#stream .thread');
+    const bubble = document.querySelector('#stream .turn.user .bubble');
+    const gut = document.querySelector('#stream .turn.ai .gutter');
+    const box = document.querySelector('.box');
+    const side = document.querySelector('.side');
+    const g = (el, k) => (el ? getComputedStyle(el).getPropertyValue(k).trim() : '');
+    return {
+      threadW: thread ? Math.round(thread.getBoundingClientRect().width) : 0,
+      bubbleRadius: g(bubble, 'border-top-left-radius'),
+      bubbleBg: g(bubble, 'background-color'),
+      bubblePad: g(bubble, 'padding-top') + '/' + g(bubble, 'padding-left'),
+      gutterHidden: !gut || g(gut, 'display') === 'none',
+      boxRadius: g(box, 'border-top-left-radius'),
+      sideW: side ? Math.round(side.getBoundingClientRect().width) : 0,
+      pAlign: g(document.querySelector('#stream .p'), 'text-align'),
+    };
+  });
+  const dshOk = dshLook.threadW >= 700 && dshLook.threadW <= 780
+    && dshLook.bubbleRadius === '20px'
+    && dshLook.bubbleBg === 'rgb(44, 44, 46)'
+    && dshLook.bubblePad === '10px/16px'
+    && dshLook.gutterHidden
+    && dshLook.boxRadius === '16px'
+    && (dshLook.pAlign === 'start' || dshLook.pAlign === 'left');
+  dshOk
+    ? ok(`DSH 元素形狀：內容欄 ${dshLook.threadW}px、氣泡 20px/${dshLook.bubbleBg}、助手無頭像、輸入框 16px`)
+    : bad('DSH 元素形狀不對（只換了顏色）', JSON.stringify(dshLook));
 
   /* ── 主題矩陣：七套主題每一套都要真的有自己的顏色（不是寫在清單裡卻沒樣式） ── */
   const themeMatrix = await page.evaluate(async () => {
