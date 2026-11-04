@@ -10,7 +10,7 @@ const appEnv = require('./app-env');
 const fs = require('fs');
 const path = require('path');
 
-const APP = process.argv[2] || path.join(process.env.LOCALAPPDATA, 'Programs', '魔芋一夏');
+const APP = process.argv[2] || process.env.MOYU_APP_DIR || path.join(process.env.LOCALAPPDATA, 'Programs', '魔芋一夏');
 const EXE = path.join(APP, 'electron', 'electron.exe');
 const REAL = path.join(APP, 'data');
 const PROBE = path.join(__dirname, '..', '_probe', 'audit-data');
@@ -312,6 +312,31 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     : (openPos.top > -40 && openPos.top < 120 && openPos.gapToBottom > 40
       ? ok(`開章位置：停在章首（距頂 ${openPos.top}px，離底 ${openPos.gapToBottom}px）`)
       : bad('開章位置：還是跳到底', JSON.stringify(openPos)));
+
+  /* ── 設定面板：五分頁、版本號不留空括號 ── */
+  const setPanel = await page.evaluate(async () => {
+    document.querySelector('#panel') && (document.querySelector('#panel').hidden = true);
+    const btn = document.querySelector('#tbSettings') || [...document.querySelectorAll('.tb-btn,.ov-row')].find((b) => /設定/.test(b.textContent || ''));
+    btn && btn.click();
+    await new Promise((r) => setTimeout(r, 800));
+    const panel = document.querySelector('#panel');
+    const tabs = [...document.querySelectorAll('#panel .st-tab')].map((b) => b.textContent);
+    const active = document.querySelector('#panel .st-page:not([hidden])');
+    const rows = active ? [...active.querySelectorAll('.row')].map((r) => ((r.querySelector(':scope > span') || {}).textContent || '').trim()) : [];
+    const upd = (document.querySelector('#updText')?.textContent || '').trim();
+    return { open: !!panel && !panel.hidden, tabs, rows, upd };
+  });
+  setPanel.open && setPanel.tabs.length === 5
+    ? ok(`設定：五分頁（${setPanel.tabs.join('／')}）`)
+    : bad('設定：分頁沒建起來', JSON.stringify(setPanel.tabs));
+  setPanel.rows.length >= 3 && setPanel.rows.length <= 6
+    ? ok(`設定：外觀頁 ${setPanel.rows.length} 列（${setPanel.rows.join('、')}）`)
+    : bad('設定：每頁列數超出規格（3–6）', JSON.stringify(setPanel.rows));
+  setPanel.upd && !/（\s*）|\(\s*\)/.test(setPanel.upd)
+    ? ok(`設定：版本號沒有空括號（「${setPanel.upd}」）`)
+    : bad('設定：版本號空括號', setPanel.upd);
+  await page.screenshot({ path: path.join(OUT, 'settings-panel.png') });
+  await page.evaluate(() => { const p = document.querySelector('#panel'); if (p) p.hidden = true; });
 
   /* ── DSH 主題的元素形狀（不是只換色）── */
   const dshLook = await page.evaluate(async () => {

@@ -23,9 +23,14 @@
     try {
       const r = await B.update.check();
       if (!r.ok) { txt.textContent = '檢查失敗：' + (r.error || ''); return; }
+      let local = String(r.local || '').trim();
+      if (!local) {                       // 還沒記錄過本機版本：用程式版本，不留空括號
+        try { const v = await B.version?.(); local = String((v && (v.version || v.app)) || '').trim(); } catch {}
+      }
+      if (!local) local = '開發版';
       txt.textContent = r.upToDate
-        ? '已是最新（' + r.local + '）'
-        : '有新版本：' + r.remote + ' → 本機 ' + r.local;
+        ? (r.remote ? '已是最新（' + local + '）' : '已是最新（' + local + '）')
+        : '有新版本：' + r.remote + ' → 本機 ' + local;
       txt.style.color = r.upToDate ? 'var(--ok)' : 'var(--acc)';
     } catch (e) {
       txt.textContent = '檢查失敗：' + e.message;

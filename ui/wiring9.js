@@ -9,8 +9,8 @@
   const wrap = document.createElement('div');
   wrap.innerHTML = `
     <div class="row"><span>同步</span><span class="muted" id="syncState">檢查中…</span></div>
-    <div class="row"><span>網址</span><input id="syncUrl" placeholder="https://moyu-sync.xxx.workers.dev" spellcheck="false"></div>
-    <div class="row"><span>金鑰</span><input id="syncToken" placeholder="SYNC_TOKEN" spellcheck="false" type="password"></div>
+    <div class="row stack"><span>網址</span><input id="syncUrl" placeholder="https://moyu-sync.xxx.workers.dev" spellcheck="false"></div>
+    <div class="row stack"><span>金鑰</span><input id="syncToken" placeholder="SYNC_TOKEN" spellcheck="false" type="password"></div>
     <div class="row"><span></span>
       <button class="btn" id="syncSave">儲存</button>
       <button class="btn" id="syncNow">立即同步</button>

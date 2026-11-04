@@ -38,11 +38,14 @@ function init(dataDir) {
     url = String(s.url || '').replace(/\/+$/, '');
     token = String(s.token || '');
   } catch {}
-  /* 測試站：安裝目錄的 data/env.json 寫 {"env":"staging"} 就只跟 staging 那份 */
-  try {
-    const e = JSON.parse(fs.readFileSync(path.join(dataDir, 'env.json'), 'utf8'));
-    if (e && e.env === 'staging') APP_ENV = 'staging';
-  } catch {}
+  /* 測試站身分屬於「安裝目錄」，不是資料夾裡的 data：
+     用 --data-dir 另開探針時也要還是 staging，否則會被正式站拉回去。 */
+  for (const p of [path.join(ROOT, 'data', 'env.json'), path.join(dataDir, 'env.json')]) {
+    try {
+      const e = JSON.parse(fs.readFileSync(p, 'utf8'));
+      if (e && e.env === 'staging') { APP_ENV = 'staging'; break; }
+    } catch {}
+  }
   try {
     const v = JSON.parse(fs.readFileSync(versionPath(), 'utf8'));
     localVersion = String(v.version || '');

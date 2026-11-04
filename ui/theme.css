@@ -589,6 +589,22 @@ body.bossing .bosscreen{display:block}
 }
 .panel .btn:hover{background:var(--sel)}
 .panel .muted{color:var(--fg3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+/* 設定分頁 */
+.st-tabs{display:flex;gap:var(--sp-1);padding:var(--sp-2) var(--sp-3) 0;
+  border-bottom:1px solid var(--line);flex:none}
+.st-tab{appearance:none;border:0;background:none;color:var(--fg3);font:inherit;font-size:var(--fs-12);
+  padding:6px 8px 8px;border-radius:var(--r-sm) var(--r-sm) 0 0;cursor:pointer;position:relative}
+.st-tab:hover{color:var(--fg2);background:var(--sel)}
+.st-tab.on{color:var(--fg)}
+.st-tab.on::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;
+  background:var(--acc);border-radius:2px 2px 0 0}
+.st-tab:focus-visible{outline:2px solid var(--acc);outline-offset:-2px}
+.st-page{display:flex;flex-direction:column;gap:10px}
+.st-page[hidden]{display:none}
+/* 整列輸入（同步網址／金鑰）：標籤在上面，輸入框拿滿寬度才不會被截斷 */
+.panel .row.stack{flex-direction:column;align-items:stretch;gap:4px}
+.panel .row.stack > span:first-child{width:auto}
+.panel .row input[type=text],.panel .row input:not([type]){min-width:0;width:100%}
 .help-row{display:flex;gap:10px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)}
 .help-row code{color:var(--acc2);min-width:96px;flex:none;font-family:var(--mono)}
 .help-row span{color:var(--fg2)}
