@@ -195,10 +195,11 @@ async function verify() {
     const statusbar = document.querySelector('.statusbar');
     const topbar = document.querySelector('.topbar');
     const box = document.querySelector('.composer .box');
+    const titlebar = document.querySelector('.titlebar');
     const rect = (el) => {
       if (!el) return null;
       const r = el.getBoundingClientRect();
-      return { left: +r.left.toFixed(1), top: +r.top.toFixed(1), width: +r.width.toFixed(1), height: +r.height.toFixed(1), right: +r.right.toFixed(1) };
+      return { left: +r.left.toFixed(1), top: +r.top.toFixed(1), width: +r.width.toFixed(1), height: +r.height.toFixed(1), right: +r.right.toFixed(1), bottom: +r.bottom.toFixed(1) };
     };
     const scrollx = (el) => (el ? { sw: el.scrollWidth, cw: el.clientWidth } : null);
     const overflowEls = [];
@@ -239,6 +240,10 @@ async function verify() {
       innerHeight: window.innerHeight,
       docScrollWidth: de.scrollWidth,
       docClientWidth: de.clientWidth,
+      docScrollHeight: de.scrollHeight,
+      appRect: rect(app),
+      titlebar: rect(titlebar),
+      statusbarRect: rect(statusbar),
       appClass: app ? String(app.className) : '',
       appDisplay: app ? getComputedStyle(app).display : 'missing',
       appScrollWidth: app ? app.scrollWidth : 0,
@@ -285,18 +290,22 @@ async function verify() {
         const side = document.querySelector('.side');
         const statusbar = document.querySelector('.statusbar');
         const r = side ? side.getBoundingClientRect() : null;
+        const sr = statusbar ? statusbar.getBoundingClientRect() : null;
+        const ar = app ? app.getBoundingClientRect() : null;
         return {
           title: document.title,
           mode: window.moyuMode || '',
           shell: de.getAttribute('data-shell'),
           innerWidth: window.innerWidth,
+          innerHeight: window.innerHeight,
           docScrollWidth: de.scrollWidth,
           docClientWidth: de.clientWidth,
           appClass: app ? String(app.className) : '',
           appDisplay: app ? getComputedStyle(app).display : 'missing',
+          appHeight: ar ? +ar.height.toFixed(1) : null,
           sideWidth: r ? +r.width.toFixed(1) : null,
           sideLeft: r ? +r.left.toFixed(1) : null,
-          statusbar: statusbar ? { sw: statusbar.scrollWidth, cw: statusbar.clientWidth } : null,
+          statusbar: statusbar ? { sw: statusbar.scrollWidth, cw: statusbar.clientWidth, bottom: sr ? +sr.bottom.toFixed(1) : null } : null,
         };
       });
       await p.setViewport({ width: 390, height: 844, deviceScaleFactor: 2 });
@@ -335,6 +344,13 @@ async function verify() {
   check(m.appScrollWidth <= m.appClientWidth, '[clean 390] .app 不橫向溢出', `${m.appScrollWidth} > ${m.appClientWidth}`);
   check(m.side && m.side.left >= -1 && Math.abs(m.side.width - 56) <= 1, '[clean 390] 側欄 56px 且在畫面內', m.side ? `left=${m.side.left} w=${m.side.width}` : '(找不到 .side)');
   check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[clean 390] 底部狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(找不到 .statusbar)');
+  check(m.statusbarRect && m.statusbarRect.right <= m.innerWidth + 1 && m.statusbarRect.width > 100,
+    '[clean 390] 狀態列整條在畫面內', m.statusbarRect ? `right=${m.statusbarRect.right} w=${m.statusbarRect.width}` : '(none)');
+  check(m.statusbarRect && m.statusbarRect.bottom <= m.innerHeight + 1,
+    '[clean 390] 狀態列底邊 ≤ 視窗高（沒被推出畫面）', m.statusbarRect ? `bottom=${m.statusbarRect.bottom} > ${m.innerHeight}` : '(none)');
+  check(m.titlebar === null, '[clean 390] 瀏覽器模式沒有 .titlebar（不會多佔 30px）', m.titlebar ? `h=${m.titlebar.height}` : '');
+  check(m.appRect && Math.abs(m.appRect.height - m.innerHeight) <= 2,
+    '[clean 390] .app 吃滿視窗高（沒有 titlebar 時 = innerHeight）', m.appRect ? `app=${m.appRect.height} win=${m.innerHeight}` : '(none)');
   check(m.overflowEls.length === 0, '[clean 390] 沒有元素超出視窗右緣', JSON.stringify(m.overflowEls.slice(0, 4)));
 
   /* ② 用手機讀者的正常狀態：shell=dsh（存過一次設定），重新載入 */
@@ -359,6 +375,11 @@ async function verify() {
   check(m.side && Math.abs(m.side.width - 56) <= 1, '[dsh 390] 側欄收成 56px 圖示軌', m.side ? String(m.side.width) : '(找不到 .side)');
   check(m.side && m.side.left >= -1, '[dsh 390] 側欄在畫面內（不是被抽屜推到左邊外）', m.side ? `left=${m.side.left}` : '(找不到 .side)');
   check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[dsh 390] 底部狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(找不到 .statusbar)');
+  check(m.statusbarRect && m.statusbarRect.bottom <= m.innerHeight + 1,
+    '[dsh 390] 狀態列底邊 ≤ 視窗高（沒被推出畫面）', m.statusbarRect ? `bottom=${m.statusbarRect.bottom} > ${m.innerHeight}` : '(none)');
+  check(m.titlebar === null, '[dsh 390] 瀏覽器模式沒有 .titlebar', m.titlebar ? `h=${m.titlebar.height}` : '');
+  check(m.appRect && Math.abs(m.appRect.height - (m.innerHeight - (m.titlebar ? m.titlebar.height : 0))) <= 2,
+    '[dsh 390] .app 高度 = 視窗高 − titlebar', m.appRect ? `app=${m.appRect.height} win=${m.innerHeight} tb=${m.titlebar ? m.titlebar.height : 0}` : '(none)');
   check(m.topbar && m.topbar.sw <= m.topbar.cw + 1, '[dsh 390] 頂欄沒有被切掉', m.topbar ? `${m.topbar.sw} > ${m.topbar.cw}` : '(找不到 .topbar)');
   check(m.docScrollWidth <= m.docClientWidth, '[dsh 390] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
   check(m.appScrollWidth <= m.appClientWidth, '[dsh 390] .app 不橫向溢出', `${m.appScrollWidth} > ${m.appClientWidth}`);
@@ -377,6 +398,8 @@ async function verify() {
   check(m.side && m.side.width >= 264 && m.side.width <= 420, '[dsh 1280] 側欄回到 264–420 區間', m.side ? String(m.side.width) : '(none)');
   check(m.docScrollWidth <= m.docClientWidth, '[dsh 1280] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
   check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[dsh 1280] 狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(none)');
+  check(m.statusbarRect && m.statusbarRect.bottom <= m.innerHeight + 1,
+    '[dsh 1280] 狀態列底邊 ≤ 視窗高', m.statusbarRect ? `bottom=${m.statusbarRect.bottom} > ${m.innerHeight}` : '(none)');
 
   check(pageErrors.length === 0, '沒有 pageerror（/api/* 缺席被 ui 接住）', pageErrors.slice(0, 3).join(' | '));
 
@@ -393,6 +416,10 @@ async function verify() {
       '[截圖頁] 390 頁面不橫向溢出', `${shots.dsh390.metrics.docScrollWidth} > ${shots.dsh390.metrics.docClientWidth}`);
     check(shots.dsh390.metrics.statusbar && shots.dsh390.metrics.statusbar.sw <= shots.dsh390.metrics.statusbar.cw + 1,
       '[截圖頁] 狀態列沒有被切掉', JSON.stringify(shots.dsh390.metrics.statusbar));
+    check(shots.dsh390.metrics.statusbar && shots.dsh390.metrics.statusbar.bottom <= shots.dsh390.metrics.innerHeight + 1,
+      '[截圖頁] 狀態列底邊 ≤ 視窗高', JSON.stringify({ bottom: shots.dsh390.metrics.statusbar && shots.dsh390.metrics.statusbar.bottom, winH: shots.dsh390.metrics.innerHeight }));
+    check(shots.dsh390.metrics.appHeight !== null && Math.abs(shots.dsh390.metrics.appHeight - shots.dsh390.metrics.innerHeight) <= 2,
+      '[截圖頁] .app 吃滿視窗高', `${shots.dsh390.metrics.appHeight} vs ${shots.dsh390.metrics.innerHeight}`);
   }
 
   /* ── 報告 ── */

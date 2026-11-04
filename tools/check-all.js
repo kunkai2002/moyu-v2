@@ -20,7 +20,10 @@ const STEPS = [
   { name: '頂欄與更多選單', cmd: 'node', args: ['tools/e2e-topbar.js', APP] },
   { name: '視窗狀態記憶', cmd: 'node', args: ['tools/e2e-window.js', APP] },
   { name: '手機後端', cmd: 'node', args: ['tools/test-worker.js'], skip: quick },
-  { name: '手機 PWA', cmd: 'node', args: ['tools/e2e-mobile.js'], skip: quick },
+  { name: '鏡像站＝同一份 ui/（本機，不碰雲端）', cmd: 'node', args: ['tools/test-mirror.js'], skip: quick },
+  // ⚠ e2e-mobile.js 驗的是舊的 sync/m/ 手機殼，Worker 部署新殼（deploy 後）這步會紅；
+  //   屆時改跑 `node tools/serve-ui.js --verify`（43 項：390x844 + 1280x720），再把它從 STEPS 移除。
+  { name: '手機 PWA（舊殼，deploy 後改 serve-ui --verify）', cmd: 'node', args: ['tools/e2e-mobile.js'], skip: quick },
   { name: '雲端熱更新', cmd: 'node', args: ['tools/e2e-update.js', APP], skip: quick },
   { name: '對話界面驗收', cmd: 'node', args: ['tools/audit-chat-ui.js', APP] },
 ];
