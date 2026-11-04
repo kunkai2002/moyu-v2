@@ -242,6 +242,18 @@
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') panel.hidden = true; });
 
+  /* ── 側欄三列（DSH 的 新對話／插件／自動化任務）── */
+  var saNew = document.querySelector('#saNew');
+  if (saNew) saNew.addEventListener('click', function () { window.__moyuDebug && window.__moyuDebug.openShelf(); });
+  var saPlug = document.querySelector('#saPlug');
+  if (saPlug) saPlug.addEventListener('click', function () { window.__moyuMarksOpen && window.__moyuMarksOpen(); });
+  var saAuto = document.querySelector('#saAuto');
+  if (saAuto) saAuto.addEventListener('click', function () {
+    var b = document.querySelector('#modeTag');
+    if (b) b.click();
+    else { var n = document.querySelector('#tbAuto'); if (n) n.click(); }
+  });
+
   /* ── 綁頂欄按鈕（chrome.js 重建後才存在）── */
   function bind() {
     var homeBtn = document.querySelector('#tbHome');

@@ -705,6 +705,12 @@ body.bossing .bosscreen{display:block}
 .panel .row input[type=text],.panel .row input:not([type]){min-width:0;width:100%}
 /* 方向 A：歷史收進「更多」與 ⌘K，頂欄只留天天用的 */
 #tbHistory{display:none}
+.side-actions{display:flex;flex-direction:column;gap:2px;padding:6px 8px 8px}
+.sa{display:flex;align-items:center;gap:9px;width:100%;height:32px;padding:0 8px;border:0;background:none;
+  color:var(--fg2);font:inherit;font-size:13px;text-align:left;border-radius:8px;cursor:pointer}
+.sa:hover{background:var(--sel);color:var(--fg)}
+.sa svg{width:16px;height:16px;flex:none;color:var(--fg3)}
+.sa:hover svg{color:var(--fg2)}
 .help-row{display:flex;gap:10px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)}
 .help-row code{color:var(--acc2);min-width:96px;flex:none;font-family:var(--mono)}
 .help-row span{color:var(--fg2)}
