@@ -297,6 +297,22 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   }
 
 
+  /* ── 開章位置：主動開一章要停在章首，不是最底 ── */
+  const openPos = await page.evaluate(async () => {
+    await window.__moyuDebug.goChapter(1, { announce: true });
+    await new Promise((r) => setTimeout(r, 1200));
+    const stream = document.querySelector('#stream');
+    const body = document.querySelector('.pb[data-ci="1"]');
+    if (!stream || !body) return { err: '沒有第 2 章' };
+    const top = body.getBoundingClientRect().top - stream.getBoundingClientRect().top;
+    return { top: Math.round(top), scrollTop: Math.round(stream.scrollTop),
+             gapToBottom: Math.round(stream.scrollHeight - stream.scrollTop - stream.clientHeight) };
+  });
+  openPos.err ? bad('開章位置：找不到章節', openPos.err)
+    : (openPos.top > -40 && openPos.top < 120 && openPos.gapToBottom > 40
+      ? ok(`開章位置：停在章首（距頂 ${openPos.top}px，離底 ${openPos.gapToBottom}px）`)
+      : bad('開章位置：還是跳到底', JSON.stringify(openPos)));
+
   /* ── DSH 主題的元素形狀（不是只換色）── */
   const dshLook = await page.evaluate(async () => {
     window.__moyuDebug.setTheme('dsh');

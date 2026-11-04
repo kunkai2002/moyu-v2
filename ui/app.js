@@ -253,7 +253,7 @@ function streamParagraphs(container, paras, onDone, piBase) {
         addStepLine(container);
       }
     });
-    scrollBottom();
+    // 一次畫完時整章已經在 DOM 裡；在這裡 scrollBottom() 就等於「打開一章直接看到最後一句」
     onDone && onDone();
     return;
   }
@@ -398,6 +398,7 @@ async function goChapter(i, { announce = false, autoAppend = false } = {}) {
   const parts = planChapter(paras);
   const last = parts.length - 1;
 
+  const firstBody = document.querySelector('.pb[data-ci="' + i + '"]');
   const finishAll = () => {
     const secs = Math.max(1, Math.round((Date.now() - state.startedAt) / 1000));
     const lastBody = [...document.querySelectorAll('#stream .pb')].pop() || null;
@@ -457,6 +458,17 @@ async function goChapter(i, { announce = false, autoAppend = false } = {}) {
 
   $('#sbChapter').textContent = spec(ch.no);
   updateCrumb();
+
+  /* 主動開章（點下一章／目錄／回去讀）停在這一章開頭；連讀自動接的不動畫面：
+     內容是往下長的，人留在原來的位置就是正確的閱讀位置。 */
+  if (!autoAppend) {
+    const stream = document.querySelector('#stream');
+    const body0 = document.querySelector(`.pb[data-ci="${i}"]`);
+    if (stream && body0) {
+      const delta = body0.getBoundingClientRect().top - stream.getBoundingClientRect().top;
+      stream.scrollTop = Math.max(0, stream.scrollTop + delta - 6);
+    }
+  }
 }
 
 /* 狀態列／側欄的章號寫法：像編輯器的位置，不像小說（3 / 614） */
