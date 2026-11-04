@@ -100,16 +100,24 @@ export default {
       return asset('/m/') || json({ ok: false, error: 'not found' }, 404);
     }
 
-    /* ── 應用程式熱更新：清單與單檔（公開，內容跟 GitHub 公開版一樣） ── */
+    /* ── 應用程式熱更新：清單與單檔（公開，內容跟 GitHub 公開版一樣） ──
+       env=staging → 讀 s/ 前綴那一份（測試站），正式站不受影響 */
+    const appEnv = url.searchParams.get('env') === 'staging' ? 'staging' : 'prod';
+    const prefix = appEnv === 'staging' ? 's/' : '';
+
     if (p === '/app/manifest') {
-      const rows = await env.DB.prepare('SELECT path, hash FROM app_files').all();
-      const meta = await env.DB.prepare("SELECT value FROM app_meta WHERE key = 'version'").first();
+      const rows = appEnv === 'staging'
+        ? await env.DB.prepare("SELECT path, hash FROM app_files WHERE path LIKE 's/%'").all()
+        : await env.DB.prepare("SELECT path, hash FROM app_files WHERE path NOT LIKE 's/%'").all();
+      const metaVersionKey = appEnv === 'staging' ? 'version:staging' : 'version';
+      const meta = await env.DB.prepare('SELECT value FROM app_meta WHERE key = ?').bind(metaVersionKey).first();
       /* 桌面版只吃 files；m/ 開頭是手機版（由 /m/ 直接供應），桌面版不必抓 */
       const files = {};
       const mobile = {};
       for (const r of rows.results || []) {
-        if (String(r.path).startsWith('m/')) mobile[r.path] = r.hash;
-        else files[r.path] = r.hash;
+        const key = prefix ? String(r.path).slice(prefix.length) : String(r.path);
+        if (String(key).startsWith('m/')) mobile[key] = r.hash;
+        else files[key] = r.hash;
       }
       return json({ ok: true, version: (meta && meta.value) || '', files, mobile });
     }
@@ -118,7 +126,7 @@ export default {
       const key = url.searchParams.get('p') || '';
       if (!key) return json({ ok: false, error: '缺 p' }, 400);
       try {
-        const row = await env.DB.prepare('SELECT body FROM app_files WHERE path = ?').bind(key).first();
+        const row = await env.DB.prepare('SELECT body FROM app_files WHERE path = ?').bind(prefix + key).first();
         if (!row) return json({ ok: false, error: 'not found: ' + key }, 404);
         return new Response(b64Bytes(row.body), {
           headers: { 'content-type': fileType(key), 'cache-control': 'no-cache' },
@@ -136,6 +144,10 @@ export default {
       if (!body || !body.version || !Array.isArray(body.files)) {
         return json({ ok: false, error: '需要 { version, files:[{path,hash,body}] }' }, 400);
       }
+      /* env=staging 的發佈存到 s/ 前綴：兩個環境互不覆蓋、也互不刪除 */
+      const pubEnv = body.env === 'staging' ? 'staging' : 'prod';
+      const pubPrefix = pubEnv === 'staging' ? 's/' : '';
+      const metaKey = pubEnv === 'staging' ? 'version:staging' : 'version';
       const stmts = [];
       for (const f of body.files) {
         if (!f || !f.path || typeof f.body !== 'string') continue;
@@ -143,12 +155,12 @@ export default {
           `INSERT INTO app_files (path, body, hash, version, updated_at) VALUES (?,?,?,?,?)
            ON CONFLICT(path) DO UPDATE SET
              body=excluded.body, hash=excluded.hash, version=excluded.version, updated_at=excluded.updated_at`,
-        ).bind(String(f.path), f.body, String(f.hash || ''), String(body.version), Date.now()));
+        ).bind(pubPrefix + String(f.path), f.body, String(f.hash || ''), String(body.version), Date.now()));
       }
       stmts.push(env.DB.prepare(
-        `INSERT INTO app_meta (key, value) VALUES ('version', ?)
+        `INSERT INTO app_meta (key, value) VALUES (?, ?)
          ON CONFLICT(key) DO UPDATE SET value=excluded.value`,
-      ).bind(String(body.version)));
+      ).bind(metaKey, String(body.version)));
 
       let done = 0;
       for (let i = 0; i < stmts.length; i += 40) {
@@ -157,18 +169,22 @@ export default {
         done += chunk.length;
       }
 
-      /* 清掉已經不存在的檔案 */
+      /* 清掉「自己這個環境」已經不存在的檔案 */
       let removed = 0;
       if (Array.isArray(body.keep)) {
         const keep = new Set(body.keep.map(String));
-        const rows = await env.DB.prepare('SELECT path FROM app_files').all();
-        const gone = (rows.results || []).map((r) => r.path).filter((x) => !keep.has(x));
-        for (const x of gone) {
-          await env.DB.prepare('DELETE FROM app_files WHERE path = ?').bind(x).run();
+        const rows = pubEnv === 'staging'
+          ? await env.DB.prepare("SELECT path FROM app_files WHERE path LIKE 's/%'").all()
+          : await env.DB.prepare("SELECT path FROM app_files WHERE path NOT LIKE 's/%'").all();
+        for (const r of rows.results || []) {
+          const raw = String(r.path);
+          const key = pubPrefix ? raw.slice(pubPrefix.length) : raw;
+          if (keep.has(key)) continue;
+          await env.DB.prepare('DELETE FROM app_files WHERE path = ?').bind(raw).run();
           removed++;
         }
       }
-      return json({ ok: true, version: body.version, wrote: done, removed });
+      return json({ ok: true, env: pubEnv, version: body.version, wrote: done, removed });
     }
 
     /* ── 設定：把登入 cookie 存進來（桌面版呼叫） ── */

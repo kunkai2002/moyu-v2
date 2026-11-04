@@ -23,10 +23,13 @@ const ROOT = path.join(__dirname, '..');   // 安裝目錄（src 的上一層）
 const KEEP_OUT = 'data';                   // 這個目錄底下的東西一個都不准動
 const HOT = /^ui\/[^/]+\.(js|css|html)$/;  // 換掉就能靠 reload 生效的檔案
 
+let APP_ENV = 'prod';   // 'prod' | 'staging'（測試站）
 let DATA_DIR = '';
 let url = '';
 let token = '';
 let localVersion = '';
+
+function envFlag() { return APP_ENV === 'staging' ? 'env=staging' : ''; }
 
 function init(dataDir) {
   DATA_DIR = dataDir;
@@ -34,6 +37,11 @@ function init(dataDir) {
     const s = JSON.parse(fs.readFileSync(path.join(dataDir, 'sync.json'), 'utf8'));
     url = String(s.url || '').replace(/\/+$/, '');
     token = String(s.token || '');
+  } catch {}
+  /* 測試站：安裝目錄的 data/env.json 寫 {"env":"staging"} 就只跟 staging 那份 */
+  try {
+    const e = JSON.parse(fs.readFileSync(path.join(dataDir, 'env.json'), 'utf8'));
+    if (e && e.env === 'staging') APP_ENV = 'staging';
   } catch {}
   try {
     const v = JSON.parse(fs.readFileSync(versionPath(), 'utf8'));
@@ -93,7 +101,7 @@ async function getFile(p) {
 async function check() {
   if (!configured()) return { ok: false, error: '還沒設定雲端（url / token）' };
   let m;
-  try { m = await getJson('/app/manifest'); } catch (e) { return { ok: false, error: e.message }; }
+  try { m = await getJson('/app/manifest' + (APP_ENV === 'staging' ? '?env=staging' : '')); } catch (e) { return { ok: false, error: e.message }; }
   if (!m || m.ok === false) return { ok: false, error: (m && m.error) || 'manifest 讀不到' };
 
   const files = Object.keys(m.files || {});
@@ -129,7 +137,7 @@ async function apply(opts) {
     const dest = path.join(ROOT, f);
     if (!dest.startsWith(ROOT + path.sep)) continue;   // 不准跳出安裝目錄
     let body;
-    try { body = await getFile('/app/file?p=' + encodeURIComponent(f)); }
+    try { body = await getFile('/app/file?p=' + encodeURIComponent(f) + (APP_ENV === 'staging' ? '&env=staging' : '')); }
     catch (e) { return { applied: false, message: f + '：' + e.message }; }
     try {
       fs.mkdirSync(path.dirname(dest), { recursive: true });

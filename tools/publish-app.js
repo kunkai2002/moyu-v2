@@ -91,7 +91,8 @@ function post(p, body) {
 
 /* 一次把整包推上去（沒列的檔案會被清掉，所以 collect() 一定要含全部） */
 async function publish(files, version) {
-  return post('/app/publish', { version, files, keep: files.map((f) => f.path) });
+  const env = process.argv.includes('--staging') ? 'staging' : 'prod';
+  return post('/app/publish', { version, files, keep: files.map((f) => f.path), env });
 }
 
 (async () => {
@@ -107,7 +108,9 @@ async function publish(files, version) {
   const r = await publish(files, version);
   console.log('發佈結果：', JSON.stringify(r));
   console.log('\n桌面版開機 5 秒後、之後每 5 分鐘自己比對一次；');
-  console.log('手機版重新整理 https://moyu-sync.qiaoyuhua2002.workers.dev/m/ 就是新版。');
+  console.log(process.argv.includes('--staging')
+    ? '★ 這是測試站（staging）：只有安裝目錄帶 data/env.json=staging 的那份會收到。'
+    : '手機版重新整理 https://moyu-sync.qiaoyuhua2002.workers.dev/m/ 就是新版。');
 })();
 
 module.exports = { collect, post, publish, stamp, shortSha };

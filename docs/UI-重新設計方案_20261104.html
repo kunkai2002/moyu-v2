@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>魔芋一夏 · 界面重新設計方案</title>
+<style>
+  :root{
+    --ink:#16181c; --ink-2:#3f444c; --ink-3:#6b7079; --paper:#fff;
+    --rule:#e3e5e9; --rule-2:#c9ccd2; --tint:#f5f6f8;
+    --acc:#1f4e8c; --warn:#8a4a12; --bad:#8e2222;
+    --serif:"Times New Roman",Times,serif;
+    --sans:"Microsoft YaHei","微軟雅黑",system-ui,sans-serif;
+    --mono:"Cascadia Mono",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{margin:0;background:var(--paper);color:var(--ink);
+    font-family:var(--sans);font-size:14.5px;line-height:1.72}
+  .wrap{max-width:1000px;margin:0 auto;padding:56px 40px 96px}
+  h1{font-family:var(--serif);font-size:40px;line-height:1.2;font-weight:400;
+    margin:0 0 10px;letter-spacing:-.01em}
+  .sub{color:var(--ink-3);font-size:14px;margin:0 0 40px}
+  h2{font-family:var(--serif);font-size:23px;font-weight:400;margin:48px 0 6px;
+    padding-top:18px;border-top:1px solid var(--rule)}
+  h2:first-of-type{border-top:0;padding-top:0}
+  h3{font-size:14.5px;font-weight:600;margin:24px 0 6px;letter-spacing:.01em}
+  p{margin:8px 0}
+  ul,ol{margin:8px 0 8px;padding-left:20px}
+  li{margin:4px 0}
+  small{color:var(--ink-3);font-size:12.5px}
+  code,kbd{font-family:var(--mono);font-size:12.5px;background:var(--tint);
+    border:1px solid var(--rule);border-radius:3px;padding:1px 5px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13.5px}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+  th{font-weight:600;color:var(--ink-2);background:var(--tint);border-bottom-color:var(--rule-2)}
+  td.num{font-family:var(--mono);font-size:12.5px;white-space:nowrap}
+  .lead{font-size:16px;line-height:1.7;color:var(--ink-2);max-width:62ch}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+  .wire{font-family:var(--mono);font-size:12px;line-height:1.45;background:var(--tint);
+    border:1px solid var(--rule);border-radius:4px;padding:16px 18px;white-space:pre;
+    overflow-x:auto;color:var(--ink-2)}
+  .pick{border-left:3px solid var(--acc);padding:2px 0 2px 14px;margin:14px 0}
+  .pick b{color:var(--acc)}
+  .note{border-left:3px solid var(--rule-2);padding:2px 0 2px 14px;color:var(--ink-2);margin:14px 0}
+  .bad{border-left:3px solid var(--bad)}
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:10px 26px}
+  .chip{display:inline-block;width:12px;height:12px;border-radius:2px;
+    border:1px solid var(--rule-2);vertical-align:-1px;margin-right:6px}
+  .ask{border:1px solid var(--rule-2);border-radius:6px;padding:18px 20px;margin-top:12px}
+  .ask ol{margin:6px 0 0}
+  footer{margin-top:56px;padding-top:16px;border-top:1px solid var(--rule);
+    color:var(--ink-3);font-size:12.5px}
+  @media (max-width:820px){.two,.grid2{grid-template-columns:1fr}.wrap{padding:32px 20px 64px}h1{font-size:30px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>魔芋一夏 · 界面重新設計方案</h1>
+  <p class="sub">2026-11-04　第一版　範圍：整個應用的外殼、對話流、設定、七套主題</p>
+
+  <p class="lead">你要的是「像一個通用工具」，不是「像一個小說閱讀器」。現在的問題不是配色，是<b>沒有系統</b>：一級畫面有六個區塊搶注意力，設定面板把十二種不同的控制項排成同一欄，七套主題只換顏色、不改元件。這份方案先把「通用」定義成可量測的東西，再給版面與元件的規格。</p>
+
+  <h2>一、現在為什麼不「通用」</h2>
+
+  <p>以下六點是從你的截圖與程式量出來的，不是印象。</p>
+
+  <table>
+    <thead><tr><th style="width:26%">問題</th><th>證據</th><th style="width:30%">後果</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>一級畫面區塊過多</td>
+        <td>頂欄 4 顆按鈕、翻頁列 2 顆、提示列 3 顆、輸入框 1 個、狀態列 5 段、側欄 1 條，共 <b>6 個區域</b></td>
+        <td>每個區域都在爭注意力，看起來像拼裝的</td>
+      </tr>
+      <tr>
+        <td>設定面板沒有層級</td>
+        <td>12 列同構：標籤固定 64px ＋ 控制項；滑桿、下拉、輸入框、按鈕、純文字全部混在同一欄</td>
+        <td>找一個設定要從頭掃到尾；像 debug 面板</td>
+      </tr>
+      <tr>
+        <td>主題只換色</td>
+        <td>七套主題各自給 <code>--bg/--fg/--acc</code>，元件尺寸、間距、圓角不變</td>
+        <td>你說過的「不是改個配色就是了」</td>
+      </tr>
+      <tr>
+        <td>沒有三態規格</td>
+        <td>載入用 <code>meta dots</code>、錯誤用 <code>addError</code> 印一行字、空狀態沒有</td>
+        <td>狀態不可預期，壞了看不出來</td>
+      </tr>
+      <tr>
+        <td>狀態文字沒有寬度策略</td>
+        <td>版本顯示成「已足最新&nbsp;<b>()</b>」——括號裡是空的；同步網址被切掉</td>
+        <td>一眼就看到壞掉，最傷「通用感」</td>
+      </tr>
+      <tr>
+        <td>尺寸沒有系統</td>
+        <td>字級 6 種、圓角 4 種、間距 11 種（4/5/6/7/8/9/10/11/12/14/16）</td>
+        <td>同樣的層級在不同地方長得不一樣</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>二、三個方向</h2>
+
+  <div class="two">
+    <div>
+      <h3>方向 A · 終端工作台</h3>
+      <p>左章節樹、中對話流、右可收合面板、底部單列輸入。次要功能全部收進命令面板（<kbd>⌘K</kbd>／<kbd>Ctrl+K</kbd>）。偽裝目標：Claude Code、Cursor、Warp。</p>
+      <p><small>優點：一級畫面只剩三件事，最像通用開發工具；缺點：要重寫外殼一次。</small></p>
+    </div>
+    <div>
+      <h3>方向 B · IDE 三欄</h3>
+      <p>類 VS Code：活動列＋分頁＋編輯器區＋狀態列。偽裝最強，但正文被擠在中間欄，長文閱讀體驗最差。</p>
+      <p><small>優點：最不容易被認出；缺點：你的主場景是長時間閱讀。</small></p>
+    </div>
+  </div>
+
+  <div class="pick">
+    <p><b>建議 A。</b>理由：你要的是「通用工具的外觀」＋「能長時間讀」。A 的版面在偽裝上跟 B 同等（都是左樹中流的開發工具長相），閱讀卻寬 748–900px。B 的三欄會把正文壓到 500px 以下，讀久了會累。</p>
+  </div>
+
+  <h2>三、版面（方向 A）</h2>
+
+  <div class="wire">┌────────────────────────────────────────────────────────────────────┐
+│ ▾ 十日终焉 · 614            ⌘K  命令                       ⚙   ⋯    │ 44
+├──────────┬─────────────────────────────────────────────────────────┤
+│ 章節樹    │                                                         │
+│ 248px    │      對話流：748px 置中，正文 14/1.75                    │
+│ 可拖 200 │                                                         │
+│ ~ 400    │   ┌ 助手 ─────────────────────────────────────────┐      │
+│          │   │ 段落…                                         │      │
+│ 搜尋⌕    │   └───────────────────────────────────────────────┘      │
+│ ─────    │                                    ▂▂▂▂▂▂▂▂▂▂▂▂        │
+│ 第 613 章 │                                    ▔ 使用者氣泡 20px    │
+│ 第 614 章 │                                                         │
+│ 第 615 章 │                                                         │
+├──────────┴─────────────────────────────────────────────────────────┤
+│ › 回覆…                                        ⌘↵ 送出   ⇥ 補全     │ 單列
+└────────────────────────────────────────────────────────────────────┘</div>
+
+  <table>
+    <thead><tr><th>區域</th><th>規格</th><th>一級／二級</th></tr></thead>
+    <tbody>
+      <tr><td>頂欄</td><td class="num">高 44 · 左書名麵包屑 · 中命令入口 · 右 2 顆（設定、更多）</td><td>一級</td></tr>
+      <tr><td>章節樹</td><td class="num">寬 248 · 可拖 200–400 · 每列 32 · 圓角 6</td><td>一級（可收合）</td></tr>
+      <tr><td>對話流</td><td class="num">內容欄 748（可調 640–900）· 上下內距 20</td><td>一級</td></tr>
+      <tr><td>輸入列</td><td class="num">單列 56 · 圓角 12 · 只有一個輸入框與兩個提示鍵</td><td>一級</td></tr>
+      <tr><td>命令面板</td><td class="num">⌘K 開啟 · 寬 520 · 列 36 · 模糊搜全部指令</td><td>二級</td></tr>
+      <tr><td>面板／抽屜</td><td class="num">右抽屜 360 · 面板 420 · 12px 圓角</td><td>二級</td></tr>
+      <tr><td>設定</td><td class="num">分頁 5 頁 · 每頁 ≤6 列</td><td>三級</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <p>狀態列：現在有 5 段資訊（<code>main*</code>、LF、UTF-8、CPU、延遲、章號），其中 3 段是假的。建議<b>留一行、只留兩段</b>（章號、時間），其餘收進「更多」。想完全藏起來也可以，做成設定開關。</p>
+  </div>
+
+  <h2>四、設計 token（七套主題共用）</h2>
+
+  <div class="grid2">
+    <div>
+      <h3>間距 · 4 的倍數</h3>
+      <p><code>4 8 12 16 24 32 48</code><br><small>只有這七個值。現在程式裡有 11 種。</small></p>
+      <h3>字級 · 1.25 模數</h3>
+      <p><code>11 12 13 14 16 20</code><br><small>11 只給狀態與代號；正文 14；標題 16／20。</small></p>
+    </div>
+    <div>
+      <h3>圓角</h3>
+      <p><code>4</code> 小元件　<code>8</code> 按鈕／卡片　<code>12</code> 面板／輸入　<code>999</code> 膠囊</p>
+      <h3>動效</h3>
+      <p><code>120ms</code> hover　<code>180ms</code> 面板　<code>240ms</code> 抽屜<br><small>一律 <code>cubic-bezier(.2,0,.2,1)</code>；<code>prefers-reduced-motion</code> 全關。</small></p>
+    </div>
+  </div>
+
+  <h3>每一套主題要給六個值，不是兩個</h3>
+  <table>
+    <thead><tr><th>token</th><th>用途</th><th>Claude Code</th><th>DSH</th><th>Word</th></tr></thead>
+    <tbody>
+      <tr><td class="num">--bg</td><td>內容底</td><td class="num"><span class="chip" style="background:#1a1915"></span>#1a1915</td><td class="num"><span class="chip" style="background:#151517"></span>#151517</td><td class="num"><span class="chip" style="background:#f4f4f4"></span>#f4f4f4</td></tr>
+      <tr><td class="num">--bg-side</td><td>側欄</td><td class="num"><span class="chip" style="background:#171612"></span>#171612</td><td class="num"><span class="chip" style="background:#1b1b1c"></span>#1b1b1c</td><td class="num"><span class="chip" style="background:#fbfbfb"></span>#fbfbfb</td></tr>
+      <tr><td class="num">--bg-elev</td><td>面板／輸入</td><td class="num"><span class="chip" style="background:#24221c"></span>#24221c</td><td class="num"><span class="chip" style="background:#232324"></span>#232324</td><td class="num"><span class="chip" style="background:#ffffff"></span>#ffffff</td></tr>
+      <tr><td class="num">--line</td><td>分隔</td><td class="num">rgba(255,255,255,.10)</td><td class="num">#ffffff14</td><td class="num">#dcdcdc</td></tr>
+      <tr><td class="num">--fg</td><td>正文</td><td class="num">#e6e0d4</td><td class="num">#ebeef2</td><td class="num">#202020</td></tr>
+      <tr><td class="num">--acc</td><td>強調／焦點</td><td class="num"><span class="chip" style="background:#d97757"></span>#d97757</td><td class="num"><span class="chip" style="background:#5686fe"></span>#5686fe</td><td class="num"><span class="chip" style="background:#2b579a"></span>#2b579a</td></tr>
+    </tbody>
+  </table>
+  <p><small>差別不只是色票：Word 圓角 0、行高 2.0；DSH 圓角 12、氣泡 20、助教訊息無頭像；終端機主題用等寬字。每套主題給的是「同一組 token 的不同值 ＋ 三個構形參數（圓角、行高、字族）」。</small></p>
+
+  <h2>五、元件規格</h2>
+
+  <table>
+    <thead><tr><th style="width:20%">元件</th><th>尺寸</th><th>狀態</th><th>鍵盤</th></tr></thead>
+    <tbody>
+      <tr><td>圖示按鈕</td><td class="num">28×28 · 圓角 8 · icon 16</td><td>hover 加 8% 白 · active 加 12% · disabled 40%</td><td>Tab 可達；焦點環 2px</td></tr>
+      <tr><td>文字按鈕</td><td class="num">高 32 · 左右 12 · 圓角 8</td><td>主：<code>--acc</code> 實心；次：透明＋1px 邊</td><td>Enter／Space</td></tr>
+      <tr><td>清單列</td><td class="num">高 32 · 內距 8 · 圖示 16 · 右側 meta 11</td><td>hover 底色 6% · 選中 12% ＋ 左 2px 強調條</td><td>↑↓ 移動、Enter 開</td></tr>
+      <tr><td>對話氣泡</td><td class="num">右對齊 · 圓角 20 · 內距 10/16 · 最大寬 70%</td><td>送出中 60% · 失敗：紅邊＋重送</td><td>Enter 送出、Shift+Enter 換行</td></tr>
+      <tr><td>助手訊息</td><td class="num">無氣泡 · 無頭像 · 段落 14/1.75 · 段距 12</td><td>處理中：一列 12px 灰字＋轉圈</td><td>—</td></tr>
+      <tr><td>輸入列</td><td class="num">單列 56 · 圓角 12 · 左右內距 12</td><td>focus：邊 1px <code>--acc</code>；輸入超過 3 行才長高</td><td>⌘↵ 送出 / ⇥ 補全</td></tr>
+      <tr><td>面板</td><td class="num">420×視窗高 · 圓角 12 · 內距 16</td><td>標題 13/600 ＋ 關閉 28</td><td>Esc 關</td></tr>
+      <tr><td>三態</td><td class="num">icon 20 ＋ 一句話（13px）＋ 一個動作</td><td>空：說明怎麼開始；錯：說錯在哪、怎麼修；載入：骨架或轉圈</td><td>—</td></tr>
+    </tbody>
+  </table>
+
+  <h2>六、設定面板重做</h2>
+
+  <p>五頁，每頁 ≤6 列，每頁第一行用一句話說這頁在管什麼。主題改成卡片網格（看得到長相才選得下去），不再用下拉。</p>
+
+  <table>
+    <thead><tr><th style="width:12%">分頁</th><th>內容（由左至右、由上至下）</th></tr></thead>
+    <tbody>
+      <tr><td>外觀</td><td>主題卡（8 張：7 套＋DSH 淺色）→ 字級 → 行距 → 段距 → 欄寬</td></tr>
+      <tr><td>閱讀</td><td>字體（襯線／無襯線／等寬）→ 串流速度 → 自動連讀 → 翻頁鍵顯示</td></tr>
+      <tr><td>帳號</td><td>登入狀態 → 掃碼登入／登出 → 資料夾（可複製）→ 清除本機資料</td></tr>
+      <tr><td>同步</td><td>狀態（上次成功時間）→ 網址（可切換顯示長度）→ 金鑰 → 立即同步 → 儲存</td></tr>
+      <tr><td>關於</td><td>版本號（<b>修好現在的空括號</b>）→ 檢查更新 → 隱身模式開關 → 螢幕閱讀器偵錯</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note bad">
+    <p>截圖裡的兩個實際錯誤，順手修：<b>版本「已足最新 ()」</b>——括號裡取不到本機版本號；<b>同步網址被截斷</b>——輸入框沒有使用可水平捲動或省略號策略。這兩條不修，任何重設計都會被一眼看出是壞的。</p>
+  </div>
+
+  <h2>七、遷移順序</h2>
+
+  <ol>
+    <li><b>Token 與外殼</b>（不改功能）：把間距、字級、圓角、每個元件的尺寸換成上面的值；一級畫面收成三區。</li>
+    <li><b>設定面板分頁</b>：拆成五頁，主題改卡片網格，修版本號與網址兩個顯示錯誤。</li>
+    <li><b>三態規格</b>：空／錯／載入統一，錯誤訊息改成「錯在哪＋怎麼修」。</li>
+    <li><b>命令面板</b>：<kbd>⌘K</kbd>／<kbd>Ctrl+K</kbd> 一次找到所有功能，頂欄與提示列就能繼續瘦身。</li>
+    <li><b>七套主題補洞</b>：每套補齊六個 token 與三個構形參數；新增 DSH 淺色。</li>
+  </ol>
+
+  <p>每一步都走測試站：改 → 推 staging → 跑 41 項驗收 ＋ 6 張截圖（1280／1440／1920／820、對話頂、對話底）→ 你點頭 → 才推正式。測試站已建好：<code>%LOCALAPPDATA%\Programs\魔芋一夏-staging</code>，雲端 <code>/app/manifest?env=staging</code> 與正式站完全分離。</p>
+
+  <h2>八、驗收標準（可以量的）</h2>
+
+  <table>
+    <thead><tr><th>項目</th><th>標準</th></tr></thead>
+    <tbody>
+      <tr><td>一級畫面區域</td><td>≤3 個（對話、輸入、一個命令入口）；側欄可收合</td></tr>
+      <tr><td>可點區域</td><td>≥28×28，彼此間距 ≥8</td></tr>
+      <tr><td>對比</td><td>正文 ≥4.5:1、次要 ≥3:1、非文字元素 ≥3:1</td></tr>
+      <tr><td>橫向滾動</td><td>820px 起無</td></tr>
+      <tr><td>設定</td><td>每頁 ≤6 列、主題卡片可 keyboard 選</td></tr>
+      <tr><td>三態</td><td>空／錯／載入都有明確呈現，錯誤說得出下一步</td></tr>
+      <tr><td>主題</td><td>每套六個 token 都不同；三套以上圓角／字族不同</td></tr>
+      <tr><td>鍵盤</td><td>Tab 走得到所有控制項；Esc 關面板；⌘K 開命令面板</td></tr>
+      <tr><td>動效</td><td>只三個時長；reduced-motion 全關</td></tr>
+    </tbody>
+  </table>
+
+  <h2>九、要你拍板的三件事</h2>
+
+  <div class="ask">
+    <ol>
+      <li><b>方向 A（終端工作台）還是 B（IDE 三欄）？</b>我建議 A。</li>
+      <li><b>狀態列</b>：留一行兩段（章號、時間），還是完全可關？</li>
+      <li><b>DSH 淺色</b>要不要一起做（Harness 本身有淺色，魔芋現在只有深色）？</li>
+    </ol>
+  </div>
+
+  <footer>魔芋一夏 · 界面重新設計方案 · 2026-11-04 · 數值全部以程式量測為準，施工時以這份文件對版</footer>
+</div>
+</body>
+</html>
