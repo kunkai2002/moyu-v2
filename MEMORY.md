@@ -20,7 +20,8 @@
 - **不要用 PowerShell 改 UTF-8 檔**（會亂碼、引號會爛）。一律寫 `tools/patch-*.js` 用 `node` 跑。
 - 使用者真正的書：`十日终焉 7143038691944959011`。他常常邊測邊讀，**進度會自己變**，
   不要看到數字跟紀錄不一樣就以為壞了，更不要擅自改回去（要改先問）。
-- 測試一律 `--hidden`（Electron）＋ headless Chrome（手機），不彈窗。
+- **測試一律無頭（JOJO 2026-11-04 明確要求）**：Electron 用 `--hidden`；網頁用 puppeteer `headless:'new'`。
+  不要開可見的瀏覽器視窗（ego-browser 那種會彈窗的，測試時不用；要真人手動看才開）。
 - 改完要發佈：`node tools/pack4.js` → 複製到安裝目錄 → `node tools/publish-app.js`。
 - 改完 `sync/m/*` 還要 `node tools/build-mobile-assets.js`（Worker 靜態備援）。
 

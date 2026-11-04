@@ -1,9 +1,8 @@
-/* 魔芋一夏 · 手機版
-   原則：
-   1. 打開一本書只「讀」進度，絕不寫回（避免蓋掉真正的位置）
-   2. 續讀順序：雲端進度 → 本機記住的章節 → 第 1 章
-   3. 只有使用者動作（目錄跳章 / 自動接章 / 記住進度）才寫進度
-   4. 目錄會標出「上次讀到」並自動捲到那一章 */
+/* 魔芋一夏 · 手機鏡像（對話流，不是閱讀器）
+   ─────────────────────────────────────────────────────────────
+   結構照抄 AI 工具：每一本書＝一個工作階段；一章＝使用者一句「讀第 N 章」＋助手長回覆；
+   段落之間插假 diff。沒有金鑰＝遊客模式（示例資料，只讀）；有金鑰＝真資料。
+   進度只在使用者動作（翻章／記住進度）時寫回，打開一本書不會蓋掉桌面版的位置。 */
 (function () {
   'use strict';
 
@@ -15,439 +14,318 @@
     if (m) { try { localStorage.setItem('moyu.token', decodeURIComponent(m[1])); } catch (e) {} return decodeURIComponent(m[1]); }
     try { return localStorage.getItem('moyu.token') || ''; } catch (e) { return ''; }
   })();
+  var GUEST = !TOKEN;
 
   function api(p, opt) {
     opt = opt || {};
     return fetch(p, {
       method: opt.method || 'GET',
-      headers: Object.assign({
-        Authorization: 'Bearer ' + TOKEN,
-        'Content-Type': 'application/json',
-      }, opt.headers || {}),
+      headers: { Authorization: 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
       body: opt.body ? JSON.stringify(opt.body) : undefined,
     }).then(function (r) {
       return r.json().catch(function () { return { ok: false, error: 'HTTP ' + r.status }; });
     });
   }
 
-  var state = {
-    shelf: [],
-    book: null,
-    chapters: [],
-    index: 0,
-    progress: {},
-    marks: [],
-    busy: false,
-    done: false,
-    loadedChapters: {},
+  /* ── 遊客模式的示例資料 ── */
+  var DEMO_BOOKS = [
+    { id: 'demo-1', title: '示例書：山門外的帳房' },
+    { id: 'demo-2', title: '示例書：夜市燈下的約定' },
+    { id: 'demo-3', title: '示例書：北方港口的春天' }
+  ];
+  var DEMO_CHAPTERS = [];
+  for (var d = 1; d <= 8; d++) DEMO_CHAPTERS.push({ id: 'demo-c' + d, no: d, title: '第 ' + d + ' 章 ' + ['起程', '舊賬', '夜談', '山路', '回信', '渡口', '冬雪', '收燈'][d - 1] });
+  var DEMO_TEXT = [
+    '這是遊客預覽用的示例章節，文字只為了看清楚排版，不是任何一本真的書。',
+    '每一章在畫面上長成助手的一段回覆：上面一行 ● 角色行，下面是正文。',
+    '字級、行距可以用右上角的 A 按鈕調整；圓形按鈕切換深色淺色。',
+    '段落中間會穿插假的「已更新檔案」與 diff，那是偽裝，不是真的程式碼。',
+    '滾到最底下會自動接下一章，跟桌面版一樣。',
+    '想要自己的書與進度，請改用桌面版產生的那條帶金鑰的網址。'
+  ];
+
+  var S = {
+    books: [], chapters: [], book: null, index: 0, progress: {},
+    loaded: {}, busy: false, done: false, guest: GUEST
   };
 
-  var userGesture = false;   // 使用者真的滑了才允許自動接章
-  var toastTimer = null;
-  function toast(t) {
-    var el = $('toast');
-    el.textContent = t;
-    el.classList.add('on');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function () { el.classList.remove('on'); }, 1800);
-  }
-  function esc(s) {
-    return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  }
-  function saveLocal(k, v) { try { localStorage.setItem('moyu.m.' + k, JSON.stringify(v)); } catch (e) {} }
-  function loadLocal(k, d) {
-    try { var v = localStorage.getItem('moyu.m.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; }
-  }
+  function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function save(k, v) { try { localStorage.setItem('moyu.m.' + k, JSON.stringify(v)); } catch (e) {} }
+  function load(k, d) { try { var v = localStorage.getItem('moyu.m.' + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
 
-  /* 本機記住的章節：雲端被蓋掉時的保命符 */
-  function rememberChapter(bookId, ch) {
-    saveLocal('last:' + bookId, { id: ch.id, no: ch.no, title: ch.title || '' });
-    try {
-      var key = 'hist:' + bookId;
-      var list = loadLocal(key, []) || [];
-      list = list.filter(function (x) { return x.id !== ch.id; });
-      list.unshift({ id: ch.id, no: ch.no, title: ch.title || '', at: Date.now() });
-      saveLocal(key, list.slice(0, 8));
-    } catch (e) {}
+  var toastEl = $('toast'), toastTimer = null;
+  function toast(t) {
+    toastEl.textContent = t;
+    toastEl.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('on'); }, 1700);
   }
-  function historyOf(bookId) { return loadLocal('hist:' + bookId, []) || []; }
-  function localChapter(bookId) { return loadLocal('last:' + bookId, null); }
 
   /* ── 主題 / 字級 ── */
-  var theme = loadLocal('theme', 'dark') || 'dark';
+  var theme = load('theme', 'dark') || 'dark';
   document.documentElement.setAttribute('data-theme', theme);
-  var font = Number(loadLocal('font', 17)) || 17;
-  document.documentElement.style.setProperty('--fs', font + 'px');
-
-  $('btnTheme').addEventListener('click', function () {
-    theme = theme === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
-    saveLocal('theme', theme);
-  });
-
-  /* 字級：A− / A+，13–26px，記在本機（--fs 本來就在吃了，只缺按鈕） */
-  var fzPanel = $('fz');
-  var FZ_MIN = 13;
-  var FZ_MAX = 26;
-  function clampFont(v) {
-    v = Math.round(Number(v) || 17);
-    return Math.max(FZ_MIN, Math.min(FZ_MAX, v));
-  }
+  var font = Number(load('font', 16)) || 16;
   function paintFont() {
     document.documentElement.style.setProperty('--fs', font + 'px');
     $('fzVal').textContent = String(font);
   }
   function setFont(v) {
-    var n = clampFont(v);
-    if (n === font) { paintFont(); return; }
-    font = n;
-    saveLocal('font', font);
+    font = Math.max(13, Math.min(24, Math.round(Number(v) || 16)));
+    save('font', font);
     paintFont();
   }
-  font = clampFont(font);
   paintFont();
-
-  $('btnFont').addEventListener('click', function (e) {
-    e.stopPropagation();
-    fzPanel.hidden = !fzPanel.hidden;
+  $('btnTheme').addEventListener('click', function () {
+    theme = theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', theme);
+    save('theme', theme);
   });
-  $('fzMinus').addEventListener('click', function (e) {
-    e.stopPropagation();
-    setFont(font - 1);
-  });
-  $('fzPlus').addEventListener('click', function (e) {
-    e.stopPropagation();
-    setFont(font + 1);
-  });
+  var fz = $('fz');
+  $('btnFont').addEventListener('click', function (e) { e.stopPropagation(); fz.hidden = !fz.hidden; });
+  $('fzMinus').addEventListener('click', function (e) { e.stopPropagation(); setFont(font - 1); });
+  $('fzPlus').addEventListener('click', function (e) { e.stopPropagation(); setFont(font + 1); });
   document.addEventListener('click', function (e) {
-    if (fzPanel.hidden) return;
-    if (fzPanel.contains(e.target) || $('btnFont').contains(e.target)) return;
-    fzPanel.hidden = true;
+    if (fz.hidden) return;
+    if (fz.contains(e.target) || $('btnFont').contains(e.target)) return;
+    fz.hidden = true;
   });
-  window.addEventListener('scroll', function () {
-    if (!fzPanel.hidden) fzPanel.hidden = true;
-  }, { passive: true });
 
-  /* ── 進度顯示 ── */
-  function progressOf(bookId) {
-    var cloud = state.progress[bookId];
-    var local = localChapter(bookId);
-    if (cloud && cloud.chapter_no) {
-      return { no: cloud.chapter_no, title: cloud.title || '', id: cloud.chapter_id };
-    }
-    if (local) return { no: local.no, title: local.title, id: local.id };
-    return null;
+  /* ── 假 diff（終端風的關鍵細節） ── */
+  var FILES = ['src/gateway/report.ts', 'src/routes/portal.ts', 'web/src/App.tsx', 'src/lib/query.ts'];
+  function diffBlock(n) {
+    var f = FILES[n % FILES.length];
+    var box = document.createElement('div');
+    box.className = 'diff';
+    box.innerHTML = '<div class="dh"><i></i>updated ' + f + '</div>'
+      + '<pre class="db"><span class="ln">@@ -' + (140 + n) + ',7 +' + (140 + n) + ',9 @@</span>\n'
+      + '<span class="ctx">  export async function buildReport(ctx: Ctx) {</span>\n'
+      + '<span class="del">- const total = rows.length;</span>\n'
+      + '<span class="add">+ const total = rows.reduce((s, r) => s + (r.amount || 0), 0);</span>\n'
+      + '<span class="ctx">  }</span></pre>';
+    return box;
   }
 
-  /* ── 書架 ── */
-  function renderShelf() {
+  /* ── 清單（書架＝工作階段清單） ── */
+  function renderList() {
     $('btnBack').hidden = true;
     $('btnToc').hidden = true;
     $('btnFont').hidden = true;
     $('fz').hidden = true;
     $('remember').hidden = true;
-    titleEl.textContent = '書架';
+    titleEl.textContent = S.guest ? '遊客預覽' : '工作階段';
 
-    if (!state.shelf.length) {
-      view.innerHTML = '<div class="empty">書架是空的。<br>先在桌面版按「掃碼登入」，這裡就會出現。</div>';
-      return;
-    }
+    var head = document.createElement('div');
+    head.className = 'sess-h';
+    head.innerHTML = S.guest
+      ? '<b>遊客預覽</b><span>示例資料，不連任何帳號</span>'
+      : '<b>最近</b><span>' + S.books.length + ' 個工作階段</span>';
+
     var wrap = document.createElement('div');
-    wrap.className = 'shelf';
-    state.shelf.forEach(function (b) {
-      var card = document.createElement('button');
-      card.className = 'card';
-      card.setAttribute('data-book', b.id);
-      var pr = progressOf(b.id);
-      card.innerHTML = '<span class="t">' + esc(b.title || b.id) + '</span>'
-        + '<span class="p">' + (pr ? '讀到 第 ' + esc(pr.no) + ' 章' : '未開始') + '</span>';
-      card.addEventListener('click', function () { openBook(b.id); });
-      wrap.appendChild(card);
+    wrap.className = 'sess';
+
+    if (!S.books.length) {
+      wrap.innerHTML = '<div class="empty">還沒有書。在桌面版按「掃碼登入」，這裡就會出現。</div>';
+    }
+    S.books.forEach(function (b) {
+      var pr = S.progress[b.id];
+      var row = document.createElement('button');
+      row.className = 'sess-r';
+      row.innerHTML = '<span class="sr-t">' + esc(b.title || b.id) + '</span>'
+        + '<span class="sr-p">' + (pr && pr.chapter_no ? '第 ' + esc(pr.chapter_no) + ' 章' : '未開始') + '</span>';
+      row.addEventListener('click', function () { openBook(b); });
+      wrap.appendChild(row);
     });
+
     view.innerHTML = '';
+    view.appendChild(head);
     view.appendChild(wrap);
   }
 
-  async function loadShelf() {
-    view.innerHTML = '<div class="empty">讀取書架…</div>';
-    var r = await api('/api/shelf');
-    if (!r || r.ok === false) {
-      var cached = loadLocal('shelf', []);
-      if (cached && cached.length) { state.shelf = cached; renderShelf(); return; }
-      view.innerHTML = '<div class="empty">' + esc((r && r.error) || '書架讀不到') + '</div>';
-      return;
-    }
-    state.shelf = r.books || [];
-    saveLocal('shelf', state.shelf);
-    renderShelf();
+  /* ── 對話流 ── */
+  function turnUser(text) {
+    var row = document.createElement('div');
+    row.className = 'turn user';
+    row.innerHTML = '<span class="bub">' + esc(text) + '</span>';
+    return row;
+  }
+  function turnAI() {
+    var row = document.createElement('div');
+    row.className = 'turn ai';
+    row.innerHTML = '<div class="gut">●</div><div class="bb"></div>';
+    return row;
   }
 
-  async function loadProgress() {
-    var r = await api('/api/progress');
-    if (r && r.progress) {
-      var map = {};
-      r.progress.forEach(function (p) { map[p.book_id] = p; });
-      state.progress = map;
-    }
-  }
-
-  /* ── 續讀定位：雲端 id → 雲端章號 → 本機 → 第 1 章 ── */
-  function resolveIndex(bookId, chapters) {
-    var cloud = state.progress[bookId];
-    if (cloud) {
-      if (cloud.chapter_id) {
-        var i = chapters.findIndex(function (c) { return c.id === cloud.chapter_id; });
-        if (i >= 0) return { index: i, from: 'cloud' };
-      }
-      if (cloud.chapter_no) {
-        var j = chapters.findIndex(function (c) { return String(c.no) === String(cloud.chapter_no); });
-        if (j >= 0) return { index: j, from: 'cloud-no' };
-      }
-    }
-    var local = localChapter(bookId);
-    if (local && local.id) {
-      var k = chapters.findIndex(function (c) { return c.id === local.id; });
-      if (k >= 0) return { index: k, from: 'local' };
-    }
-    return { index: 0, from: 'start' };
-  }
-
-  /* ── 開書：只讀進度，不寫回 ── */
-  async function openBook(bookId) {
-    titleEl.textContent = '載入中…';
-    view.innerHTML = '<div class="empty">載入目錄…</div>';
-    var r = await api('/api/open?input=' + encodeURIComponent(bookId));
-    if (!r || r.ok === false) {
-      view.innerHTML = '<div class="empty">' + esc((r && r.error) || '開書失敗') + '</div>';
-      return;
-    }
-    state.book = r.book;
-    state.chapters = r.book.chapters || [];
-    state.done = false;
-    state.loadedChapters = {};
-    userGesture = false;
-    await loadMarks(bookId);
-
-    var hit = resolveIndex(bookId, state.chapters);
-    await readFrom(hit.index, { wipe: true, mark: false });
-    var ch = state.chapters[hit.index];
-    if (ch) rememberChapter(bookId, ch);
-    if (hit.from !== 'start' && ch) {
-      toast('已回到上次：第 ' + ch.no + ' 章');
-    }
-  }
-
-  /* ── 標記 ── */
-  async function loadMarks(bookId) {
-    var r = await api('/api/marks?book=' + encodeURIComponent(bookId));
-    state.marks = (r && r.marks) || [];
-    saveLocal('marks:' + bookId, state.marks.filter(function (m) { return !m.deleted; }));
-  }
-
-  function paintMarks(box, chapterId) {
-    var list = state.marks.filter(function (m) { return m.chapter_id === chapterId && !m.deleted; });
-    var set = {};
-    list.forEach(function (m) { set[Number(m.para)] = 1; });
-    box.querySelectorAll('.p').forEach(function (p) {
-      if (p.dataset.chapter !== chapterId) return;
-      p.classList.toggle('marked', !!set[Number(p.dataset.para)]);
-    });
-  }
-
-  /* ── 渲染 ── */
-  function readFrom(index, opts) {
-    opts = opts || {};
-    state.index = index;
+  function openBook(b) {
+    S.book = { id: b.id, title: b.title };
+    S.chapters = S.guest ? DEMO_CHAPTERS.slice() : [];
     $('btnBack').hidden = false;
     $('btnToc').hidden = false;
     $('btnFont').hidden = false;
     $('remember').hidden = false;
-    if (opts.wipe) {
-      view.innerHTML = '<div class="read" id="readBox"></div>';
-      state.loadedChapters = {};   // 清畫面就要清「已載入」，否則新章不會渲染
-      userGesture = false;
-      window.scrollTo(0, 0);
+    if (S.guest) {
+      view.innerHTML = '<div class="chat" id="chat"></div>';
+      readFrom(0, true);
+      return;
     }
-    return appendChapter(index, opts);
+    view.innerHTML = '<div class="empty">讀取目錄…</div>';
+    loadBook(b);
   }
 
-  async function appendChapter(index, opts) {
-    opts = opts || {};
-    var ch = state.chapters[index];
-    if (!ch || state.busy) return;
-    if (state.loadedChapters[ch.id]) return;
-    state.busy = true;
-    var box = $('readBox');
-    if (!box) { state.busy = false; return; }
-
-    var loading = document.createElement('div');
-    loading.className = 'loading';
-    loading.textContent = '第 ' + ch.no + ' 章 讀取中…';
-    box.appendChild(loading);
-
-    var r = await api('/api/chapter?book=' + encodeURIComponent(state.book.id)
-      + '&id=' + encodeURIComponent(ch.id));
-    loading.remove();
-
+  async function loadBook(b) {
+    var r = await api('/api/open?input=' + encodeURIComponent(b.id));
     if (!r || r.ok === false) {
-      var err = document.createElement('div');
-      err.className = 'preview';
-      err.textContent = (r && r.error) || '這一章讀不到';
-      box.appendChild(err);
-      state.busy = false;
+      view.innerHTML = '<div class="empty">' + esc((r && r.error) || '開書失敗') + '</div>';
+      return;
+    }
+    S.chapters = (r.book && r.book.chapters) || [];
+    view.innerHTML = '<div class="chat" id="chat"></div>';
+    readFrom(resolveIndex(b.id), true);
+  }
+
+  function resolveIndex(bookId) {
+    var pr = S.progress[bookId];
+    if (pr && pr.chapter_id) {
+      var i = S.chapters.findIndex(function (c) { return c.id === pr.chapter_id; });
+      if (i >= 0) return i;
+    }
+    var local = load('last:' + bookId, null);
+    if (local && local.id) {
+      var j = S.chapters.findIndex(function (c) { return c.id === local.id; });
+      if (j >= 0) return j;
+    }
+    return 0;
+  }
+
+  async function readFrom(i, wipe) {
+    if (S.busy) return;
+    var ch = S.chapters[i];
+    if (!ch) return;
+    S.index = i;
+    var chat = $('chat');
+    if (!chat) return;
+
+    chat.appendChild(turnUser('讀《' + (S.book && S.book.title ? S.book.title : '') + '》第 ' + ch.no + ' 章'));
+    var ai = turnAI();
+    chat.appendChild(ai);
+    var box = ai.querySelector('.bb');
+    if (wipe) window.scrollTo(0, 0);
+
+    if (S.guest) {
+      paintChapter(box, ch, DEMO_TEXT.slice(), i);
       return;
     }
 
-    if (box.querySelector('.chap')) {
-      var sep = document.createElement('hr');
-      sep.className = 'sep';
-      box.appendChild(sep);
+    S.busy = true;
+    var loading = document.createElement('div');
+    loading.className = 'loading';
+    loading.textContent = '讀取中…';
+    box.appendChild(loading);
+    var r = await api('/api/chapter?book=' + encodeURIComponent(S.book.id) + '&id=' + encodeURIComponent(ch.id));
+    loading.remove();
+    S.busy = false;
+    if (!r || r.ok === false) {
+      var e = document.createElement('div');
+      e.className = 'err';
+      e.textContent = (r && r.error) || '這一章讀不到';
+      box.appendChild(e);
+      return;
     }
+    paintChapter(box, ch, r.paragraphs || [], i, r.title, r.previewOnly);
+    if (r.title) titleEl.textContent = String(r.title).slice(0, 20);
+  }
+
+  function paintChapter(box, ch, paras, idx, title, previewOnly) {
     var h = document.createElement('div');
     h.className = 'chap';
-    h.textContent = r.title || ch.title || ('第 ' + ch.no + ' 章');
+    h.textContent = title || ch.title || ('第 ' + ch.no + ' 章');
     box.appendChild(h);
 
-    (r.paragraphs || []).forEach(function (text, idx) {
+    paras.forEach(function (t, k) {
       var p = document.createElement('p');
       p.className = 'p';
-      p.textContent = text;
-      p.dataset.para = String(idx);
-      p.dataset.chapter = ch.id;
-      p.addEventListener('click', function () { toggleMark(p); });
+      p.textContent = t;
+      p.addEventListener('click', function () { p.classList.toggle('marked'); });
       box.appendChild(p);
+      if ((k + 1) % 6 === 0 && k < paras.length - 1) box.appendChild(diffBlock(k + 1));
     });
 
-    paintMarks(box, ch.id);
-    state.loadedChapters[ch.id] = true;
-    state.index = index;
-    titleEl.textContent = (r.title || ch.title || '').slice(0, 24);
-    state.done = !!r.previewOnly || index >= state.chapters.length - 1;
+    var meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = '● assistant · ' + Number((paras.join('').length) || 0).toLocaleString() + ' tok · 第 ' + ch.no + ' 章';
+    box.appendChild(meta);
 
-    if (opts.mark) await saveProgress();
-
-    if (r.previewOnly) {
+    if (previewOnly) {
       var note = document.createElement('div');
-      note.className = 'preview';
+      note.className = 'err';
       note.textContent = '這一章只取到試讀片段（付費章節）。';
       box.appendChild(note);
     }
-    state.busy = false;
+    S.done = idx >= S.chapters.length - 1;
+    S.loaded[ch.id] = true;
   }
 
-  /* ── 只有使用者動作才寫進度 ── */
-  async function saveProgress() {
-    var ch = state.chapters[state.index];
-    if (!state.book || !ch) return;
-    rememberChapter(state.book.id, ch);
-    var payload = {
-      book_id: state.book.id,
-      chapter_id: ch.id,
-      chapter_no: ch.no,
-      title: ch.title || '',
-    };
-    state.progress[state.book.id] = payload;
-    var r = await api('/api/progress', { method: 'POST', body: payload });
-    if (!r || r.ok === false) toast('進度同步失敗');
+  async function loadShelf() {
+    if (S.guest) { S.books = DEMO_BOOKS.slice(); renderList(); return; }
+    view.innerHTML = '<div class="empty">讀取中…</div>';
+    var p = await api('/api/progress');
+    var map = {};
+    ((p && p.progress) || []).forEach(function (x) { map[x.book_id] = x; });
+    S.progress = map;
+    var r = await api('/api/shelf');
+    if (!r || r.ok === false) {
+      S.books = load('shelf', []) || [];
+      renderList();
+      return;
+    }
+    S.books = r.books || [];
+    save('shelf', S.books);
+    renderList();
   }
 
-  /* ── 劃線 ── */
-  async function toggleMark(p) {
-    var ch = state.chapters[state.index];
-    if (!ch || !state.book) return;
-    var chId = p.dataset.chapter || ch.id;
-    var idx = Number(p.dataset.para);
-    if (!Number.isFinite(idx)) return;
-    var id = chId + '-' + idx + '-highlight';
-    var had = p.classList.contains('marked');
-    p.classList.toggle('marked', !had);
-    var payload = had
-      ? { action: 'remove', book_id: state.book.id, id: id }
-      : {
-        action: 'save', id: id, book_id: state.book.id, chapter_id: chId,
-        chapter_title: ch.title || '', para: idx,
-        text: (p.textContent || '').slice(0, 80), type: 'highlight',
-      };
-    await api('/api/marks', { method: 'POST', body: payload });
-    var rr = await api('/api/marks?book=' + encodeURIComponent(state.book.id));
-    state.marks = (rr && rr.marks) || [];
-    paintMarks(p.parentElement, chId);
-    toast(had ? '已取消劃線' : '已劃線');
-  }
-
-  /* ── 記住進度 ── */
-  $('remember').addEventListener('click', async function () {
-    if (!state.book) return;
-    await saveProgress();
-    var ch = state.chapters[state.index];
-    toast('進度已記住：第 ' + (ch ? ch.no : '?') + ' 章');
-  });
-
-  /* ── 目錄：標出上次讀到 + 自動捲到當前 ── */
+  /* ── 目錄 ── */
   function openToc() {
     var list = $('tocList');
     list.innerHTML = '';
-
-    /* 最近讀過（就算雲端進度被蓋掉也能回來） */
-    var hist = historyOf(state.book.id).slice(0, 5);
-    if (hist.length) {
-      var head = document.createElement('div');
-      head.className = 'toc-sec';
-      head.textContent = '最近讀過';
-      list.appendChild(head);
-      hist.forEach(function (h) {
-        var i = state.chapters.findIndex(function (c) { return c.id === h.id; });
-        if (i < 0) return;
-        var b = document.createElement('button');
-        b.className = 'toc-r toc-recent';
-        b.innerHTML = '<span class="toc-no">' + esc(h.no) + '</span>'
-          + '<span class="toc-t">' + esc((h.title || '').replace(/^第\s*\d+[章節]?\s*/, '')) + '</span>';
-        b.addEventListener('click', function () { closeToc(); readFrom(i, { wipe: true, mark: true }); });
-        list.appendChild(b);
-      });
-      var div = document.createElement('div');
-      div.className = 'toc-sec';
-      div.textContent = '全部章節';
-      list.appendChild(div);
-    }
-    var pr = progressOf(state.book.id);
-    var lastId = pr && pr.id ? pr.id : null;
-
-    state.chapters.forEach(function (c, i) {
+    S.chapters.forEach(function (c, i) {
       var b = document.createElement('button');
-      b.className = 'toc-r' + (i === state.index ? ' on' : '');
-      var badge = (c.id === lastId) ? '<span class="toc-badge">上次讀到</span>' : '';
-      b.innerHTML = '<span class="toc-no">' + esc(c.no) + '</span>'
-        + '<span class="toc-t">' + esc((c.title || '').replace(/^第\s*\d+[章節]?\s*/, '')) + '</span>' + badge;
+      b.className = 'toc-r' + (i === S.index ? ' on' : '');
+      b.innerHTML = '<span class="toc-no">' + c.no + '</span><span class="toc-t">'
+        + esc(String(c.title || '').replace(/^第\s*\d+\s*章\s*/, '')) + '</span>';
       b.addEventListener('click', function () {
         closeToc();
-        readFrom(i, { wipe: true, mark: true });
+        view.innerHTML = '<div class="chat" id="chat"></div>';
+        readFrom(i, true);
       });
       list.appendChild(b);
     });
-
     $('toc').hidden = false;
     $('mask').hidden = false;
     setTimeout(function () {
-      var cur = list.querySelector('.toc-r.on') || list.querySelector('.toc-r');
+      var cur = list.querySelector('.toc-r.on');
       if (cur) cur.scrollIntoView({ block: 'center' });
     }, 30);
   }
   function closeToc() { $('toc').hidden = true; $('mask').hidden = true; }
+
   $('btnToc').addEventListener('click', openToc);
   $('tocClose').addEventListener('click', closeToc);
   $('mask').addEventListener('click', closeToc);
-
-  $('btnBack').addEventListener('click', function () {
-    state.book = null;
-    state.done = false;
-    loadShelf();
+  $('btnBack').addEventListener('click', function () { S.book = null; loadShelf(); });
+  $('remember').addEventListener('click', async function () {
+    if (S.guest) { toast('遊客模式不寫進度'); return; }
+    var ch = S.chapters[S.index];
+    if (!ch || !S.book) return;
+    save('last:' + S.book.id, { id: ch.id, no: ch.no });
+    await api('/api/progress', { method: 'POST', body: { book_id: S.book.id, chapter_id: ch.id, chapter_no: ch.no, title: ch.title || '' } });
+    toast('進度已記住：第 ' + ch.no + ' 章');
   });
 
-  /* ── 滾到底自動接下一章 ── */
-  var lastY = 0;
-  var ticking = false;
-  function onScroll() {
+  /* ── 滾到底接下一章（一次手勢只接一章） ── */
+  var lastY = 0, ticking = false, gesture = false;
+  ['touchstart', 'touchmove', 'wheel'].forEach(function (ev) {
+    window.addEventListener(ev, function () { if (S.book && !S.busy) gesture = true; }, { passive: true });
+  });
+  window.addEventListener('scroll', function () {
     if (ticking) return;
     ticking = true;
     requestAnimationFrame(function () {
@@ -455,52 +333,26 @@
       var y = window.scrollY;
       var down = y > lastY + 6;
       lastY = y;
-      if (!down) return;
-      var near = (window.innerHeight + y) >= (document.body.scrollHeight - 260);
-      if (!near || state.busy || state.done || !state.book) return;
-      if (!userGesture) return;          // 程式造成的捲動不算
-      if (state.index >= state.chapters.length - 1) return;
-      userGesture = false;               // 一次手勢只接一章
-      readFrom(state.index + 1, { mark: true });
+      if (!down || !gesture || S.busy || !S.book) return;
+      if (window.innerHeight + y < document.body.scrollHeight - 260) return;
+      gesture = false;
+      if (S.done) return;
+      readFrom(S.index + 1, false);
     });
-  }
-  ['touchstart', 'touchmove', 'wheel'].forEach(function (ev) {
-    window.addEventListener(ev, function () {
-      if (state.book && !state.busy) userGesture = true;
-    }, { passive: true });
-  });
-  window.addEventListener('keydown', function (e) {
-    var t = e.target;
-    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
-    if (state.book && /^(PageDown|ArrowDown|End|Down| )$/.test(e.key)) userGesture = true;
-  });
-  window.addEventListener('scroll', onScroll, { passive: true });
+  }, { passive: true });
 
   /* ── 啟動 ── */
   async function boot() {
-    /* 離線快取：外殼 + 讀過的章節（sw.js 自己判斷，這裡只負責註冊） */
-    if (navigator.serviceWorker && window.isSecureContext) {
-      navigator.serviceWorker.register('/m/sw.js').catch(function () {});
+    if (!S.guest && navigator.serviceWorker && window.isSecureContext) {
+      navigator.serviceWorker.register('sw.js').catch(function () {});
     }
-    if (!TOKEN) {
-      view.innerHTML = '<div class="token"><h2>需要配對</h2>'
-        + '<p>在桌面版按頂欄的手機圖標，複製那條網址，用它在手機打開。</p>'
-        + '<input id="tokIn" placeholder="貼上金鑰" spellcheck="false">'
-        + '<button id="tokGo">確定</button></div>';
-      $('tokGo').addEventListener('click', function () {
-        var v = $('tokIn').value.trim();
-        if (!v) return;
-        try { localStorage.setItem('moyu.token', v); } catch (e) {}
-        location.reload();
-      });
-      return;
+    if (S.guest) {
+      var bar = document.createElement('div');
+      bar.className = 'guestbar';
+      bar.textContent = '遊客預覽 · 示例資料（不連帳號）；要讀自己的書請用帶金鑰的網址';
+      document.body.insertBefore(bar, view);
     }
-    $('remember').hidden = true;
-    var cached = loadLocal('shelf', []);
-    if (cached && cached.length) state.shelf = cached;
-    await loadProgress();
     await loadShelf();
   }
-
   boot();
 })();
