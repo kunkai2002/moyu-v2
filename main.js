@@ -711,9 +711,9 @@ ipcMain.handle('shelf:raw', async () => {
     } catch (e) { return { applied: false, message: e.message }; }
   });
 
-  /* 開機 5 秒後自己檢查一次，之後每 30 分鐘一次 */
+  /* 開機 5 秒後自己檢查一次，之後每 5 分鐘一次（JOJO 常一直開著，30 分鐘太慢） */
   setTimeout(() => autoUpdate(), 5000);
-  setInterval(() => autoUpdate(), 30 * 60 * 1000);
+  setInterval(() => autoUpdate(), 5 * 60 * 1000);
 
   ipcMain.handle('cookie:set', async (_e, v) => {
     if (v && String(v).trim()) {
