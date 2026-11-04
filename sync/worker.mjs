@@ -100,6 +100,23 @@ export default {
       return asset('/m/') || json({ ok: false, error: 'not found' }, 404);
     }
 
+    /* ── 測試站的手機版頁面：/staging/m/* 讀 s/m/* ── */
+    if (p === '/staging/m') {
+      return Response.redirect(url.origin + '/staging/m/', 302);
+    }
+    if (p.startsWith('/staging/m/')) {
+      const key = 's/' + (p === '/staging/m/' ? 'm/index.html' : p.slice('/staging/'.length));
+      try {
+        const row = await env.DB.prepare('SELECT body FROM app_files WHERE path = ?').bind(key).first();
+        if (row && row.body != null) {
+          return new Response(b64Bytes(row.body), {
+            headers: { 'content-type': fileType(key.replace(/^s\//, '')), 'cache-control': 'no-cache' },
+          });
+        }
+      } catch {}
+      return json({ ok: false, error: 'staging 還沒有這個檔案：' + key }, 404);
+    }
+
     /* ── 應用程式熱更新：清單與單檔（公開，內容跟 GitHub 公開版一樣） ──
        env=staging → 讀 s/ 前綴那一份（測試站），正式站不受影響 */
     const appEnv = url.searchParams.get('env') === 'staging' ? 'staging' : 'prod';

@@ -94,7 +94,7 @@ kbd{
      color:var(--fg3);background:var(--bg-side);border-right:1px solid var(--line);white-space:nowrap}
 .tab.on{background:var(--bg);color:var(--fg);border-top:1px solid var(--acc)}
 
-.topbar{height:38px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;
+.topbar{height:44px;flex:none;display:flex;align-items:center;gap:10px;padding:0 14px;
         border-bottom:1px solid var(--line);color:var(--fg3);font-size:11.5px}
 .crumb{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--fg2)}
 .crumb b{color:var(--fg);font-weight:400}
@@ -188,7 +188,7 @@ kbd{
 .prompt{color:var(--acc);flex:none}
 .ph{color:var(--fg3)}
 .caret2{display:inline-block;width:7px;height:1em;background:var(--fg3);vertical-align:-2px;animation:blink 1.05s steps(1) infinite}
-.box-foot{display:flex;align-items:center;gap:14px;color:var(--fg3);font-size:10.5px;padding-top:6px}
+.box-foot{display:flex;align-items:center;gap:10px;color:var(--fg3);font-size:10.5px;padding-top:6px}
 .box-foot-r{margin-left:auto;color:var(--fg3)}
 .hintline{display:flex;align-items:center;justify-content:space-between;color:var(--fg3);font-size:10.5px;padding:6px 2px 0}
 
@@ -409,7 +409,6 @@ kbd{
 :root[data-theme="dsh"] .box:focus-within{border-color:#ffffff29}
 :root[data-theme="dsh"] #input{font-size:14px;line-height:1.6}
 :root[data-theme="dsh"] .box-foot{color:#81858c;font-size:11px}
-:root[data-theme="dsh"] .hintline{padding:6px 2px 0}
 
 /* 翻頁列：圓形 ghost 鍵（Harness 沒有這排，做得越低調越好） */
 :root[data-theme="dsh"] .cn-btn{
@@ -564,6 +563,7 @@ body.bossing .bosscreen{display:block}
 }
 .hint-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;min-width:22px;height:20px}
 .hint-btn svg{width:14px;height:14px;flex:none}
+.box-foot .hint-btn{min-width:20px;height:18px;margin-top:-2px}
 .hint-btn.on{color:var(--acc)}
 .hint-btn:hover{color:var(--fg);background:var(--sel)}
 .pill{cursor:pointer}
