@@ -258,6 +258,7 @@
       var pair = lines[i];
       var row = makeLine(body, flash[i] ? pair[1] : pair[0], i);
       if (flash[i]) {
+        row.dataset.flash = String(flash[i]);   // 規劃停留毫秒（測試要驗 200–400ms 的設計值）
         later(flash[i], function () {
           var tx = row.querySelector('.think-tx');
           if (tx) tx.textContent = pair[0];

@@ -414,8 +414,12 @@ async function poll(fn, arg, timeout, step) {
       !!doneInfo && doneInfo.t1 - doneInfo.t0 >= 1900 && doneInfo.t1 - doneInfo.t0 <= 5400,
       doneInfo ? ((doneInfo.t1 - doneInfo.t0) / 1000).toFixed(1) + 's' : '');
 
-    /* flash：同一行先短後定、200–400ms（允許排程抖動） */
+    /* flash：同一行先短後定；「規劃停留」寫在 row.dataset.flash，驗 200–400ms 的設計值；
+       實際換字時間會受無頭環境的長任務影響，只驗「不早於規劃、延後有上限」。 */
     const log = await page.evaluate(() => window.__rzLog);
+    const planned = await page.evaluate((id) => Array.from(
+      document.querySelectorAll('.think[data-tid="' + id + '"] .think-l')
+    ).map((l) => (l.dataset.flash ? Number(l.dataset.flash) : 0)), running.id);
     const byLine = new Map();
     for (const e of log) {
       if (e.id !== running.id) continue;
@@ -426,15 +430,22 @@ async function poll(fn, arg, timeout, step) {
     }
     const histEntries = Array.from(byLine.entries()).sort((a, b) => a[0] - b[0]);
     const hist = histEntries.map(([, h]) => h);
-    const flashes = hist.filter((h) => h.length >= 2 && h[0].text !== h[h.length - 1].text
-      && h[0].text.length < h[h.length - 1].text.length);
-    check('至少一行「先閃短句、再定稿」', flashes.length >= 1,
-      flashes.length ? flashes.map((h) => h[0].text + ' → ' + h[h.length - 1].text).join(' ／ ') : '沒抓到閃字');
-    if (flashes.length) {
-      const dur = flashes.map((h) => h[1].t - h[0].t);
-      check('閃字停留 200–400ms（排程抖動容許到 150–900ms）',
-        dur.every((d) => d >= 150 && d <= 900), dur.map((d) => d + 'ms').join(' / '));
+    const flashObs = [];
+    for (let fi = 0; fi < hist.length; fi++) {
+      const h = hist[fi];
+      if (h.length >= 2 && h[0].text !== h[h.length - 1].text && h[0].text.length < h[h.length - 1].text.length) {
+        flashObs.push({ li: fi, dur: h[1].t - h[0].t, planned: planned[fi] || 0, from: h[0].text, to: h[h.length - 1].text });
+      }
     }
+    check('至少一行「先閃短句、再定稿」', flashObs.length >= 1,
+      flashObs.length ? flashObs.map((o) => o.from + ' → ' + o.to).join(' ／ ') : '沒抓到閃字');
+    const plannedFlashes = planned.filter((v) => v > 0);
+    check('閃字規劃停留 200–400ms',
+      plannedFlashes.length >= 1 && plannedFlashes.every((v) => v >= 200 && v <= 400),
+      plannedFlashes.join(' / ') + 'ms');
+    check('閃字不早於規劃就換掉（無頭環境長任務允許延後 ≤900ms）',
+      flashObs.length >= 1 && flashObs.every((o) => o.dur >= Math.max(120, o.planned - 80) && o.dur <= o.planned + 900),
+      flashObs.map((o) => o.dur + 'ms（規劃 ' + o.planned + '）').join(' / '));
     /* 逐行：用「第 0、1、2… 行第一次出現的時間」算間隔（不要用時間排序，免得閃字的第二次記錄插進來） */
     const starts = hist.map((h) => h[0].t);
     const gaps = starts.slice(1).map((t, i) => t - starts[i]);
@@ -453,10 +464,10 @@ async function poll(fn, arg, timeout, step) {
 
   /* ── 頂欄重疊（Lead 指定）：捲到最頂時，每個 .think 的 top ≥ #stream top、與 .topbar 0 重疊 ──
      註：捲動中的內容本來就可能捲到 #stream 上緣之外（被 overflow 裁掉），
-     所以另外用「與 #stream 可視區的交集」算可見重疊面積；兩者都必須是 0。 */
-  const overlapCheck = await page.evaluate((scrollTo) => {
+     所以用「與 #stream 可視區的交集」算可見重疊面積；另外在捲動狀態也量一次。 */
+  const measureOverlap = (scrollTo) => page.evaluate((top) => {
     const s = document.querySelector('#stream');
-    if (typeof scrollTo === 'number') s.scrollTop = scrollTo;
+    if (typeof top === 'number') s.scrollTop = top;
     const sr = s.getBoundingClientRect();
     const tr = document.querySelector('.topbar').getBoundingClientRect();
     const inter = (a, b) => {
@@ -484,14 +495,22 @@ async function poll(fn, arg, timeout, step) {
       count: blocks.length,
       minTop: blocks.length ? Math.min.apply(null, blocks.map((b) => b.top)) : null,
       rawBad: blocks.filter((b) => !b.rawTopOk).length,
+      visibleBad: blocks.filter((b) => b.visibleOverlap !== 0).length,
       blocks,
     };
-  }, 0);
+  }, scrollTo);
+
+  const ovScrolled = await measureOverlap();       // 先量現在的捲動狀態
+  const overlapCheck = await measureOverlap(0);     // 再捲到最頂量
   check('思考塊不會壓到頂欄（捲到最頂：每個 .think top ≥ #stream top、與 .topbar 0 重疊）',
     overlapCheck.count > 0 && overlapCheck.streamTop >= overlapCheck.topbarBottom - 1
       && overlapCheck.blocks.every((b) => b.rawTopOk && b.rawOverlap === 0 && b.visibleOverlap === 0),
     `stream ${overlapCheck.streamTop}–${overlapCheck.streamBottom}、topbar ${overlapCheck.topbarTop}–${overlapCheck.topbarBottom}、`
       + `${overlapCheck.count} 塊 minTop=${overlapCheck.minTop}、頂欄外 ${overlapCheck.rawBad} 塊`);
+  check('捲動中：思考塊的可見部分也不與頂欄重疊（被 #stream 裁掉的不算）',
+    ovScrolled.count > 0 && ovScrolled.visibleBad === 0,
+    `scrollTop=${ovScrolled.scrollTop}、${ovScrolled.count} 塊、可見重疊 ${ovScrolled.visibleBad} 塊`
+      + `（raw top 在 stream 上緣外的有 ${ovScrolled.rawBad} 塊，那是捲出去被裁掉，不是壓到頂欄）`);
 
   /* ── ⑧ prefers-reduced-motion ── */
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
@@ -585,24 +604,16 @@ async function poll(fn, arg, timeout, step) {
   const shots = [];
   const sharp = (() => { try { return require('D:/kun-workspace/node_modules/sharp'); } catch (e) { return null; } })();
 
-  async function shot(name, id, extraBottom) {
-    let clip = null;
-    if (id) {
-      clip = await page.evaluate((rid) => {
-        const rz = document.querySelector('.think[data-tid="' + rid + '"]');
-        if (!rz) return null;
-        const b = rz.getBoundingClientRect();
-        return { x: b.left, y: b.top, w: b.width, h: b.height };
-      }, id);
-    }
-    const p = path.join(OUT, 'reasoning-' + name + '.png');
-    try {
-      await page.screenshot({ path: p, captureBeyondViewport: false });
-      shots.push(p);
-    } catch (e) {
-      console.log('   [warn] 截圖失敗 ' + name + '：' + e.message);
-      return;
-    }
+  async function blockClip(id) {
+    return page.evaluate((rid) => {
+      const rz = document.querySelector('.think[data-tid="' + rid + '"]');
+      if (!rz) return null;
+      const b = rz.getBoundingClientRect();
+      return { x: b.left, y: b.top, w: b.width, h: b.height };
+    }, id);
+  }
+
+  async function cropFrom(p, name, clip, extraBottom) {
     if (!clip || !sharp) return;
     const left = Math.max(0, Math.round(clip.x - 18));
     const top = Math.max(0, Math.round(clip.y - 14));
@@ -615,6 +626,42 @@ async function poll(fn, arg, timeout, step) {
     } catch (e) {
       console.log('   [warn] 裁圖失敗 ' + name + '：' + e.message);
     }
+  }
+
+  async function shot(name, id, extraBottom) {
+    const clip = id ? await blockClip(id) : null;
+    const p = path.join(OUT, 'reasoning-' + name + '.png');
+    try {
+      await page.screenshot({ path: p, captureBeyondViewport: false });
+      shots.push(p);
+    } catch (e) {
+      console.log('   [warn] 截圖失敗 ' + name + '：' + e.message);
+      return;
+    }
+    await cropFrom(p, name, clip, extraBottom);
+  }
+
+  /* 無頭視窗的 page.screenshot 會等合成器出幀，常常慢 2–3 秒，抓到的已經是「已完成」那一幀。
+     進行中的畫面改用 Page.startScreencast：一成形就送，拿到的是當時真的在跑的畫面。 */
+  async function screencastShot(p, ms) {
+    let client = null;
+    let last = null;
+    try {
+      client = await page.createCDPSession();
+      client.on('Page.screencastFrame', async (ev) => {
+        last = ev.data;
+        try { await client.send('Page.screencastFrameAck', { sessionId: ev.sessionId }); } catch (e) {}
+      });
+      await client.send('Page.startScreencast', { format: 'png', everyNthFrame: 1, maxWidth: 1440, maxHeight: 900 });
+      await sleep(ms);
+      try { await client.send('Page.stopScreencast'); } catch (e) {}
+      await client.detach().catch(() => {});
+    } catch (e) {
+      console.log('   [warn] screencast 失敗：' + e.message);
+    }
+    if (!last) return false;
+    fs.writeFileSync(p, Buffer.from(last, 'base64'));
+    return true;
   }
 
   const beforeShot = await page.evaluate(() => ({
@@ -658,7 +705,16 @@ async function poll(fn, arg, timeout, step) {
       };
     }, shotBlock.id);
     const st = shotDbg && shotDbg.state ? shotDbg.state : '';
-    await shot(st === 'done' ? 'run2' : 'run', shotBlock.id, 70);
+    const runName = st === 'done' ? 'run2' : 'run';
+    const runPath = path.join(OUT, 'reasoning-' + runName + '.png');
+    const runClip = await blockClip(shotBlock.id);
+    const gotRun = st !== 'done' ? await screencastShot(runPath, 1200) : false;
+    if (gotRun) {
+      shots.push(runPath);
+      await cropFrom(runPath, runName, runClip, 70);
+    } else {
+      await shot(runName, shotBlock.id, 70);
+    }
   } else {
     await shot('run');
   }
