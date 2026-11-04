@@ -37,6 +37,10 @@
     add('隱身', '抓桌面顏色當底色', () => window.__moyuGhost?.toggle?.());
     add('老闆鍵', '換成假畫面（Alt+Q）', () => { try { window.moyu?.boss?.(true); } catch {} });
 
+    /* 外殼 */
+    add('外殼：終端風', 'Claude Code 那種 > / ● 的對話流', () => window.__moyuDebug?.setShell?.('cc'));
+    add('外殼：DSH', 'DeepSeek Harness 那種面板式對話', () => window.__moyuDebug?.setShell?.('dsh'));
+
     /* 主題：每一套一個命令 */
     try {
       for (const t of D()?.THEMES || []) add('主題：' + t.name, '切換到 ' + t.name, () => D().setTheme(t.id));

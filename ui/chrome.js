@@ -191,6 +191,7 @@
   }
 
   /* 更多：首頁 / 統計 / 手機版 / 設定 / 老闆鍵（全部接真的函式，不再去點被收掉的舊按鈕） */
+  ovRow('歷史', 'history', () => document.querySelector('#tbHistory')?.click());
   ovRow('首頁', 'home', () => window.__moyuShell?.openHome?.());
   ovRow('統計', 'chart', () => window.__moyuStatsPanel?.toggle?.());
   ovRow('手機版', 'phone', () => window.__moyuPhone?.toggle?.());

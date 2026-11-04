@@ -8,6 +8,15 @@
 const had = (k) => typeof window[k] !== 'undefined';
 const bridge = window.moyu || null;
 
+/* 外殼：cc＝Claude Code 終端風、dsh＝DeepSeek Harness 風。
+   這是「結構」不是「配色」：終端風沒有氣泡、用 > 和 ● 當角色行、段落之間插假 diff。 */
+function currentShell() { return document.documentElement.getAttribute('data-shell') || 'dsh'; }
+function applyShell(id) {
+  document.documentElement.setAttribute('data-shell', id);
+  try { localStorage.setItem('moyu.shell', id); } catch {}
+}
+try { const s0 = localStorage.getItem('moyu.shell'); if (s0 === 'cc' || s0 === 'dsh') applyShell(s0); } catch {}
+
 const THEMES = [
   { id: 'claude-code', name: 'Claude Code', bg: '#1a1915', acc: '#d97757' },
   { id: 'claude', name: 'Claude 奶油白', bg: '#faf9f5', acc: '#c96442' },
@@ -16,6 +25,7 @@ const THEMES = [
   { id: 'terminal', name: '終端機綠', bg: '#04070a', acc: '#33ff99' },
   { id: 'word', name: 'Word 文件', bg: '#f4f4f4', acc: '#2b579a' },
   { id: 'dsh', name: 'DeepSeek Harness', bg: '#151517', acc: '#5686fe' },
+  { id: 'dsh-light', name: 'DeepSeek Harness 淺色', bg: '#ffffff', acc: '#4176e6' },
 ];
 
 const $ = (s) => document.querySelector(s);
@@ -232,6 +242,36 @@ function addStepLine(container) {
   return line;
 }
 
+const FAKE_FILES = [
+  ['src/gateway/report.ts', 'typescript'],
+  ['src/routes/portal.ts', 'typescript'],
+  ['src/lib/query.ts', 'typescript'],
+  ['web/src/App.tsx', 'tsx'],
+  ['web/src/api/client.ts', 'typescript'],
+  ['scripts/build.mjs', 'javascript'],
+];
+const FAKE_DIFFS = [
+  ['const rows = await db.query(SQL_REPORT, [month]);', 'const rows = await db.query(SQL_REPORT, [month, scope]);'],
+  ['const total = rows.length;', 'const total = rows.reduce((s, r) => s + (r.amount || 0), 0);'],
+  ['if (!ctx.user) return null;', 'if (!ctx.user || !canRead(ctx.user, scope)) return null;'],
+  ['export default function App() {', 'export default function App({ children }: Props) {'],
+];
+
+/* 段落之間的一塊假 diff：看起來像剛改完檔案，其實是偽裝 */
+function fakeDiff(n) {
+  const [file] = FAKE_FILES[n % FAKE_FILES.length];
+  const [minus, plus] = FAKE_DIFFS[n % FAKE_DIFFS.length];
+  const box = el('div', 'cc-diff');
+  box.innerHTML = `<div class="cc-dh"><span class="cc-dot"></span>updated ${file}</div>`
+    + `<pre class="cc-db">`
+    + `<span class="cc-ln">@@ -${140 + n},7 +${140 + n},9 @@</span>\n`
+    + `<span class="cc-ctx">  export async function buildReport(ctx: Ctx) {</span>\n`
+    + `<span class="cc-del">- ${minus.replace(/</g, '&lt;')}</span>\n`
+    + `<span class="cc-add">+ ${plus.replace(/</g, '&lt;')}</span>\n`
+    + `<span class="cc-ctx">  }</span></pre>`;
+  return box;
+}
+
 function streamParagraphs(container, paras, onDone, piBase) {
   stopStreaming();
   const base = Number(piBase) || 0;
@@ -245,6 +285,10 @@ function streamParagraphs(container, paras, onDone, piBase) {
       p.dataset.pi = String(base + idx);   // 全章第幾段（切段後仍然對得回原文）
       container.appendChild(p);
       sinceStep++;
+      // 終端風：每 6 段插一塊假 diff（像剛改完檔案）
+      if (currentShell() === 'cc' && (idx + 1) % 6 === 0 && idx < paras.length - 1) {
+        container.appendChild(fakeDiff(idx + 1));
+      }
       // 每 4–6 段插一列「分析中… → 已完成分析」
       if (sinceStep >= gap && steps < 4 && idx < paras.length - 1) {
         sinceStep = 0;
@@ -633,6 +677,17 @@ async function handleInput(raw) {
   }
   if (/^\/grep\s+/i.test(text)) { searchInBook(text.replace(/^\/grep\s+/i, '').trim()); return; }
   if (/^\/ghost$/i.test(text)) { window.__moyuGhost?.toggle?.(); return; }
+  if (/^\/shell\b/i.test(text)) {
+    const m = text.match(/\/shell\s+(cc|dsh)/i);
+    const id = m ? m[1].toLowerCase() : (currentShell() === 'cc' ? 'dsh' : 'cc');
+    applyShell(id);
+    const b0 = addAssistant();
+    const sys = el('div', 'p');
+    sys.textContent = '切換外殼：' + (id === 'cc' ? 'Claude Code 終端風' : 'DeepSeek Harness');
+    b0.appendChild(sys);
+    if (state.book && state.chapters.length) { const i = state.index; clearStream(); goChapter(i, { announce: true }); }
+    return;
+  }
   if (/^\/boss$/i.test(text)) { bridge?.boss(true); return; }
   if (/^\/hide$/i.test(text)) { bridge?.hide(); return; }
   if (/^\/(login|qr)$/i.test(text)) { showLoginPanel(); return; }
@@ -800,7 +855,7 @@ function welcome() {
     <div class="p">要開始讀嗎？可以這樣開：</div>
     <div class="p">　· 貼上番茄的書頁網址或書號（例如 <code>7373660003258862617</code>）</div>
     <div class="p">　· 打 <code>/shelf</code> 抓你自己的書架（要先登入，<code>/login</code>）</div>
-    <div class="p">　· 打 <code>/theme vscode</code> 換皮，或按 <code>Alt+1～7</code></div>
+    <div class="p">　· 打 <code>/theme vscode</code> 換皮，或按 <code>Alt+1～8</code></div>
     <div class="p">　· <code>Alt+Q</code> 是老闆鍵</div>`;
 }
 
@@ -910,7 +965,7 @@ async function boot() {
 
   // 全域快捷
   document.addEventListener('keydown', (e) => {
-    if (e.altKey && /^[1-7]$/.test(e.key)) { setTheme(THEMES[+e.key - 1].id); return; }
+    if (e.altKey && /^[1-8]$/.test(e.key)) { setTheme(THEMES[+e.key - 1].id); return; }
     if (e.key === 'Escape') {
       stopStreaming();
       return;
@@ -995,6 +1050,8 @@ async function searchInBook(q) {
 }
 
 window.__moyuDebug = {
+  setShell: (id) => { applyShell(id === 'cc' ? 'cc' : 'dsh'); },
+  shell: () => currentShell(),
   searchInBook,
   openBook,
   openShelf,

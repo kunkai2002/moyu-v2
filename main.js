@@ -264,6 +264,7 @@ const THEME_BG = {
   terminal: '#04070a',
   word: '#f4f4f4',
   dsh: '#151517',
+  'dsh-light': '#ffffff',
 };
 function windowBg() {
   try {

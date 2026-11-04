@@ -454,6 +454,45 @@ kbd{
 :root[data-theme="dsh"] .home-row:hover{background:#ffffff14}
 
 /* ══════════════════════════════════════════════════════════════
+   主題 8 ── DeepSeek Harness 淺色（同一套 token 的淺色值）
+   bg #fff、layer #f9fafb/#f5f6f7、字 #0f1115/#545557/#81858c、藍 #4176e6
+   ══════════════════════════════════════════════════════════════ */
+:root[data-theme="dsh-light"]{
+  --bg:#ffffff; --bg-side:#f9fafb; --bg-elev:#f5f6f7; --sel:#ebeef2;
+  --line:#0000000f; --line-strong:#0000001f;
+  --fg:#0f1115; --fg2:#545557; --fg3:#81858c;
+  --acc:#4176e6; --acc2:#b45309; --ok:#16a34a; --hl:#dbeafe;
+  --status-bg:#f9fafb; --status-fg:#81858c;
+  --radius:12px; --text-font:var(--ui); --ui-font:var(--ui);
+  --fs:14px; --lh:1.62; --side-w:248px;
+}
+:root[data-theme="dsh-light"]{--ui:"Segoe UI","Microsoft JhengHei UI",system-ui,sans-serif}
+:root[data-theme="dsh-light"] .thread{max-width:748px!important;padding:20px 0 10px}
+:root[data-theme="dsh-light"] .stream{padding:0 20px}
+:root[data-theme="dsh-light"] .composer{max-width:748px;padding:0 0 10px}
+:root[data-theme="dsh-light"] .turn.ai .gutter,:root[data-theme="dsh-light"] .who{display:none}
+:root[data-theme="dsh-light"] .p{font-size:14px;line-height:1.62;text-align:left;margin-bottom:12px}
+:root[data-theme="dsh-light"] .turn.user .bubble{
+  background:#ebeef2;border:0;border-radius:20px;padding:10px 16px;
+  max-width:min(525px,82%);font-size:14px;line-height:22px;color:#0f1115;
+}
+:root[data-theme="dsh-light"] .box{border-radius:16px;background:#f5f6f7;border:1px solid #0000001f}
+:root[data-theme="dsh-light"] .topbar{height:44px;border-bottom:0}
+:root[data-theme="dsh-light"] .side{background:#f9fafb;border-right:0}
+:root[data-theme="dsh-light"] .ch{border-radius:8px;margin:1px 8px;padding:6px 8px;font-size:13px}
+:root[data-theme="dsh-light"] .ch.on{background:#ebeef2}
+:root[data-theme="dsh-light"] .panel,
+:root[data-theme="dsh-light"] .marks-panel,
+:root[data-theme="dsh-light"] .stats-panel,
+:root[data-theme="dsh-light"] .hist-panel,
+:root[data-theme="dsh-light"] .phone-panel,
+:root[data-theme="dsh-light"] .detail,
+:root[data-theme="dsh-light"] .overflow,
+:root[data-theme="dsh-light"] .ctx,
+:root[data-theme="dsh-light"] .theme-menu{border-radius:12px;border-color:#0000001f}
+:root[data-theme="dsh-light"] .statusbar{background:transparent;border-top:1px solid #0000000f;height:22px}
+
+/* ══════════════════════════════════════════════════════════════
    主題選單
    ══════════════════════════════════════════════════════════════ */
 .theme-menu{
@@ -589,6 +628,47 @@ body.bossing .bosscreen{display:block}
 }
 .panel .btn:hover{background:var(--sel)}
 .panel .muted{color:var(--fg3);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+/* ══════════════════════════════════════════════════════════════
+   外殼 A ── Claude Code 終端風（data-shell="cc"）
+   結構照抄編碼工具：> 使用者、● 助手、工具行、假 diff、底部狀態列。
+   沒有氣泡、沒有頭像、沒有襯線大字 —— 那是聊天軟件，不是 AI 工具。
+   ══════════════════════════════════════════════════════════════ */
+[data-shell="cc"]{--ui:var(--mono);--text-font:var(--mono)}
+[data-shell="cc"] .thread{max-width:920px!important;padding:14px 0 6px}
+[data-shell="cc"] .p{font-family:var(--mono);font-size:13px;line-height:1.72;text-align:left;margin:0 0 10px}
+[data-shell="cc"] .turn{margin-bottom:2px}
+[data-shell="cc"] .turn.user{margin:14px 0 8px}
+[data-shell="cc"] .turn.user .bubble{
+  background:none;border:0;border-radius:0;padding:0;max-width:100%;
+  font-family:var(--mono);font-size:13px;line-height:1.7;color:var(--fg2);
+  white-space:pre-wrap;
+}
+[data-shell="cc"] .turn.user .bubble::before{content:"> ";color:var(--fg3)}
+[data-shell="cc"] .turn.ai{gap:0}
+[data-shell="cc"] .turn.ai .gutter{display:block;width:auto;margin:0 0 2px;padding:0}
+[data-shell="cc"] .turn.ai .gutter svg{display:none}
+[data-shell="cc"] .turn.ai .gutter::before{content:"●";color:var(--acc);font-size:11px;line-height:1.4}
+[data-shell="cc"] .turn.ai .b{padding-left:0}
+[data-shell="cc"] .who{display:none}
+[data-shell="cc"] .meta{font-family:var(--mono);font-size:11px;margin:4px 0 14px;opacity:.85}
+[data-shell="cc"] .step{font-family:var(--mono);font-size:11.5px;margin:10px 0 8px}
+[data-shell="cc"] .step .st-t{color:var(--fg3)}
+/* 假 diff：像剛改完檔案的終端輸出 */
+.cc-diff{margin:10px 0 14px;font-family:var(--mono);font-size:12px}
+.cc-dh{display:flex;align-items:center;gap:6px;color:var(--fg3);margin-bottom:4px}
+.cc-dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.cc-db{margin:0;padding:8px 10px;background:var(--bg-elev);border:1px solid var(--line);
+  border-radius:var(--r-sm);white-space:pre-wrap;line-height:1.6;overflow:auto;max-height:180px}
+.cc-ln{color:var(--fg3)}
+.cc-ctx{color:var(--fg2)}
+.cc-del{color:#e06c75}
+.cc-add{color:#98c379}
+[data-theme="claude"] [data-shell="cc"] .cc-del{color:#c14a52}
+[data-theme="claude"] [data-shell="cc"] .cc-add{color:#3f7a41}
+/* 狀態列換成終端那一行 */
+[data-shell="cc"] .statusbar{font-family:var(--mono);font-size:11px}
+[data-shell="cc"] .box{border-radius:var(--r-sm)}
+
 /* 命令面板（⌘K） */
 .cmdk{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.36);
   display:flex;align-items:flex-start;justify-content:center;padding-top:12vh;font-family:var(--ui)}
@@ -623,6 +703,8 @@ body.bossing .bosscreen{display:block}
 .panel .row.stack{flex-direction:column;align-items:stretch;gap:4px}
 .panel .row.stack > span:first-child{width:auto}
 .panel .row input[type=text],.panel .row input:not([type]){min-width:0;width:100%}
+/* 方向 A：歷史收進「更多」與 ⌘K，頂欄只留天天用的 */
+#tbHistory{display:none}
 .help-row{display:flex;gap:10px;font-size:12.5px;padding:4px 0;border-bottom:1px solid var(--line)}
 .help-row code{color:var(--acc2);min-width:96px;flex:none;font-family:var(--mono)}
 .help-row span{color:var(--fg2)}

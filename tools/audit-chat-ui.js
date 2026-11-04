@@ -313,6 +313,34 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       ? ok(`開章位置：停在章首（距頂 ${openPos.top}px，離底 ${openPos.gapToBottom}px）`)
       : bad('開章位置：還是跳到底', JSON.stringify(openPos)));
 
+  /* ── CC 外殼：終端風的結構（> / ● / 假 diff），不是聊天氣泡 ── */
+  const cc = await page.evaluate(async () => {
+    window.__moyuDebug.setShell('cc');
+    const D = window.__moyuDebug;
+    await D.goChapter(0, { announce: true });
+    await new Promise((r) => setTimeout(r, 1400));
+    const user = document.querySelector('#stream .turn.user .bubble');
+    const gut = document.querySelector('#stream .turn.ai .gutter');
+    const body = document.querySelector('#stream .pb') || document.querySelector('#stream .b');
+    const cs = (el, k) => (el ? getComputedStyle(el).getPropertyValue(k).trim() : '');
+    return {
+      shell: document.documentElement.getAttribute('data-shell'),
+      bubbleBg: cs(user, 'background-color'),
+      bubbleRadius: cs(user, 'border-top-left-radius'),
+      mono: /mono|consolas|cascadia|menlo/i.test(cs(body, 'font-family')) || /mono/i.test(cs(user, 'font-family')),
+      gutterText: (gut && getComputedStyle(gut, '::before').content) || '',
+      diffs: document.querySelectorAll('#stream .cc-diff').length,
+      before: (user && getComputedStyle(user, '::before').content) || '',
+    };
+  });
+  cc.shell === 'cc' && (cc.bubbleBg === 'rgba(0, 0, 0, 0)' || cc.bubbleBg === 'transparent') && cc.bubbleRadius === '0px'
+    ? ok('CC 外殼：使用者行是 > 而不是氣泡（無底色、無圓角）')
+    : bad('CC 外殼：還是氣泡', JSON.stringify(cc));
+  /●/.test(cc.gutterText) ? ok('CC 外殼：助手用 ● 角色行') : bad('CC 外殼：助手角色行不對', cc.gutterText);
+  cc.mono ? ok('CC 外殼：正文用等寬字') : bad('CC 外殼：正文不是等寬');
+  cc.diffs >= 1 ? ok(`CC 外殼：段落間有 ${cc.diffs} 塊假 diff`) : bad('CC 外殼：沒有假 diff');
+  await page.evaluate(() => window.__moyuDebug.setShell('dsh'));
+
   /* ── 命令面板（⌘K）：開得起來、搜得到、執行得到 ── */
   const cmdk = await page.evaluate(async () => {
     const C = window.__moyuCmdk;
@@ -401,6 +429,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const themes = [
       ['claude-code', '#1a1915'], ['claude', '#faf9f5'], ['vscode', '#1e1e1e'],
       ['excel', '#ffffff'], ['terminal', '#04070a'], ['word', '#f4f4f4'], ['dsh', '#151517'],
+      ['dsh-light', '#ffffff'],
     ];
     const out = [];
     for (const [id, want] of themes) {
@@ -417,7 +446,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   });
   const themeBad = themeMatrix.filter((t) => !t.ok || t.attr !== t.id);
   themeBad.length === 0
-    ? ok('主題：7 套都有實際樣式（顏色與清單一致）')
+    ? ok('主題：8 套都有實際樣式（顏色與清單一致）')
     : bad('主題：有清單寫了但沒樣式的', JSON.stringify(themeBad));
 
   /* ── 可點擊不代表都是功能：畫面上任何 cursor:pointer 都必須是真的控制項 ── */

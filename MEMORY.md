@@ -72,6 +72,17 @@
   字 `#ebeef2/#adb2b8/#81858c`、品牌藍 `deepseek-450 #5686fe`、圓角 8/12/16。
   要更新就再從 `E:\DeepSeek\resources\app.asar` 取一次（`_probe/asar.js` 的解析方式）。
 
+## 產品定義（2026-11-04 校正，JOJO 定的，最高優先）
+- 這不是閱讀器，是**偽裝成 AI 編碼工具的摸魚閱讀器**：**結構照抄真工具，內容換成小說**。
+- 對照產品：FishReader（VSCode 版＝Claude Code 風格、桌面版＝豆包風）—— V2EX 1218221 / github wuuhw/fish-reader-*。
+- 外殼是獨立維度 `data-shell`：`cc`＝終端風（`> user`、`● assistant`、工具行、假 diff、等寬字、狀態列）、
+  `dsh`＝DeepSeek Harness 風（面板、對話、右側欄）。切換：`/shell cc|dsh`、⌘K、**Alt+S**。
+- 小說正文＝assistant 的輸出；**每 6 段插一塊假 diff**（`● updated src/gateway/report.ts` ＋ green/red 行），
+  這是「像 AI 工具」的關鍵細節，不能省。
+- **不要氣泡、不要頭像、不要書封、不要襯線大字、不要 Word/Excel 辦公皮** —— 那些都像閱讀器/聊天軟件，不像 AI 工具。
+- Boss Mode 要進化：用**真實開著的程式碼**生成假對話、失焦／滑鼠離開被動觸發、工作態只能手動退出。
+- 這種任務是**復刻**不是自由設計：基準是真工具截圖＋像素比對（vision_pixel_diff），不要拿「設計品味」類 skill 當依據。
+
 ## 對話界面（2026-11-03 定案，JOJO 指定）
 - **一章＝一則使用者氣泡**（章節標題）＋**助手長回覆**；正文隨機切 1–2 次（共 1–3 段），
   切點只在**段落之間**（段落結尾就是句尾），段與段之間插一句使用者的「繼續」。
