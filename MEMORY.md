@@ -21,7 +21,8 @@
 - 使用者真正的書：`十日终焉 7143038691944959011`。他常常邊測邊讀，**進度會自己變**，
   不要看到數字跟紀錄不一樣就以為壞了，更不要擅自改回去（要改先問）。
 - **截圖一律複製到桌面（JOJO 2026-11-04）**：對話裡貼圖他那邊看不到預覽，所以每次要給他看畫面，
-  就用中文檔名複製到 `%USERPROFILE%\Desktop`（例：`1_桌面版實況_<日期>.png`）並在回覆裡寫路徑。
+  就用中文檔名複製到**真正的桌面 `E:\onedrive\Desktop`**（JOJO 的桌面被 OneDrive 重導向，`C:\Users\Admin\Desktop` 不存在；
+  用 `[Environment]::GetFolderPath('Desktop')` 找，不要寫死），並在回覆裡寫完整路徑。
 - **測試一律無頭（JOJO 2026-11-04 明確要求）**：Electron 用 `--hidden`；網頁用 puppeteer `headless:'new'`。
   不要開可見的瀏覽器視窗（ego-browser 那種會彈窗的，測試時不用；要真人手動看才開）。
 - 改完要發佈：`node tools/pack4.js` → 複製到安裝目錄 → `node tools/publish-app.js`。
