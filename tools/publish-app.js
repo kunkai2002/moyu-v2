@@ -106,7 +106,7 @@ async function publish(files, version) {
   }
   const r = await publish(files, version);
   console.log('發佈結果：', JSON.stringify(r));
-  console.log('\n桌面版下次檢查（開機 5 秒後、每 30 分鐘）就會自己更新；');
+  console.log('\n桌面版開機 5 秒後、之後每 5 分鐘自己比對一次；');
   console.log('手機版重新整理 https://moyu-sync.qiaoyuhua2002.workers.dev/m/ 就是新版。');
 })();
 
