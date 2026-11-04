@@ -29,12 +29,14 @@
 
   /* ── 遊客模式的示例資料 ── */
   var DEMO_BOOKS = [
-    { id: 'demo-1', title: '示例書：山門外的帳房' },
-    { id: 'demo-2', title: '示例書：夜市燈下的約定' },
-    { id: 'demo-3', title: '示例書：北方港口的春天' }
+    { id: 'demo-1', title: 'api-server', meta: '12 個檔案 · 09:41' },
+    { id: 'demo-2', title: 'portal-web', meta: '8 個檔案 · 昨天' },
+    { id: 'demo-3', title: 'moyu-sync', meta: '5 個檔案 · 10-31' }
   ];
   var DEMO_CHAPTERS = [];
-  for (var d = 1; d <= 8; d++) DEMO_CHAPTERS.push({ id: 'demo-c' + d, no: d, title: '第 ' + d + ' 章 ' + ['起程', '舊賬', '夜談', '山路', '回信', '渡口', '冬雪', '收燈'][d - 1] });
+  var PATHS = ['src/gateway/report.ts', 'src/routes/portal.ts', 'web/src/App.tsx', 'src/lib/query.ts',
+    'scripts/build.mjs', 'src/report/monthly.ts', 'src/report/annual.ts', 'src/lib/cache.ts'];
+  for (var d = 1; d <= 8; d++) DEMO_CHAPTERS.push({ id: 'demo-c' + d, no: d, title: PATHS[d - 1] });
   var DEMO_TEXT = [
     '這是遊客預覽用的示例章節，文字只為了看清楚排版，不是任何一本真的書。',
     '每一章在畫面上長成助手的一段回覆：上面一行 ● 角色行，下面是正文。',
@@ -112,13 +114,13 @@
     $('btnFont').hidden = true;
     $('fz').hidden = true;
     $('remember').hidden = true;
-    titleEl.textContent = S.guest ? '遊客預覽' : '工作階段';
+    titleEl.textContent = '工作區';
 
     var head = document.createElement('div');
     head.className = 'sess-h';
     head.innerHTML = S.guest
-      ? '<b>遊客預覽</b><span>示例資料，不連任何帳號</span>'
-      : '<b>最近</b><span>' + S.books.length + ' 個工作階段</span>';
+      ? '<b>demo workspace</b><span>sample data · read-only</span>'
+      : '<b>最近開啟</b><span>' + S.books.length + ' 個工作區</span>';
 
     var wrap = document.createElement('div');
     wrap.className = 'sess';
@@ -131,7 +133,7 @@
       var row = document.createElement('button');
       row.className = 'sess-r';
       row.innerHTML = '<span class="sr-t">' + esc(b.title || b.id) + '</span>'
-        + '<span class="sr-p">' + (pr && pr.chapter_no ? '第 ' + esc(pr.chapter_no) + ' 章' : '未開始') + '</span>';
+        + '<span class="sr-p">' + (b.meta || (pr && pr.chapter_no ? '§' + esc(pr.chapter_no) : '未修改')) + '</span>';
       row.addEventListener('click', function () { openBook(b); });
       wrap.appendChild(row);
     });
@@ -204,7 +206,7 @@
     var chat = $('chat');
     if (!chat) return;
 
-    chat.appendChild(turnUser('讀《' + (S.book && S.book.title ? S.book.title : '') + '》第 ' + ch.no + ' 章'));
+    chat.appendChild(turnUser('Read ' + (S.book && S.book.title ? S.book.title + '/' : '') + (ch.title || ('file-' + ch.no))));
     var ai = turnAI();
     chat.appendChild(ai);
     var box = ai.querySelector('.bb');
@@ -251,7 +253,7 @@
 
     var meta = document.createElement('div');
     meta.className = 'meta';
-    meta.textContent = '● assistant · ' + Number((paras.join('').length) || 0).toLocaleString() + ' tok · 第 ' + ch.no + ' 章';
+    meta.textContent = '● assistant · ' + Number((paras.join('').length) || 0).toLocaleString() + ' tok · ' + (ch.title || ch.no);
     box.appendChild(meta);
 
     if (previewOnly) {
@@ -349,7 +351,7 @@
     if (S.guest) {
       var bar = document.createElement('div');
       bar.className = 'guestbar';
-      bar.textContent = '遊客預覽 · 示例資料（不連帳號）；要讀自己的書請用帶金鑰的網址';
+      bar.textContent = 'demo workspace · sample data, read-only · 自己的資料請用帶 token 的網址';
       document.body.insertBefore(bar, view);
     }
     await loadShelf();
