@@ -417,10 +417,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     && dshLook.bubbleBg === 'rgb(44, 44, 46)'
     && dshLook.bubblePad === '10px/16px'
     && dshLook.gutterHidden
-    && dshLook.boxRadius === '16px'
+    && dshLook.boxRadius === '28px'   /* 真值 --dsw-radius-panel（docs/DSH-真值.json），不是舊的 16 */
     && (dshLook.pAlign === 'start' || dshLook.pAlign === 'left');
   dshOk
-    ? ok(`DSH 元素形狀：內容欄 ${dshLook.threadW}px、氣泡 20px/${dshLook.bubbleBg}、助手無頭像、輸入框 16px`)
+    ? ok(`DSH 元素形狀：內容欄 ${dshLook.threadW}px、氣泡 20px/${dshLook.bubbleBg}、助手無頭像、輸入框 28px`)
     : bad('DSH 元素形狀不對（只換了顏色）', JSON.stringify(dshLook));
 
   /* ── 主題矩陣：七套主題每一套都要真的有自己的顏色（不是寫在清單裡卻沒樣式） ── */
@@ -432,6 +432,11 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       ['dsh-light', '#ffffff'],
     ];
     const out = [];
+    /* 色碼正規化：#fff 與 #ffffff 是同一個顏色（DSH 真值給的是 3 碼） */
+    const norm = (c) => {
+      const h = String(c).trim().toLowerCase().replace('#', '');
+      return h.length === 3 ? h.split('').map((x) => x + x).join('') : h;
+    };
     for (const [id, want] of themes) {
       D.setTheme(id);
       await new Promise((r) => setTimeout(r, 220));
@@ -439,7 +444,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       out.push({
         id, want, got,
         attr: document.documentElement.getAttribute('data-theme'),
-        ok: got === want,
+        ok: norm(got) === norm(want),
       });
     }
     return out;

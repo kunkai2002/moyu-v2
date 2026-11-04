@@ -379,7 +379,7 @@ kbd{
 :root[data-theme="dsh-light"] .turn.ai .b{padding-left:0}
 :root[data-theme="dsh"] .turn.user{margin:16px 0 8px}
 :root[data-theme="dsh"] .turn.user .bubble{
-  background:var(--dsh-color-bg-elev);border:0;border-radius:var(--dsh-radius-xl);
+  background:var(--dsh-color-sel);border:0;border-radius:var(--dsh-radius-xl);
   padding:10px 16px;max-width:min(525px,82%);
   font-size:var(--dsh-content-size);line-height:calc(var(--dsh-content-size) + 10px);color:var(--dsh-color-fg);
 }
@@ -873,7 +873,8 @@ body.bossing .bosscreen{display:block}
 
 /* ── 收合狀態：rail（56px 圖示軌）／toc-collapsed ── */
 [data-shell="dsh"] .app.side-rail .side{padding:18px 6px 6px;width:var(--dsh-col-side,var(--dsh-rail-w))}
-[data-shell="dsh"] .app.side-rail .side-top{height:0;margin:0;padding:0;overflow:hidden}
+[data-shell="dsh"] .app.side-rail .side-top{display:none}
+[data-shell="dsh"] .app.side-rail .side .rz{display:none}
 [data-shell="dsh"] .app.side-rail .side-brand{height:36px;margin-bottom:12px;padding:0;justify-content:flex-start}
 [data-shell="dsh"] .app.side-rail .brand-name,
 [data-shell="dsh"] .app.side-rail .side-actions .sa span,
