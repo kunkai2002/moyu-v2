@@ -158,10 +158,28 @@
 - 骨架：側欄（品牌列→新對話→插件/自動化任務/更多→最近→底部設置列）｜中欄（頂欄 76 含
   `對話/原文` tab＋stream＋輸入卡片）｜右欄 `#tocPanel`（**章節樹 `#tree` 已搬到右欄**，側欄放最近讀過的書）。
   `ui/shell-dsh.js` 按 DSH `computeColumns` 算三欄寬（`--dsh-col-side/right`、`--dsh-content-w`）。
-- 閘門：`node tools/layout-gate.js`（17 項 ±2px，`--selftest` 先自證量測引擎誤差 0）已接進 `check-all` 第 2 步；
+- 閘門：`node tools/layout-gate.js`（21 項 ±2px・1440/1024/900 三輪，`--selftest` 先自證量測引擎誤差 0）已接進 `check-all` 第 2 步；
   `node tools/click-check.js` 會把介面每個能點的東西點一遍（dev 版 e2e-buttons，不用先打包）。
 - 刻意偏離（別當 bug）：右欄用真值下限 300 而非 DSH 的 45% 視窗（目錄是清單，45% 會把正文擠到 512）；
   `#pillReviews`/`#bossBtn` 開機被 `chrome.js` 的 `sweep()` 收進「更多」（JOJO 要頂欄只留四顆）。
 - **`ui/index.html` 現在也要過 `disguise-gate`**：外殼文字不准有 目錄/書架/第 N 章/閱讀器，
   所以右欄叫「文件」、狀態列寫 `614 / 1359`。文件：`docs/DSH外殼_20261104.md`。
+- **`.app` 的收合修飾 class 是 `side-rail`，不是 `rail`**：`theme.css` 的 `.rail` 是 VS Code 活動列
+  （`display:none`），撞名會讓整頁消失。另外 `.app` 不再用 `100vh`（Electron 的 `.titlebar` 佔 30px，
+  以前會把底部狀態列推出視窗外），`body` 是 `flex-direction:column`、`.app{flex:1;min-height:0}`。
+
+## 發布流程補充（2026-11-04 正式版真的推上去後學到的）
+- **新增 `ui/` 檔案一定要加進 `tools/app-files.js` 的 `FILES`**。那是 pack4 與 publish-app 唯一的檔案清單；
+  漏了就是「雲端有 index.html、但沒有它引用的 css/js」→ 安裝版白屏。這輪補了 `ui/dsh-tokens.css`、`ui/shell-dsh.js`。
+- 正式版流程：`node tools/publish-app.js --dry`（看檔案數/雜湊）→ `node tools/pack4.js`（dist 給新安裝用）
+  → `node tools/publish-app.js`（推雲端；桌面版 5 分鐘內自己抓）→ `node tools/check-release.js`（驗 manifest 雜湊
+  ＋ `/app/file?p=` 真的抓回來比位元組）→ 再比對 `%LOCALAPPDATA%\Programs\魔芋一夏\ui\*` 的 sha1，確認他那台已換版。
+- `/app/file` 的參數是 **`?p=`**，不是 `?path=`（寫錯回 400「缺 p」）。
+- `tools/check-release.js` 用 `process.exitCode` 收尾，不要 `process.exit()`：Node 24 在 Windows 偶爾會在結束時撞
+  libuv assert（`async.c line 94`），驗證其實跑完了，但 exit code 會變垃圾。
+- 鏡像站（Worker）與桌面版是兩條線：Worker 改了要 `cd sync && npx wrangler deploy`；`publish-app.js` 仍會把
+  `sync/m/*` 上傳成 KV `m/*`（現在是死資料、不被任何路由讀），要不要清掉等 JOJO 決定（動它會碰桌面熱更新流程）。
+- 部署後 `check-all` 的「手機 PWA」那步會紅（`e2e-mobile.js` 驗的是舊手機殼）；改跑
+  `node tools/serve-ui.js --verify`（43 項），`check-all.js` 已註記。
+
 
