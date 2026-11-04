@@ -17,6 +17,9 @@
 }
 
 *{box-sizing:border-box;margin:0;padding:0}
+body{display:flex;flex-direction:column;height:100%}
+.titlebar{flex:none}
+/* Electron 的 .titlebar 佔掉 30px：以前 .app 用 100vh 會把底部狀態列推出視窗外（章節位置整條看不到） */
 html,body{height:100%}
 body{
   background:var(--bg);color:var(--fg);font-family:var(--ui-font);font-size:var(--fs);
@@ -31,7 +34,7 @@ kbd{
   border-bottom-width:2px;border-radius:3px;padding:0 4px;color:var(--fg2);
 }
 
-.app{display:flex;height:100vh;overflow:hidden}
+.app{display:flex;flex:1 1 auto;height:auto;min-height:0;overflow:hidden}
 
 /* ── 活動列（僅 VS Code 主題）──────────────────────────────── */
 .rail{display:none;width:48px;flex:none;background:#333333;flex-direction:column;align-items:center;padding:8px 0;gap:4px}
@@ -895,3 +898,11 @@ body.bossing .bosscreen{display:block}
   line-height:1.7;color:var(--fg2);background:var(--bg);
 }
 .src-view[hidden]{display:none}
+
+/* ── 窄寬度：狀態列只留章節位置與 tok（其他偽裝資訊讓位）── */
+@media (max-width:1023px){
+  [data-shell="dsh"] .statusbar{gap:10px;padding:0 10px;overflow:hidden}
+  [data-shell="dsh"] .statusbar .sb-item:not(#sbChapter):not(#sbTok):not(.branch),
+  [data-shell="dsh"] .statusbar .sb-r .sb-item:nth-child(n+2){display:none}
+  [data-shell="dsh"] .statusbar .sb-r{margin-left:auto}
+}

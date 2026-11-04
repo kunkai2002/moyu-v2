@@ -106,6 +106,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     box('composerBox', '.composer .box');
     box('input', '#input');
     box('p', '.p');
+    box('statusbar', '.statusbar');
     box('main', '.main');
     box('stream', '#stream');
     box('thread', '.thread');
@@ -121,7 +122,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     };
     const appEl = document.querySelector('.app');
     const cs = getComputedStyle(appEl);
-    out.app = { w: Math.round(appEl.getBoundingClientRect().width), display: cs.display, dir: cs.flexDirection, wrap: cs.flexWrap };
+    out.app = { w: Math.round(appEl.getBoundingClientRect().width), y: Math.round(appEl.getBoundingClientRect().top), h: Math.round(appEl.getBoundingClientRect().height), display: cs.display, dir: cs.flexDirection, wrap: cs.flexWrap };
+    out.bodyBox = (() => { const b = document.body; const c = getComputedStyle(b); return { y: Math.round(b.getBoundingClientRect().top), pad: c.padding, margin: c.margin, h: b.getBoundingClientRect().height, firstTag: b.firstElementChild && b.firstElementChild.className }; })();
+    out.bodyKids = [...document.body.children].map((c) => ({
+      cls: c.className || c.id, tag: c.tagName,
+      y: Math.round(c.getBoundingClientRect().top), h: Math.round(c.getBoundingClientRect().height),
+      pos: getComputedStyle(c).position, disp: getComputedStyle(c).display,
+    }));
     out.win = { iw: innerWidth, ih: innerHeight, dw: document.documentElement.clientWidth };
     out.rightBox = (() => { const e = document.querySelector('.dsh-right'); if (!e) return null; const r = e.getBoundingClientRect(); return { w: Math.round(r.width), x: Math.round(r.left), display: getComputedStyle(e).display }; })();
     out.overflowX = document.documentElement.scrollWidth - document.documentElement.clientWidth;

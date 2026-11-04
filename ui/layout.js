@@ -24,7 +24,7 @@
 
     /* 小視窗：目錄變抽屜（收起來時不准留陰影，左邊那條陰影沒有人看得懂） */
     '@media (max-width: 760px){',
-    '  .side{position:absolute;left:0;top:0;bottom:0;width:min(86vw,var(--side-w));',
+    '  html:not([data-shell="dsh"]) .side{position:absolute;left:0;top:0;bottom:0;width:min(86vw,var(--side-w));',
     '    transform:translateX(-101%);transition:transform 180ms cubic-bezier(.2,.7,.3,1);',
     '    box-shadow:none}',
     '  .app.side-open .side{transform:none;box-shadow:14px 0 40px rgba(0,0,0,.45)}',

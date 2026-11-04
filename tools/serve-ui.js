@@ -202,12 +202,32 @@ async function verify() {
     };
     const scrollx = (el) => (el ? { sw: el.scrollWidth, cw: el.clientWidth } : null);
     const overflowEls = [];
+    const leftClipEls = [];
+    /* 被「比視窗窄」的容器裁掉（例如 .crumb 的 ellipsis）不算橫向溢出；
+       被跟視窗同寬的容器（.app/.main）裁掉才算，因為那是真的把內容切掉。 */
+    const clippedBySmallAncestor = (el) => {
+      let p = el.parentElement;
+      while (p && p !== document.body) {
+        const cs2 = getComputedStyle(p);
+        const pr = p.getBoundingClientRect();
+        if (/(hidden|clip)/.test(cs2.overflowX) && pr.width > 0 && pr.right < de.clientWidth - 1) return true;
+        p = p.parentElement;
+      }
+      return false;
+    };
     for (const el of document.querySelectorAll('body *')) {
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
-      if (r.right > de.clientWidth + 1 || r.left < -1) {
+      /* 右緣超出＝真的橫向溢出（會被切掉或拉出捲軸） */
+      if (r.right > de.clientWidth + 1) {
+        if (clippedBySmallAncestor(el)) continue;
         overflowEls.push({ tag: el.tagName.toLowerCase(), cls: String(el.className || '').slice(0, 48), left: Math.round(r.left), right: Math.round(r.right) });
         if (overflowEls.length >= 8) break;
+      }
+      /* 左緣只在「不是被 overflow:hidden 容器裁掉的裝飾」時才有意義；這裡只記錄不判紅，
+         側欄有沒有跑出畫面由 .side 的 rect 單獨判 */
+      if (r.left < -1 && leftClipEls.length < 4) {
+        leftClipEls.push({ tag: el.tagName.toLowerCase(), cls: String(el.className || '').slice(0, 48), left: Math.round(r.left), right: Math.round(r.right) });
       }
     }
     return {
@@ -233,6 +253,7 @@ async function verify() {
       composeVisible: !!document.querySelector('.composer .box'),
       streamLines: document.querySelectorAll('#stream .p').length,
       overflowEls,
+      leftClipEls,
     };
   });
 
@@ -312,6 +333,8 @@ async function verify() {
   check(m.appDisplay !== 'none' && m.appDisplay !== 'missing', '[clean 390] .app 有顯示（不是 display:none）', String(m.appDisplay));
   check(m.docScrollWidth <= m.docClientWidth, '[clean 390] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
   check(m.appScrollWidth <= m.appClientWidth, '[clean 390] .app 不橫向溢出', `${m.appScrollWidth} > ${m.appClientWidth}`);
+  check(m.side && m.side.left >= -1 && Math.abs(m.side.width - 56) <= 1, '[clean 390] 側欄 56px 且在畫面內', m.side ? `left=${m.side.left} w=${m.side.width}` : '(找不到 .side)');
+  check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[clean 390] 底部狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(找不到 .statusbar)');
   check(m.overflowEls.length === 0, '[clean 390] 沒有元素超出視窗右緣', JSON.stringify(m.overflowEls.slice(0, 4)));
 
   /* ② 用手機讀者的正常狀態：shell=dsh（存過一次設定），重新載入 */

@@ -1,4 +1,6 @@
-// 把 sync/m/* 打包成 Worker 可 import 的靜態資產模組
+// 【legacy，2026-11-04 起不再使用】把 sync/m/* 打包成 Worker 可 import 的靜態資產模組
+// 鏡像站已經改掛桌面版同一份 ui/：請改用 `node tools/build-web.js`（輸出 sync/web-assets.mjs）。
+// sync/worker.mjs 已經不 import 這支的產物；sync/m/ 只剩歷史紀錄、沒有路由。
 const fs = require('fs');
 const path = require('path');
 const root = path.join(__dirname, '..');
