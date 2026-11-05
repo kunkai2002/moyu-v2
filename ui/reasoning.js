@@ -19,17 +19,17 @@
   'use strict';
   if (window.__moyuReasoning) return;
 
-  var VERSION = '1.0.0';
+  var VERSION = '1.1.0';
   var PREF_DONE_OPEN = 'moyu.think.doneOpen';
 
   /* 推理片段：[定稿, 先閃的短句]。全部走工具語彙，
-     不准出現 書／章／讀／頁／目錄（思考列屬於外殼，disguise-gate 會擋）。 */
+     不准出現 書／章／節／讀／頁／目錄（思考列屬於外殼，disguise-gate 會擋）。 */
   var PHRASES = [
     ['整理上下文，先把前後段接起來', '整理上下文…'],
     ['比對前面的稱呼，確認是同一個人', '對一下稱呼'],
     ['確認時間線沒有跳', '對時間線'],
     ['把重複的句子挑掉', '去重…'],
-    ['這段的節奏偏慢，先保留原句', '節奏偏慢'],
+    ['這段的速度偏慢，先保留原句', '速度偏慢'],
     ['檢查代名詞指向，別讓兩個「他」指錯人', '誰指的是誰？'],
     ['上一句轉折太硬，換個銜接', '轉折太硬'],
     ['句尾語氣跟前面統一一下', '統一語氣'],
@@ -63,14 +63,56 @@
     ['把上一版改動的地方再看一眼', '掃一眼改動'],
     ['這段留著不動，其餘只做微調', '只微調'],
     ['先把結論壓到最後一句', '結論往後放'],
+    ['把「總之」開頭的句子改掉', '總之先刪'],
+    ['這段對話的停頓不夠，補一個動作', '補個動作'],
+    ['前一句的資訊已經講過，刪掉', '這句刪掉'],
+    ['檢查段落裡有沒有一句到底的長句', '長句拆開'],
+    ['把倒裝句調回正常語序', '語序調順'],
+    ['這兩句主語換來換去，統一一下', '主語統一'],
+    ['收尾的動作太快，放慢半拍', '收尾放慢'],
+    ['補一句環境描述，讓畫面站得住', '補環境描述'],
+    ['這句比喻跟前文撞了，換一個', '比喻撞了'],
+    ['確認引號裡的語氣沒有跑掉', '引號語氣'],
+    ['把「突然」和「忽然」錯開用', '換個副詞'],
+    ['這段太順了，留一個不完美的停頓', '留點停頓'],
+  ];
+
+  /* 操作記錄素材（工具樣式）：形狀固定成 Read(path)／Grep("詞", dir/)／Diff(+18 −4)…
+     檔名、搜尋詞、數字都是**抽選時才組**，所以不會每次一模一樣。
+     外殼文字：不准出現 書／章／節／讀／頁／目錄。 */
+  var OP_FILES = [
+    'src/gateway/report.ts', 'src/routes/portal.ts', 'src/lib/query.ts',
+    'src/lib/time.ts', 'src/core/agent.ts', 'src/store/cache.ts',
+    'src/ui/stream.ts', 'src/util/text.ts', 'web/src/App.tsx',
+    'web/src/api/client.ts', 'web/src/hooks/useTurn.ts', 'scripts/build.mjs',
+  ];
+  var OP_DIRS = ['src/lib/', 'src/gateway/', 'src/routes/', 'src/core/', 'web/src/', 'scripts/'];
+  var OP_TERMS = ['轉折', '稱呼', '時間線', '視角', '伏筆', '語氣', '代名詞', '標點', '停頓', '比喻'];
+  var OP_TOOLS = ['audit-chat-ui.js', 'layout-gate.js', 'disguise-gate.js', 'ui-lint.js',
+    'click-check.js', 'shot-shell.js', 'test-reasoning.js'];
+  var OPS = [
+    { type: 'Read', make: function () { return 'Read(' + pick(OP_FILES) + ')'; } },
+    { type: 'Grep', make: function () { return 'Grep("' + pick(OP_TERMS) + '", ' + pick(OP_DIRS) + ')'; } },
+    { type: 'Edit', make: function () { return 'Edit(' + pick(OP_FILES) + ')'; } },
+    { type: 'Run', make: function () { return 'Run(node tools/' + pick(OP_TOOLS) + ')'; } },
+    { type: 'Typecheck', make: function () { return 'Typecheck(ok)'; } },
+    { type: 'Test', make: function () { return 'Test(' + rint(8, 48) + ' passed)'; } },
+    { type: 'Diff', make: function () { return 'Diff(+' + rint(4, 64) + ' \u2212' + rint(1, 24) + ')'; } },
+    { type: 'Format', make: function () { return 'Format(prettier)'; } },
+    { type: 'Search', make: function () { return 'Search("' + pick(OP_TERMS) + '")'; } },
+    { type: 'Git', make: function () { return 'Git(status clean)'; } },
+    { type: 'Lint', make: function () { var w = rint(0, 2); return 'Lint(' + w + (w === 1 ? ' warning)' : ' warnings)'); } },
+    { type: 'Build', make: function () { return 'Build(ok ' + rnd(0.6, 2.4).toFixed(1) + 's)'; } },
   ];
 
   var MQ = (window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null);
   var tidSeq = 0;
+  var lastSig = '';
 
   function reduced() { return !!(MQ && MQ.matches); }
   function rint(a, b) { return a + Math.floor(Math.random() * (b - a + 1)); }
   function rnd(a, b) { return a + Math.random() * (b - a); }
+  function pick(list) { return list[rint(0, list.length - 1)]; }
   function nowMs() {
     return (window.performance && window.performance.now) ? window.performance.now() : Date.now();
   }
@@ -89,6 +131,62 @@
     return a;
   }
 
+  function signature(lines) {
+    return lines.map(function (l) { return l.text; }).join('\u0001');
+  }
+  function makeThoughts(n) {
+    return shuffle(PHRASES).slice(0, n).map(function (p) {
+      return { text: p[0], flash: p[1], op: false, type: '' };
+    });
+  }
+  function drawOps(n) {
+    return shuffle(OPS).slice(0, n).map(function (o) {
+      return { text: o.make(), op: true, type: o.type };
+    });
+  }
+  function hasAdjacentSameOpType(lines) {
+    for (var i = 1; i < lines.length; i++) {
+      if (lines[i].op && lines[i - 1].op && lines[i].type === lines[i - 1].type) return true;
+    }
+    return false;
+  }
+  /* 每塊 2–5 條，從「思考池＋操作池」抽：
+     70% 的組合至少 1 條操作記錄；含操作時最多 2 條（不同型）且一定留至少 1 條思考（才能閃字）。 */
+  function compose() {
+    var n = rint(2, 5);
+    if (Math.random() >= 0.7) return makeThoughts(n);
+    var opCount = Math.min(n - 1, Math.random() < 0.35 ? 2 : 1);
+    var lines = makeThoughts(n - opCount).concat(drawOps(opCount));
+    // 同型操作被抽成相鄰的防護（drawOps 已經保證不同型，這裡留一層保險）
+    for (var a = 0; a < 16 && hasAdjacentSameOpType(lines); a++) lines = shuffle(lines);
+    return lines;
+  }
+  function forceDifferent(lines) {
+    /* 重抽一次還撞同一組（機率極低）→ 換掉最後一條，保證不連莊 */
+    var i = lines.length - 1;
+    var last = lines[i];
+    if (last.op) {
+      var pool = OPS.filter(function (o) { return o.type !== last.type; });
+      var o = pick(pool);
+      lines[i] = { text: o.make(), op: true, type: o.type };
+    } else {
+      var p = pick(PHRASES);
+      lines[i] = { text: p[0], flash: p[1], op: false, type: '' };
+    }
+    return lines;
+  }
+  function pickGroup() {
+    var lines = compose();
+    var sig = signature(lines);
+    if (sig === lastSig) {
+      lines = compose();               // 記住上一組，重抽一次
+      sig = signature(lines);
+      if (sig === lastSig) { lines = forceDifferent(lines); sig = signature(lines); }
+    }
+    lastSig = sig;
+    return { lines: lines, sig: sig };
+  }
+
   /* 回覆本身的字數 → 假裝是這次思考燒掉的 token（≈ 內容 5–7%，跟前例 128 tok 同量級） */
   function guessTokens(pb) {
     var s = '';
@@ -105,13 +203,13 @@
     if (h) h.setAttribute('aria-expanded', open ? 'true' : 'false');
   }
 
-  function makeLine(body, text, index) {
+  function makeLine(body, text, index, op) {
     var row = document.createElement('div');
-    row.className = 'think-l';
+    row.className = 'think-l' + (op ? ' think-op' : '');
     row.dataset.li = String(index);
     var bu = document.createElement('span');
     bu.className = 'think-bu';
-    bu.textContent = '·';
+    bu.textContent = op ? '\u23fa' : '·';   // ⏺ 操作記錄、· 思考句
     var tx = document.createElement('span');
     tx.className = 'think-tx';
     tx.textContent = text;
@@ -227,19 +325,24 @@
       setOpen(block, readPref() === '1');
     }
 
-    var n = rint(2, 5);
-    var lines = shuffle(PHRASES).slice(0, n);
+    /* 抽這一塊的素材：2–5 條，思考句＋操作記錄混搭（見 compose），不與上一組連莊 */
+    var group = pickGroup();
+    var lines = group.lines;
+    var n = lines.length;
 
     if (reduced()) {
       /* 減少動態：行全部直接顯示（不淡入、不 flash），長度照樣 2–5 秒 */
-      for (var i = 0; i < lines.length; i++) makeLine(body, lines[i][0], i);
+      for (var i = 0; i < lines.length; i++) makeLine(body, lines[i].text, i, lines[i].op);
       later(rint(2200, 4000), finish);
       return;
     }
 
-    /* 1–2 行先閃：先看到短句 200–400ms，再換成定稿 */
-    var flashCount = n >= 4 ? rint(1, 2) : 1;
-    var order = shuffle(lines.map(function (_, i) { return i; })).slice(0, flashCount);
+    /* 1–2 行先閃：先看到短句 200–400ms，再換成定稿。
+       只挑「思考句」閃（操作記錄是結果，不該換字）；每塊一定至少一條思考，所以一定有得閃。 */
+    var thoughtIdx = [];
+    for (var t = 0; t < n; t++) if (!lines[t].op) thoughtIdx.push(t);
+    var flashCount = Math.min(thoughtIdx.length, (thoughtIdx.length >= 3 && n >= 4) ? rint(1, 2) : 1);
+    var order = shuffle(thoughtIdx).slice(0, flashCount);
     var flash = {};
     for (var f = 0; f < order.length; f++) flash[order[f]] = rint(200, 400);
 
@@ -255,13 +358,14 @@
     }
 
     function reveal(i) {
-      var pair = lines[i];
-      var row = makeLine(body, flash[i] ? pair[1] : pair[0], i);
-      if (flash[i]) {
+      var item = lines[i];
+      var flashing = !item.op && !!flash[i];
+      var row = makeLine(body, flashing ? item.flash : item.text, i, item.op);
+      if (flashing) {
         row.dataset.flash = String(flash[i]);   // 規劃停留毫秒（測試要驗 200–400ms 的設計值）
         later(flash[i], function () {
           var tx = row.querySelector('.think-tx');
-          if (tx) tx.textContent = pair[0];
+          if (tx) tx.textContent = item.text;
         });
       }
       if (i + 1 < n) later(rint(300, 700), function () { reveal(i + 1); });
@@ -271,7 +375,9 @@
   }
 
   /* 掃描新出現的助手回覆：一個 .turn.ai（有 .pb 的本體）＝一塊，插在 .pb 前面。
-     用 turn.dataset.think 當哨兵，MutationObserver 重掃也不會重複插。 */
+     用 turn.dataset.think 當哨兵，MutationObserver 重掃也不會重複插。
+     每一則回覆都要有（JOJO 的產品定義：回覆前就是推理過程），
+     塊長高會把下面內容往下推，那是正常排版；元件本身不會去動 scrollTop。 */
   function scan() {
     var stream = document.querySelector('#stream');
     if (!stream) return;
@@ -305,5 +411,16 @@
     scan: scan,
     reduced: reduced,
     count: function () { return document.querySelectorAll('#stream .think').length; },
+    pools: { thoughts: PHRASES.length, ops: OPS.length, opTypes: OPS.map(function (o) { return o.type; }) },
+    /* 給測試／除錯用的同一支抽選器（正式 attach 也走這個，確保測的就是真的邏輯） */
+    pickGroup: function () {
+      var g = pickGroup();
+      return {
+        sig: g.sig,
+        lines: g.lines.map(function (l) {
+          return { text: l.text, op: !!l.op, type: l.type || '', glyph: l.op ? '⏺' : '·' };
+        }),
+      };
+    },
   };
 })();

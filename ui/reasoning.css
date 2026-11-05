@@ -70,6 +70,15 @@
 .think-bu{color:var(--fg3);opacity:.45;flex:none;line-height:inherit}
 .think-tx{color:var(--fg3);overflow-wrap:anywhere}
 
+/* 操作記錄行（⏺ Read(src/...)）：比思考句更淡、等寬字、不 shimmer（那是結果，不是還在想） */
+.think-op{opacity:.72}
+.think-op .think-bu{opacity:.7}
+.think[data-state="run"] .think-op .think-tx{
+  background:none;
+  -webkit-text-fill-color:currentColor;
+  animation:none;
+}
+
 /* 進行中：字面掃光（shimmer），看起來像還在想 */
 .think[data-state="run"] .think-tx{
   background-image:linear-gradient(90deg,

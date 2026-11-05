@@ -274,7 +274,55 @@ function fakeDiff(n) {
   return box;
 }
 
-function streamParagraphs(container, paras, onDone, piBase) {
+/* 「快速打字」：自動接章（往下滑）時，讓新出現的段落像真的在生成一樣
+   一個字一個字跑出來，但速度很快（整章約 0.4–0.8 秒）。
+   · 只動 textContent，不動結構／data-pi，所以進度、劃線、測試都不受影響
+   · 減少動態（prefers-reduced-motion）直接跳過，維持一次畫完
+   · 回傳 Promise，呼叫端可以等它跑完（例如維持捲在底部） */
+function typeFast(entries, done) {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const finishAll = () => {
+    entries.forEach((e) => { e.node.textContent = e.text; });
+    if (done) { const d = done; done = null; d(); }
+  };
+  if (reduce || !entries.length) { finishAll(); return; }
+  const total = entries.reduce((n, e) => n + e.text.length, 0);
+  const DURATION = 620;                           // 整章約 0.6 秒跑完（JOJO：速度很快）
+  const t0 = Date.now();
+  entries.forEach((e) => { e.node.textContent = ''; });
+
+  function render(upto) {
+    let fi2 = 0;
+    let shown2 = 0;
+    while (fi2 < entries.length) {
+      const e = entries[fi2];
+      const left = e.text.length - (shown2 - e.offset);
+      if (left <= 0) { fi2++; continue; }
+      const take = Math.min(Math.max(0, upto - shown2), left);
+      if (take <= 0) break;
+      shown2 += take;
+      e.node.textContent = e.text.slice(0, shown2 - e.offset);
+      if (shown2 >= upto) break;
+    }
+  }
+
+  function frame() {
+    if (!done) return;                            // 已經被安全計時器收掉
+    // 用「經過時間」算該吐多少字，而不是每幀固定字數：
+    // 視窗被隱藏／最小化時計時器會被節流到 1 秒，這樣一個 tick 就直接補滿，不會卡半篇。
+    const elapsed = Date.now() - t0;
+    const upto = Math.min(total, Math.ceil((elapsed / DURATION) * total));
+    render(upto);
+    if (upto >= total) { finishAll(); return; }
+    setTimeout(frame, 16);
+  }
+  setTimeout(frame, 16);
+  // 保險：無論如何 1.2 秒內把文字補滿，不讓使用者看到空段落
+  setTimeout(() => { if (done) finishAll(); }, 1200);
+}
+
+function streamParagraphs(container, paras, onDone, piBase, opts) {
+  const auto = !!(opts && opts.auto);      // true = 使用者往下滑自動接的那一章
   stopStreaming();
   const base = Number(piBase) || 0;
   /* 一段「章節」會被切成 1–3 個回覆（人工切段），所以每塊可能只有 3–5 段。
@@ -287,10 +335,13 @@ function streamParagraphs(container, paras, onDone, piBase) {
     let sinceStep = 0;
     let steps = 0;
     let gap = Math.max(2, Math.min(5, Math.ceil(paras.length / 3)));
+    const typed = [];                     // 自動接章時要「快速打字」的段落
+    let offset = 0;
     paras.forEach((t, idx) => {
       const p = el('p', 'p', t);
       p.dataset.pi = String(base + idx);   // 全章第幾段（切段後仍然對得回原文）
       container.appendChild(p);
+      if (auto) { typed.push({ node: p, text: t, offset }); offset += t.length; }
       sinceStep++;
       // 假 diff 用「全章第幾段」對齊節奏，跨小塊才不會斷掉
       if (idx < paras.length - 1 && (base + idx + 1) % perDiff === 0) {
@@ -305,6 +356,11 @@ function streamParagraphs(container, paras, onDone, piBase) {
       }
     });
     // 一次畫完時整章已經在 DOM 裡；在這裡 scrollBottom() 就等於「打開一章直接看到最後一句」
+    // 自動接章（往下滑）改成「快速打字」：一個字一個字跑，但整章 0.4–0.8 秒就跑完
+    if (typed.length) {
+      typeFast(typed, () => { onDone && onDone(); });
+      return;
+    }
     onDone && onDone();
     return;
   }
@@ -504,7 +560,8 @@ async function goChapter(i, { announce = false, autoAppend = false } = {}) {
     body.dataset.part = String(k);
     b.appendChild(body);
     const slice = paras.slice(part.from, part.to);
-    streamParagraphs(body, slice, k === last ? finishAll : null, part.from);
+    // autoAppend（使用者往下滑自動接的那一章）才用「快速打字」，主動開章維持一次畫完
+    streamParagraphs(body, slice, k === last ? finishAll : null, part.from, { auto: !!autoAppend });
   });
 
   $('#sbChapter').textContent = spec(ch.no);

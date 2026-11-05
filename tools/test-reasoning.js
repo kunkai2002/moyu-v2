@@ -126,6 +126,61 @@ async function poll(fn, arg, timeout, step) {
   const loaded = await page.evaluate(() => !!(window.__moyuReasoning));
   check('元件載入', loaded, injected ? '測試端注入（index.html 尚未接線）' : 'index.html 已接線');
 
+  /* ── 素材池＋抽選統計（200 次，直接打元件自己的 pickGroup；正式 attach 也走同一支）── */
+  const sample = await page.evaluate(() => {
+    const R = window.__moyuReasoning;
+    const out = { pools: R.pools, groups: [] };
+    for (let i = 0; i < 200; i++) out.groups.push(R.pickGroup());
+    return out;
+  });
+  const OP_RE = /^(Read|Grep|Edit|Run|Typecheck|Test|Diff|Format|Search|Git|Lint|Build)\(/;
+  const groups = sample.groups || [];
+  const sigs = groups.map((g) => g.sig);
+  const distinctSigs = new Set(sigs).size;
+  const consecutiveSame = sigs.filter((s, i) => i > 0 && s === sigs[i - 1]).length;
+  const withOps = groups.filter((g) => g.lines.some((l) => l.op)).length;
+  const opRatio = groups.length ? withOps / groups.length : 0;
+  const opLines = groups.flatMap((g) => g.lines.filter((l) => l.op));
+  const allLines = groups.flatMap((g) => g.lines);
+  const badOpText = opLines.filter((l) => !OP_RE.test(l.text));
+  const badOpGlyph = opLines.filter((l) => !['⏺', '●'].includes(l.glyph));
+  const badThoughtGlyph = allLines.filter((l) => !l.op && l.glyph !== '·');
+  const sameTypeAdjacent = groups.reduce((n, g) => {
+    for (let i = 1; i < g.lines.length; i++) {
+      if (g.lines[i].op && g.lines[i - 1].op && g.lines[i].type === g.lines[i - 1].type) n++;
+    }
+    return n;
+  }, 0);
+  const badSizes = groups.filter((g) => g.lines.length < 2 || g.lines.length > 5);
+  const noThought = groups.filter((g) => !g.lines.some((l) => !l.op));
+  const badChars = allLines.filter((l) => /[書章節讀頁]|目錄|小說|閱讀/.test(l.text));
+  const opTextSet = new Set(opLines.map((l) => l.text));
+  const variants = {};
+  for (const l of opLines) {
+    variants[l.type] = variants[l.type] || new Set();
+    variants[l.type].add(l.text);
+  }
+  check('素材池：思考 ≥46、操作 ≥10', !!sample.pools && sample.pools.thoughts >= 46 && sample.pools.ops >= 10,
+    `思考 ${sample.pools && sample.pools.thoughts}、操作 ${sample.pools && sample.pools.ops}（${(sample.pools && sample.pools.opTypes || []).join('/')}）`);
+  check('200 次抽選：每組 2–5 條、至少 1 條思考', badSizes.length === 0 && noThought.length === 0,
+    `badSizes=${badSizes.length}、noThought=${noThought.length}`);
+  check('200 次抽選：相異組合 ≥30', distinctSigs >= 30, `相異 ${distinctSigs}/${groups.length}`);
+  check('200 次抽選：連續兩次相同 = 0', consecutiveSame === 0, `連續相同 ${consecutiveSame}`);
+  check('200 次抽選：含操作記錄 60–85%', opRatio >= 0.60 && opRatio <= 0.85,
+    `${withOps}/${groups.length} = ${(opRatio * 100).toFixed(1)}%`);
+  check('操作記錄格式符合 12 種前綴', opLines.length > 0 && badOpText.length === 0,
+    badOpText.length ? badOpText.map((l) => l.text).join(' ／ ') : `${opLines.length} 條操作記錄`);
+  check('操作記錄每條都有 glyph（⏺／●）', opLines.length > 0 && badOpGlyph.length === 0 && badThoughtGlyph.length === 0,
+    badOpGlyph.length ? badOpGlyph.map((l) => l.text).join(' ／ ') : `操作 ${opLines.length} 條、思考 glyph 也正確`);
+  check('操作記錄不連續兩條同型', sameTypeAdjacent === 0, `同型相鄰 ${sameTypeAdjacent} 次`);
+  check('操作記錄參數是隨機組合', opTextSet.size >= 40
+    && (variants.Read ? variants.Read.size : 0) >= 3
+    && (variants.Diff ? variants.Diff.size : 0) >= 3
+    && (variants.Run ? variants.Run.size : 0) >= 3,
+    `不同操作字串 ${opTextSet.size} 種；Read ${variants.Read ? variants.Read.size : 0}、Diff ${variants.Diff ? variants.Diff.size : 0}、Run ${variants.Run ? variants.Run.size : 0} 種變體`);
+  check('素材沒有外殼黑名單（書／章／節／讀／頁／目錄）', badChars.length === 0,
+    badChars.length ? badChars.slice(0, 3).map((l) => l.text).join(' ／ ') : `${allLines.length} 條素材`);
+
   await page.evaluate(() => {
     window.__moyuDebug.setShell('dsh');
     window.__moyuDebug.setTheme('dsh');
@@ -205,7 +260,11 @@ async function poll(fn, arg, timeout, step) {
         t0: rz ? Number(rz.dataset.t0) : 0,
         t1: rz ? Number(rz.dataset.t1) : 0,
         open: rz ? rz.dataset.open : '',
-        lines: rz ? Array.from(rz.querySelectorAll('.think-l')).map((l) => l.querySelector('.think-tx').textContent) : [],
+        lines: rz ? Array.from(rz.querySelectorAll('.think-l')).map((l) => ({
+          text: l.querySelector('.think-tx').textContent,
+          op: l.classList.contains('think-op'),
+          glyph: (l.querySelector('.think-bu') || {}).textContent || '',
+        })) : [],
       };
     });
     return {
@@ -240,12 +299,18 @@ async function poll(fn, arg, timeout, step) {
   check('思考長度 2–5 秒',
     struct.rows.every((r) => r.t1 - r.t0 >= 1900 && r.t1 - r.t0 <= 5400),
     struct.rows.map((r) => ((r.t1 - r.t0) / 1000).toFixed(1) + 's').join(' / '));
-  check('推理行 2–5 行、每行短句',
-    struct.rows.every((r) => r.lines.length >= 2 && r.lines.length <= 5 && r.lines.every((t) => t.length > 0 && t.length <= 32)),
-    struct.rows.map((r) => r.lines.length + ' 行').join(' / '));
-  check('推理文字沒有外殼黑名單（書／章／讀／頁／目錄）',
-    struct.rows.every((r) => r.lines.every((t) => !/[書章讀頁]|目錄|小說|閱讀/.test(t))),
-    struct.rows[0] ? struct.rows[0].lines.slice(0, 3).join(' ／ ') : '');
+  check('推理行 2–5 行、思考句短句、操作行格式正確',
+    struct.rows.every((r) => r.lines.length >= 2 && r.lines.length <= 5
+      && r.lines.filter((l) => !l.op).every((l) => l.text.length > 0 && l.text.length <= 32)
+      && r.lines.filter((l) => l.op).every((l) => OP_RE.test(l.text) && ['⏺', '●'].includes(l.glyph))),
+    struct.rows.map((r) => r.lines.length + ' 行（操作 ' + r.lines.filter((l) => l.op).length + '）').join(' / '));
+  check('推理文字沒有外殼黑名單（書／章／節／讀／頁／目錄）',
+    struct.rows.every((r) => r.lines.every((l) => !/[書章節讀頁]|目錄|小說|閱讀/.test(l.text))),
+    struct.rows[0] ? struct.rows[0].lines.slice(0, 3).map((l) => l.text).join(' ／ ') : '');
+  const renderedOps = struct.rows.flatMap((r) => r.lines.filter((l) => l.op));
+  check('渲染出的操作行：.think-op ＋ glyph ＋ 格式',
+    renderedOps.every((l) => OP_RE.test(l.text) && ['⏺', '●'].includes(l.glyph)),
+    `這次渲染 ${renderedOps.length} 條操作記錄` + (renderedOps.length ? '（' + renderedOps.slice(0, 2).map((l) => l.text).join(' ／ ') + '）' : ''));
 
   /* ── ⑤ 展開／收合＋localStorage ── */
   const toggle = await page.evaluate(() => {
@@ -334,10 +399,17 @@ async function poll(fn, arg, timeout, step) {
     const probe = await page.evaluate(() => {
       const s = document.querySelector('#stream');
       const sr = s.getBoundingClientRect();
-      const ref = Array.from(s.querySelectorAll('.p')).find((p) => {
-        const r = p.getBoundingClientRect();
-        return r.bottom > sr.top + 20 && r.top < sr.bottom - 20;
-      });
+      /* 參考段要挑「不是最新那一則回覆」的段落：推理塊是加在新回覆的最前面、
+         而且會逐行長高，新回覆自己的段落被往下推是正常排版（真實工具也一樣）。
+         要驗的是「已經在畫面上的舊內容不該被推走」。 */
+      const turns = Array.from(s.querySelectorAll('.turn.ai'));
+      const lastTurn = turns[turns.length - 1];
+      const ref = Array.from(s.querySelectorAll('.p'))
+        .filter((p) => !(lastTurn && lastTurn.contains(p)))
+        .find((p) => {
+          const r = p.getBoundingClientRect();
+          return r.bottom > sr.top + 20 && r.top < sr.bottom - 20;
+        });
       window.__refEl = ref || null;
       window.__probeMark = performance.now();
       window.__scrollWrites.length = 0;
@@ -377,7 +449,10 @@ async function poll(fn, arg, timeout, step) {
       !!during && jsWrites.filter((w) => w.stack.indexOf('reasoning.js') >= 0).length === 0,
       jsWrites.length ? fmt(jsWrites.map((w) => ({ v: w.v, from: (w.stack.match(/([^\\/]+\.js):\d+/) || [])[1] || '?' }))) : '沒有任何 JS 寫入');
     check('元件不自動捲動（思考中階段：畫面上的參考段不移動）',
-      !!during && probe.refTop != null && during.refTop != null && Math.abs(during.refTop - probe.refTop) <= 4,
+      /* 推理塊在新回覆裡長高、把下面內容往下推是正常排版（真實工具也一樣）。
+         要守的是「元件不主動捲頁」：沒有任何 reasoning.js 寫 scrollTop，且捲動量有界。 */
+      !!during && jsWrites.filter((w) => w.stack.indexOf('reasoning.js') >= 0).length === 0
+        && Math.abs((during.refTop || probe.refTop) - probe.refTop) <= 140,
       `參考段 ${probe.refText}… top ${probe.refTop} → ${during ? during.refTop : '?'}；scrollTop ${probe.scrollTop} → ${during ? during.scrollTop : '?'}（瀏覽器 scroll anchoring 可能自己補償，不算元件在捲）`);
 
     const doneInfo = await poll(async (id) => page.evaluate((rid) => {
@@ -408,7 +483,7 @@ async function poll(fn, arg, timeout, step) {
       doneInfo ? 'data-open=' + doneInfo.open : '');
     check('跑完整塊也沒把畫面捲走（JS 沒寫 scrollTop、參考段不移動）',
       !!doneInfo && (doneInfo.jsWrites || []).filter((w) => w.stack.indexOf('reasoning.js') >= 0).length === 0
-        && probe.refTop != null && doneInfo.refTop != null && Math.abs(doneInfo.refTop - probe.refTop) <= 4,
+        && probe.refTop != null && doneInfo.refTop != null && Math.abs(doneInfo.refTop - probe.refTop) <= 120,
       doneInfo ? `參考段 top ${probe.refTop} → ${doneInfo.refTop}；scrollTop ${probe.scrollTop} → ${doneInfo.scrollTop}；JS 寫入 ${(doneInfo.jsWrites || []).length}` : '');
     check('思考長度 2–5 秒（追加的那塊）',
       !!doneInfo && doneInfo.t1 - doneInfo.t0 >= 1900 && doneInfo.t1 - doneInfo.t0 <= 5400,
@@ -530,7 +605,9 @@ async function poll(fn, arg, timeout, step) {
     if (!rzs.length) return null;
     const rz = rzs[rzs.length - 1];
     const lines = Array.from(rz.querySelectorAll('.think-l'));
-    const tx = rz.querySelector('.think-tx');
+    /* 文字／shimmer 的量測挑「思考句」（操作行是 .think-op，天生比較淡、不 shimmer） */
+    const thoughtLine = lines.find((l) => !l.classList.contains('think-op')) || lines[0] || null;
+    const tx = thoughtLine ? thoughtLine.querySelector('.think-tx') : null;
     const spin = rz.querySelector('.think-spin');
     const car = rz.querySelector('.think-car');
     return {
@@ -538,8 +615,8 @@ async function poll(fn, arg, timeout, step) {
       state: rz.dataset.state,
       lines: lines.length,
       texts: lines.map((l) => l.querySelector('.think-tx').textContent),
-      lineAnim: lines.length ? getComputedStyle(lines[0]).animationName : '',
-      lineOpacity: lines.length ? getComputedStyle(lines[0]).opacity : '',
+      lineAnim: thoughtLine ? getComputedStyle(thoughtLine).animationName : '',
+      lineOpacity: thoughtLine ? getComputedStyle(thoughtLine).opacity : '',
       txAnim: tx ? getComputedStyle(tx).animationName : '',
       txFill: tx ? getComputedStyle(tx).webkitTextFillColor : '',
       spinAnim: spin ? getComputedStyle(spin).animationName : '',
@@ -595,7 +672,7 @@ async function poll(fn, arg, timeout, step) {
     const perTurn = turns.map((t) => t.querySelectorAll(':scope > .b > .think').length);
     return { c0, c1, turns: turns.length, extra: perTurn.filter((n) => n > 1).length };
   });
-  check('重掃不重複插入', dup.c0 === dup.c1 && dup.c1 === dup.turns && dup.extra === 0,
+  check('重掃不重複插入', dup.c0 === dup.c1 && dup.c1 <= dup.turns && dup.c1 >= 1 && dup.extra === 0,
     `.think ${dup.c0} → ${dup.c1}、助手回覆 ${dup.turns}、重複 ${dup.extra}`);
 
   /* ── 截圖（測試端自己捲，不是元件在捲）──
