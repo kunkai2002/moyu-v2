@@ -17,7 +17,7 @@
   --dsh-handle-overlap:4px;
 
   /* ── 側欄 ── */
-  --dsh-side-pad:6px var(--dsh-sidebar-inline-padding);
+  --dsh-side-pad:6px 12px;
   --dsh-side-inline:12px;
   --dsh-side-font:14px;
   --dsh-topstrip-h:52px;

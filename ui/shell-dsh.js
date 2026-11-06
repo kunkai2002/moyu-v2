@@ -151,7 +151,7 @@
     if (!app) return;
     var vw = window.innerWidth;
     var railWanted = app.dataset.rail === '1';          // 只有使用者自己按收合才變軌
-    var overlaySide = vw < 900;                          // <900：側欄是抽屜（一樣有文字）
+    var overlaySide = false;                             // 側欄永遠在版面流裡（JOJO 要完整側欄；抽屜只給目錄）
     var s = railWanted ? num('--dsh-rail-w', 56)
       : clamp(num('--dsh-sidebar-w', 280), num('--dsh-sidebar-min', 264), num('--dsh-sidebar-max', 420));
     // 目錄：>=1100 dock，<1100 抽屜（不佔中欄寬度）
@@ -162,10 +162,11 @@
       num('--dsh-content-min', 680), num('--dsh-content-max', 920));
 
     app.classList.toggle('side-rail', railWanted);
-    app.classList.toggle('side-overlay', overlaySide && !railWanted);
+    // 側欄不做覆蓋式抽屜（820 會把版面壓成兩欄）；它永遠在版面流裡
     app.classList.toggle('toc-overlay', !dockToc && vw < 1100);
     app.classList.toggle('toc-collapsed', !dockToc && vw >= 1100);
     if (vw >= 1100) app.classList.remove('toc-open');
+    app.classList.remove('side-open');
     app.style.setProperty('--dsh-col-side', s + 'px');
     app.style.setProperty('--dsh-col-right', r + 'px');
     app.style.setProperty('--dsh-content-w', content + 'px');

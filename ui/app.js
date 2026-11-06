@@ -369,13 +369,12 @@ function pageDownHalf() {
   const view = s.clientHeight;
   const max = Math.max(0, s.scrollHeight - view);
   const from = s.scrollTop;
-  if (from >= max - 2) {                        // 到底：接下一章
+  if (from >= max - 2) {                              // 到底：接下一章
     const sent = document.querySelector('.flow-more');
     if (sent) sent.click();
     return;
   }
   const sr = s.getBoundingClientRect();
-  /* 收集「畫面上還沒打過字」的段落：字先出來、頁面被一點點往上頂，頂到半屏就停 */
   const list = [];
   document.querySelectorAll('#stream .p').forEach((p) => {
     if (p.dataset.typed === '1') return;
@@ -383,42 +382,49 @@ function pageDownHalf() {
     if (r.bottom > sr.top && r.top < sr.bottom + view * 0.5) {
       p.dataset.full = p.textContent;
       p.dataset.typed = '1';
+      const h = p.scrollHeight;
+      if (h > 0) p.style.minHeight = h + 'px';       // 鎖高度，捲動才不會被夾
       p.textContent = '';
       list.push(p);
     }
   });
-  const budget = Math.round(view / 2);           // 這一頁要往上頂多少
+  const budget = Math.round(view / 2);
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const fillAll = () => {
+    list.forEach((p) => {
+      if (p.dataset.full != null) { p.textContent = p.dataset.full; delete p.dataset.full; }
+      p.style.minHeight = '';
+    });
+  };
   if (!list.length || reduce) {
-    list.forEach((p) => { p.textContent = p.dataset.full; delete p.dataset.full; });
+    fillAll();
     s.scrollTop = Math.min(max, from + budget);
     return;
   }
+
+  /* 時間軸：2 秒內把這批字吐完，同時頁面往上頂到半屏。
+     用「經過時間」換算進度，而不是靠 tick 次數 —— 隱藏視窗／背景頁的計時器會被
+     節流到 1 秒一次（實測 3.6 秒只跑 3 個 tick），靠次數會永遠做不完。 */
   const total = list.reduce((n, p) => n + (p.dataset.full || '').length, 0);
-  const per = 3;                                  // 一次 3 個字（幾個字幾個字一起）
-  const ticks = Math.max(1, Math.ceil(total / per));
-  const TICK = Math.max(16, Math.min(90, Math.round(1800 / ticks)));   // 整批約 1.8 秒
-  let i = 0;
-  let shown = 0;
-  let moved = 0;
+  const DURATION = 2000;
+  const t0 = Date.now();
   let timer = null;
-  const finish = () => {
-    if (timer) clearInterval(timer);
-    timer = null;
-    list.forEach((p) => { if (p.dataset.full != null) { p.textContent = p.dataset.full; delete p.dataset.full; } });
+  const step = () => {
+    const k = Math.min(1, (Date.now() - t0) / DURATION);
+    let left = Math.floor(total * k);
+    for (const p of list) {
+      const full = p.dataset.full;
+      if (full == null) continue;
+      if (left >= full.length) { p.textContent = full; delete p.dataset.full; p.style.minHeight = ''; left -= full.length; }
+      else { p.textContent = full.slice(0, Math.max(0, left)); left = 0; }
+    }
+    s.scrollTop = Math.min(max, from + Math.round(budget * k));
+    if (k >= 1) { fillAll(); if (timer) clearInterval(timer); timer = null; return; }
+    timer = timer || setInterval(step, 16);
   };
-  timer = setInterval(() => {
-    if (i >= list.length) { finish(); return; }
-    const p = list[i];
-    const full = p.dataset.full || '';
-    shown = Math.min(full.length, shown + per);
-    p.textContent = full.slice(0, shown);
-    /* 邊吐字邊把頁往上頂：整批吐完剛好頂到半屏，節奏不會前快後慢 */
-    moved = Math.min(budget, moved + (budget * per) / Math.max(1, total));
-    s.scrollTop = Math.min(max, from + moved);
-    if (shown >= full.length) { delete p.dataset.full; i++; shown = 0; }
-  }, TICK);
-  setTimeout(finish, Math.max(900, 1800) + 400);   // 保險
+  step();
+  timer = setInterval(step, 16);
+  setTimeout(() => { if (timer) { clearInterval(timer); timer = null; } fillAll(); s.scrollTop = Math.min(max, from + budget); }, 2600);
 }
 
 function streamParagraphs(container, paras, onDone, piBase, opts) {

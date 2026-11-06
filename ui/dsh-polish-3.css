@@ -131,3 +131,13 @@
 
 /* 抽屜（側欄／目錄）需要 .app 當定位容器，否則會逃出 overflow 造成橫向捲動 */
 :root[data-shell="dsh"] .app{position:relative}
+
+/* 抽屜關閉時直接移除版面（避免 translate 出去的抽屜仍被命中） */
+/* 側欄永遠顯示（不再用覆蓋式抽屜） */
+:root[data-shell="dsh"] .app .side{display:flex}
+:root[data-shell="dsh"] .app.toc-overlay:not(.toc-open) .dsh-right{display:none}
+/* 開啟時滑入（原本是 transform 過場，改成 keyframe 才不會跟 display 打架） */
+@keyframes taste-slide-left{from{transform:translateX(-16px);opacity:0}to{transform:none;opacity:1}}
+@keyframes taste-slide-right{from{transform:translateX(16px);opacity:0}to{transform:none;opacity:1}}
+:root[data-shell="dsh"] .app.side-overlay.side-open .side{animation:taste-slide-left var(--dsh-dur) var(--dsh-ease) both}
+:root[data-shell="dsh"] .app.toc-overlay.toc-open .dsh-right{animation:taste-slide-right var(--dsh-dur) var(--dsh-ease) both}

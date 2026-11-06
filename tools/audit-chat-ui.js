@@ -51,7 +51,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     JSON.stringify({ width: 1440, height: 900, x: 80, y: 60, maximized: false }), 'utf8');
 
   const log = fs.openSync(path.join(OUT, 'app.log'), 'w');
-  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--remote-debugging-port=${PORT}`, '--hidden'],
+  const child = spawn(EXE, [APP, `--data-dir=${PROBE}`, `--user-data-dir=${path.join(PROBE, 'profile')}`, `--remote-debugging-port=${PORT}`, '--hidden'],
     { stdio: ['ignore', log, log], env: appEnv()});
 
   let browser = null;
@@ -104,7 +104,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     await page.evaluate((s) => window.moyu?.win?.setState?.(s), { width: w, height: h });
     await sleep(700);
     const file = path.join(OUT, `chat-${w}x${h}${mine ? '-marks' : ''}.png`);
-    await page.screenshot({ path: file });
+    try {
+      await page.screenshot({ path: file, captureBeyondViewport: false });
+    } catch (e) {
+      // 隱藏視窗偶爾抓不到幀：退一步只記錄、不讓整份驗收掛掉
+      console.log('  ⚠ 截圖失敗（' + w + '×' + h + '）：' + (e && e.message ? e.message.slice(0, 60) : e));
+      try { await page.screenshot({ path: file, captureBeyondViewport: false, fromSurface: false }); } catch {}
+    }
     return file;
   };
 
@@ -119,7 +125,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       for (const b of document.querySelectorAll('.tb-btn, .hint-btn, .cn-btn, .ghost.icon')) {
         const r = b.getBoundingClientRect();
         if (r.width < 4 || r.height < 4) continue;
-        const hit = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
+        const cx = Math.round(r.left + r.width / 2);
+        const cy = Math.round(r.top + r.height / 2);
+        if (cx < 0 || cy < 0 || cx > innerWidth - 1 || cy > innerHeight - 1) continue;
+        const hit = document.elementFromPoint(cx, cy);
         if (!hit) continue;
         if (hit !== b && !b.contains(hit)) covered.push((b.id || b.className) + '→' + (hit.id || hit.className));
       }
@@ -524,6 +533,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     // 每個尺寸量測前都把 <1024 的右欄抽屜收掉（遮罩會讓所有按鈕被判定成「被蓋住」）
     await page.evaluate(() => {
       document.querySelector('.app')?.classList.remove('toc-open');
+      document.querySelector('.app')?.classList.remove('side-open');
       document.body.classList.remove('bossing');
     });
     await sleep(120);
@@ -533,10 +543,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       for (const b of document.querySelectorAll('.tb-btn, .hint-btn, .cn-btn')) {
         const r = b.getBoundingClientRect();
         if (r.width < 4) continue;
-        const hit = document.elementFromPoint(Math.round(r.left + r.width / 2), Math.round(r.top + r.height / 2));
-        if (hit && hit !== b && !b.contains(hit)) cov.push(b.id || b.className);
+        // 中心點不在視窗內的按鈕不判斷（820×620 時頂欄左側可能被推到視窗外）
+        const cx = Math.round(r.left + r.width / 2), cy = Math.round(r.top + r.height / 2);
+        if (cx < 0 || cy < 0 || cx > innerWidth - 1 || cy > innerHeight - 1) continue;
+        const hit = document.elementFromPoint(cx, cy);
+        if (hit && hit !== b && !b.contains(hit)) cov.push((b.id || b.className) + '←' + (hit.id || hit.className || hit.tagName));
       }
-      return { ox: de.scrollWidth - de.clientWidth, cov, theme: de.getAttribute('data-theme') };
+      return { ox: de.scrollWidth - de.clientWidth, cov, theme: de.getAttribute('data-theme'), appCls: (document.querySelector('.app') || {}).className };
     });
     await page.screenshot({ path: path.join(OUT, `dsh-${w}x${h}.png`) });
     probe.theme === 'dsh' && probe.ox <= 0 && probe.cov.length === 0

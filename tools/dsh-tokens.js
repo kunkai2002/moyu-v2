@@ -55,7 +55,7 @@ emit(`  --dsh-handle-w:${px('frame', 'handleWidth')};`);
 emit(`  --dsh-handle-overlap:${px('frame', 'handleOverlap')};`);
 emit('');
 emit('  /* ── 側欄 ── */');
-emit(`  --dsh-side-pad:${g('sidebar', 'padding')};`);
+emit(`  --dsh-side-pad:${String(g('sidebar', 'padding')).replace('var(--dsh-sidebar-inline-padding)', String(px('sidebar', 'inlinePadding')))};`);
 emit(`  --dsh-side-inline:${px('sidebar', 'inlinePadding')};`);
 emit(`  --dsh-side-font:${px('sidebar', 'fontSize')};`);
 emit(`  --dsh-topstrip-h:${px('sidebar', 'topStripHeight')};`);

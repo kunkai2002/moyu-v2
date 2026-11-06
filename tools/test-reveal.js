@@ -67,6 +67,8 @@ const bad = (n, e = '') => results.push({ pass: false, n, e });
   const samples = [];
   for (let i = 0; i < 45; i++) { await sleep(80); samples.push(await snap()); }
   const after = samples[samples.length - 1];
+  const pd = await page.evaluate(() => window.__pd || null);
+  if (pd) console.log('pageDownHalf 內部：', JSON.stringify(pd).slice(0, 400));
 
   // ① 有出字（有段落被清空重打）
   const blanksSeen = samples.some((s) => s.visibleBlank > 0 || s.partial > 0);
@@ -96,7 +98,7 @@ const bad = (n, e = '') => results.push({ pass: false, n, e });
   const pass = results.filter((r) => r.pass).length;
   for (const r of results) console.log(`${r.pass ? '✅' : '❌'} ${r.n}${r.e ? '  → ' + r.e : ''}`);
   console.log(`\n${pass}/${results.length} 通過`);
-  fs.writeFileSync(path.join(ROOT, '_probe', 'reveal.json'), JSON.stringify({ results, before, after, moved, errors }, null, 2), 'utf8');
+  fs.writeFileSync(path.join(ROOT, '_probe', 'reveal.json'), JSON.stringify({ results, before, after, moved, pd, errors }, null, 2), 'utf8');
   browser.disconnect(); try { child.kill(); } catch {}
   setTimeout(() => process.exit(pass === results.length ? 0 : 1), 500);
 })();
