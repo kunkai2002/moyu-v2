@@ -369,58 +369,56 @@ function pageDownHalf() {
   const view = s.clientHeight;
   const max = Math.max(0, s.scrollHeight - view);
   const from = s.scrollTop;
-  if (from >= max - 2) {                        // 已經到底：接下一章
+  if (from >= max - 2) {                        // 到底：接下一章
     const sent = document.querySelector('.flow-more');
     if (sent) sent.click();
     return;
   }
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const to = Math.min(max, from + Math.round(view / 2));
-
-  const collect = () => {
-    const sr = s.getBoundingClientRect();
-    const fresh = [];
-    document.querySelectorAll('#stream .p').forEach((p) => {
-      if (p.dataset.typed === '1') return;
-      const r = p.getBoundingClientRect();
-      // 取「這一頁新露出來」的段落（畫面上緣往下、到視窗底）
-      if (r.bottom > sr.top && r.top < sr.bottom) fresh.push({ node: p, text: p.textContent });
-    });
-    return fresh;
-  };
-
-  if (reduce) { s.scrollTop = to; typeBatch(collect(), 1500); return; }
-
-  /* ① 一行一行往上滑（每步一個行高，總長約 0.5 秒） */
-  const lp = document.querySelector('#stream .p');
-  const lineH = lp ? (parseFloat(getComputedStyle(lp).lineHeight) || 24) : 24;
-  const stepPx = Math.max(12, Math.round(lineH));
-  const lines = Math.max(1, Math.round((to - from) / stepPx));
-  const SCROLL_MS = 500;
-  const t0 = Date.now();
-  const timer = setInterval(() => {
-    const k = Math.min(1, (Date.now() - t0) / SCROLL_MS);
-    s.scrollTop = Math.min(to, from + Math.round(k * lines) * stepPx);
-    if (k >= 1) {
-      s.scrollTop = to;
-      clearInterval(timer);
-      typeBatch(collect(), 1500);               // ② 滑完才出字：整批約 1.5 秒
-      /* 清掃：2.5 秒後把「畫面上還空著、而且是我方才清空過的」段落直接填滿，
-         避免計時器被節流時留下永遠空白的段落（JOJO 看的是畫面，不是 DOM）。 */
-      setTimeout(() => {
-        const sr = s.getBoundingClientRect();
-        (window.__lastTypeBatch || []).forEach((e) => {
-          if (!e.node || !e.node.isConnected) return;
-          if (e.node.textContent) return;
-          const r = e.node.getBoundingClientRect();
-          if (r.bottom > sr.top - 40 && r.top < sr.bottom + 40) {
-            e.node.textContent = e.text;
-            e.node.style.minHeight = '';
-          }
-        });
-      }, 2500);
+  const sr = s.getBoundingClientRect();
+  /* 收集「畫面上還沒打過字」的段落：字先出來、頁面被一點點往上頂，頂到半屏就停 */
+  const list = [];
+  document.querySelectorAll('#stream .p').forEach((p) => {
+    if (p.dataset.typed === '1') return;
+    const r = p.getBoundingClientRect();
+    if (r.bottom > sr.top && r.top < sr.bottom + view * 0.5) {
+      p.dataset.full = p.textContent;
+      p.dataset.typed = '1';
+      p.textContent = '';
+      list.push(p);
     }
-  }, 24);
+  });
+  const budget = Math.round(view / 2);           // 這一頁要往上頂多少
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!list.length || reduce) {
+    list.forEach((p) => { p.textContent = p.dataset.full; delete p.dataset.full; });
+    s.scrollTop = Math.min(max, from + budget);
+    return;
+  }
+  const total = list.reduce((n, p) => n + (p.dataset.full || '').length, 0);
+  const per = 3;                                  // 一次 3 個字（幾個字幾個字一起）
+  const ticks = Math.max(1, Math.ceil(total / per));
+  const TICK = Math.max(16, Math.min(90, Math.round(1800 / ticks)));   // 整批約 1.8 秒
+  let i = 0;
+  let shown = 0;
+  let moved = 0;
+  let timer = null;
+  const finish = () => {
+    if (timer) clearInterval(timer);
+    timer = null;
+    list.forEach((p) => { if (p.dataset.full != null) { p.textContent = p.dataset.full; delete p.dataset.full; } });
+  };
+  timer = setInterval(() => {
+    if (i >= list.length) { finish(); return; }
+    const p = list[i];
+    const full = p.dataset.full || '';
+    shown = Math.min(full.length, shown + per);
+    p.textContent = full.slice(0, shown);
+    /* 邊吐字邊把頁往上頂：整批吐完剛好頂到半屏，節奏不會前快後慢 */
+    moved = Math.min(budget, moved + (budget * per) / Math.max(1, total));
+    s.scrollTop = Math.min(max, from + moved);
+    if (shown >= full.length) { delete p.dataset.full; i++; shown = 0; }
+  }, TICK);
+  setTimeout(finish, Math.max(900, 1800) + 400);   // 保險
 }
 
 function streamParagraphs(container, paras, onDone, piBase, opts) {
@@ -1119,11 +1117,18 @@ async function boot() {
     input.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
-      /* JOJO 2026-11-06：Enter 一律「往下翻半屏 ＋ 那半屏的字逐字出現」；
-         送出指令改成 Alt+Enter（Shift+Enter 仍然換行）。 */
-      if (e.altKey || e.ctrlKey || e.metaKey) {
+      /* JOJO 2026-11-06：輸入框空白時 Enter＝往下翻半屏；有打字就照舊送出指令。
+         Shift+Enter 仍然換行；Alt/Ctrl+Enter 一律送出（保險鍵）。 */
+      if (e.shiftKey) {
+        input.value += '\n';
+        input.dispatchEvent(new Event('input'));
+        return;
+      }
+      const typed = input.value.trim();
+      if (e.altKey || e.ctrlKey || e.metaKey || typed) {
         const v = input.value;
         input.value = '';
+        input.dispatchEvent(new Event('input'));
         handleInput(v);
         return;
       }

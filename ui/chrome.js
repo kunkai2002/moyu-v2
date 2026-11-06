@@ -139,25 +139,20 @@
   /* 右側：只留「讀的時候真的會按」的四顆，其餘全收進「更多」 */
   const markBtn = mk('tbMark', 'bookmark', '標記（書籤／劃線／筆記）');
   markBtn.addEventListener('click', () => window.__moyuMarksPanel?.toggle?.());
-  const listBtn = mk('tbList', 'list', '目錄（開關左側章節）');
+  const listBtn = mk('tbList', 'list', '目錄（章節清單）');
   listBtn.addEventListener('click', () => {
     const app = document.querySelector('.app');
     if (!app) return;
-    if (window.innerWidth <= 760) {
-      // 小視窗：目錄是抽屜
-      app.classList.toggle('side-open');
-      setTimeout(() => {
-        if (!app.classList.contains('side-open')) return;
-        const f = document.querySelector('#chFilter');
-        if (f) { f.focus(); f.select?.(); }
-      }, 200);
+    if (window.innerWidth >= 1100) {
+      // 寬螢幕：目錄是右側 dock，用 dataset.toc 收合／展開
+      app.dataset.toc = app.dataset.toc === '0' ? '1' : '0';
+      app.dispatchEvent(new Event('moyu:layout'));
+      if (window.__moyuLayoutPass) window.__moyuLayoutPass();
     } else {
-      // 大視窗：收起／展開章節欄（同一顆鍵，不另外放一顆會蓋住別人的小按鈕）
-      const hidden = app.classList.toggle('side-hidden');
-      try { localStorage.setItem('moyu.sideHidden', hidden ? '1' : '0'); } catch {}
+      // 窄螢幕：目錄是右側抽屜
+      app.classList.toggle('toc-open');
     }
   });
-
   const histBtn2 = mk('tbHistory', 'history', '歷史（最近讀過的書）');
   const moreBtn = mk('tbMore', 'more', '更多');
 
@@ -250,37 +245,6 @@
 
   /* 晚到的膠囊也收 */
   new MutationObserver(() => sweep()).observe(right, { childList: true });
-
-  /* ── 閱讀頁翻章列 ── */
-  const composer = $('.composer');
-  if (composer) {
-    const nav = document.createElement('div');
-    nav.className = 'chapter-nav';
-    nav.innerHTML = `
-      <button class="cn-btn" id="cnPrev" title="上一則">${I.svg('back', 14)}</button>
-      <span class="cn-pos" id="cnPos">— / —</span>
-      <button class="cn-btn" id="cnNext" title="下一則">${I.svg('forward', 14)}</button>`;
-    composer.parentNode.insertBefore(nav, composer);
-
-    const prev = nav.querySelector('#cnPrev');
-    const next = nav.querySelector('#cnNext');
-    const pos = nav.querySelector('#cnPos');
-
-    function paint() {
-      const n = D.state.chapters?.length || 0;
-      const i = D.state.index || 0;
-      pos.textContent = n ? `${i + 1} / ${n}` : '— / —';
-      prev.disabled = !n || i <= 0;
-      next.disabled = !n || i >= n - 1;
-    }
-    prev.addEventListener('click', () => { if (D.state.index > 0) { D.goChapter(D.state.index - 1); setTimeout(paint, 60); } });
-    next.addEventListener('click', () => {
-      const n = D.state.chapters?.length || 0;
-      if (D.state.index < n - 1) { D.goChapter(D.state.index + 1); setTimeout(paint, 60); }
-    });
-    setInterval(paint, 600);
-    paint();
-  }
 
   /* ── 右鍵選單 ── */
   const ctx = document.createElement('div');

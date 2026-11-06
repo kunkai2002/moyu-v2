@@ -16,7 +16,7 @@ const FILES = [
   'ui/remember.js', 'ui/theme.css', 'ui/app.js', 'ui/bridge-http.js', 'ui/ghost.js', 'ui/settings-tabs.js', 'ui/palette.js',
   /* DSH 外殼（2026-11-04）：真值產生檔＋外殼行為層＋打磨層，index.html 直接引用，漏掉就是白屏 */
   'ui/dsh-tokens.css', 'ui/dsh-polish.css', 'ui/dsh-polish-2.css', 'ui/dsh-polish-3.css',
-  'ui/a11y-tokens.css', 'ui/a11y-normalize.css',
+  'ui/a11y-tokens.css', 'ui/a11y-normalize.css', 'ui/taste.css',
   'ui/reasoning.css', 'ui/reasoning.js', 'ui/shell-dsh.js',
   '開機自動啟動.cmd', 'tools/autostart.vbs', 'tools/start.vbs', 'tools/launch.vbs',
   'tools/update.cmd',

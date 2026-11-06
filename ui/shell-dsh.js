@@ -150,38 +150,27 @@
     var app = document.querySelector('.app');
     if (!app) return;
     var vw = window.innerWidth;
-    var autoCollapse = num('--dsh-auto-collapse', 1024);
-    var manualRail = app.dataset.rail === '1';
-    var narrow = vw < autoCollapse;
-    var rail = narrow !== manualRail && (manualRail || narrow);
-    var s = rail
-      ? num('--dsh-rail-w', 56)
+    var railWanted = app.dataset.rail === '1';          // 只有使用者自己按收合才變軌
+    var overlaySide = vw < 900;                          // <900：側欄是抽屜（一樣有文字）
+    var s = railWanted ? num('--dsh-rail-w', 56)
       : clamp(num('--dsh-sidebar-w', 280), num('--dsh-sidebar-min', 264), num('--dsh-sidebar-max', 420));
-    var available = vw - s - num('--dsh-right-reserve', 400);
-    var wantRight = app.dataset.toc !== '0';
-    var overlay = narrow;   // <1024：右欄是浮層抽屜，不佔中欄寬度（CSS 的 @media 負責定位）
-    var r = 0;
-    if (!overlay && wantRight && available >= 300) {
-      // DSH 的公式是 clamp(45% 視窗, 300, 70% 視窗)；但那是給「文件／變更」預覽用的寬度，
-      // 這裡的右欄是章節清單，用真值下限 300（= --dsh-right-min）才不會把正文擠到 512px。
-      // 想回到 45% 就把下面這行換成 clamp(ratio*vw, min, max) 那版。
-      r = Math.min(available, clamp(num('--dsh-right-min', 300),
-        num('--dsh-right-min', 300), vw * num('--dsh-right-max-ratio', 0.7)));
-    }
+    // 目錄：>=1100 dock，<1100 抽屜（不佔中欄寬度）
+    var dockToc = vw >= 1100 && app.dataset.toc !== '0';
+    var r = dockToc ? num('--dsh-right-min', 300) : 0;
     var center = Math.max(0, vw - s - r);
     var content = clamp(num('--dsh-content-ratio', 0.64) * center,
       num('--dsh-content-min', 680), num('--dsh-content-max', 920));
 
-    app.classList.toggle('side-rail', rail);
-    app.classList.toggle('toc-overlay', overlay);
-    // 抽屜模式不能用 toc-collapsed（那是 display:none，抽屜就開不起來）
-    app.classList.toggle('toc-collapsed', !overlay && r === 0);
-    if (!overlay) app.classList.remove('toc-open');
+    app.classList.toggle('side-rail', railWanted);
+    app.classList.toggle('side-overlay', overlaySide && !railWanted);
+    app.classList.toggle('toc-overlay', !dockToc && vw < 1100);
+    app.classList.toggle('toc-collapsed', !dockToc && vw >= 1100);
+    if (vw >= 1100) app.classList.remove('toc-open');
     app.style.setProperty('--dsh-col-side', s + 'px');
     app.style.setProperty('--dsh-col-right', r + 'px');
     app.style.setProperty('--dsh-content-w', content + 'px');
   }
-
+  window.__moyuLayoutPass = layoutPass;
   function boot() {
     renderRecent();
     wireTabs();

@@ -247,14 +247,16 @@ function buildNarrowSpec(truth) {
   const g = truth.geometry;
   return [
     {
-      id: 'rail-side-width', label: '收合軌寬', selector: '.side', metric: 'rect',
-      expect: { width: g.frame.railWidth.value }, src: g.frame.railWidth.src,
-      note: '視窗 900×800 < autoCollapse 1024 → 收成 56',
+      /* 2026-11-06 改版：側欄不再「<1024 自動縮成 56 圖示軌」（JOJO 抱怨只剩圖示沒文字）。
+         900×800 時應該是「完整側欄 280」；只有使用者自己按收合才會變 56。 */
+      id: 'narrow-side-width', label: '窄視窗側欄寬（完整側欄）', selector: '.side', metric: 'rect',
+      expect: { width: g.frame.sidebarWidth.value }, src: g.frame.sidebarWidth.src,
+      note: '視窗 900×800 不再自動縮軌，維持 280；收合成 56 只在使用者手動收合時',
     },
     {
       id: 'rail-tree-overflow', label: '清單橫向溢出', selector: '#tree', metric: 'overflow',
       expect: { 'overflow-x': 0 }, tol: 1,
-      src: '版面契約：收合時清單不橫向溢出（scrollWidth − clientWidth ≤ 1）',
+      src: '版面契約：清單不橫向溢出（scrollWidth − clientWidth ≤ 1）',
       note: '900×800 時 #tree 不該出現橫向捲軸',
     },
   ];

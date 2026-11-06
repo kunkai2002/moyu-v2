@@ -99,3 +99,35 @@
   from{opacity:0;transform:translateY(6px)}
   to{opacity:1;transform:none}
 }
+
+/* ── 版面策略：完整側欄 + 目錄抽屜（2026-11-06） ─────────────────────────────── */
+/* 側欄：<900 時是「有文字」的抽屜，不是圖示軌 */
+:root[data-shell="dsh"] .app.side-overlay .side{
+  position:absolute;top:0;bottom:0;left:0;z-index:40;
+  transform:translateX(-101%);visibility:hidden;
+  transition:transform var(--dsh-dur) var(--dsh-ease), visibility 0s linear var(--dsh-dur);
+  box-shadow:14px 0 40px -18px rgba(0,0,0,.5);
+}
+:root[data-shell="dsh"] .app.side-overlay.side-open .side{
+  transform:none;visibility:visible;
+  transition:transform var(--dsh-dur) var(--dsh-ease), visibility 0s;
+}
+/* 目錄：<1100 是右側抽屜 */
+:root[data-shell="dsh"] .app.toc-overlay .dsh-right{
+  position:absolute;top:0;right:0;bottom:0;z-index:35;width:min(86vw,320px);
+  transform:translateX(101%);visibility:hidden;
+  transition:transform var(--dsh-dur) var(--dsh-ease), visibility 0s linear var(--dsh-dur);
+  box-shadow:-18px 0 48px -24px rgba(0,0,0,.55);
+}
+:root[data-shell="dsh"] .app.toc-overlay.toc-open .dsh-right{
+  transform:none;visibility:visible;
+  transition:transform var(--dsh-dur) var(--dsh-ease), visibility 0s;
+}
+:root[data-shell="dsh"] .app.toc-overlay.toc-open:before{
+  content:"";position:fixed;inset:0;z-index:34;
+  background:color-mix(in srgb, #000 42%, transparent);
+  animation:polish-fade var(--dsh-dur) var(--dsh-ease) both;
+}
+
+/* 抽屜（側欄／目錄）需要 .app 當定位容器，否則會逃出 overflow 造成橫向捲動 */
+:root[data-shell="dsh"] .app{position:relative}

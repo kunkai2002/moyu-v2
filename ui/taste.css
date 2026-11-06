@@ -1,0 +1,98 @@
+/* ══════════════════════════════════════════════════════════════
+   審美層（taste.css）· 2026-11-06
+   ─────────────────────────────────────────────────────────────
+   Design Read：給單一使用者的「偽裝成編碼工具的桌面閱讀器」，
+   用 DSH 的形狀 + Claude 的安靜編輯感：低飽和、暖一點的中性、留白靠節奏
+   而不是靠裝飾、只有一個強調色、動效只服務回饋。
+   旋鈕：VARIANCE 5（結構照抄 DSH，不做花樣）／MOTION 3（只做回饋，不做表演）／
+        DENSITY 4（資訊密度中等，閱讀區要鬆）。
+
+   規則（鐵律）：
+   · 不動真值幾何：側欄 280／頂欄 76／輸入卡 28／正文 14-24（layout-gate 會擋）
+   · 不動色票：顏色只走 --dsh-color-* / --fg* / --acc（a11y 層已把對比算到 AA）
+   · 只做「節奏、層級、字重、間距、微互動」這幾件事
+   載入順序：... → a11y-normalize.css → taste.css（最後）
+   ══════════════════════════════════════════════════════════════ */
+
+:root[data-shell="dsh"]{
+  --t-hair:0.5px;                 /* 統一的細線寬度（Claude 的分隔線是髮絲級） */
+  --t-row:36px;                   /* 列表節奏（真值） */
+  --t-gap:8px;
+  --t-pad:12px;
+}
+
+/* ── 1. 字重與字級：把「全部 400」改成有層級的 400/500/600 ──── */
+:root[data-shell="dsh"] .side,
+:root[data-shell="dsh"] .topbar,
+:root[data-shell="dsh"] .dsh-right,
+:root[data-shell="dsh"] .statusbar{
+  font-feature-settings:"kern" 1, "liga" 1;
+  -webkit-font-smoothing:antialiased;
+}
+/* 書名：唯一的 600，其他一律 ≤500 */
+:root[data-shell="dsh"] .brand-name{
+  font-weight:600;letter-spacing:.005em;
+}
+/* 頂欄標題：500，不要跟正文搶 */
+:root[data-shell="dsh"] .topbar .crumb b{font-weight:500;letter-spacing:.005em}
+:root[data-shell="dsh"] .topbar .crumb{font-weight:400}
+/* 側欄三列＋最近：標籤 400、字級 13（原本 14 太重） */
+:root[data-shell="dsh"] .side-actions .sa{font-size:13px;font-weight:400;letter-spacing:.01em}
+:root[data-shell="dsh"] .sa-new{font-size:13px;font-weight:500;letter-spacing:.01em}
+:root[data-shell="dsh"] .sr-row{font-size:13px;letter-spacing:.01em}
+/* 區塊小標（最近／文件）：用字距做層級，不要用大寫或加粗 */
+:root[data-shell="dsh"] .side-region-head,
+:root[data-shell="dsh"] .dsh-right .vol{
+  font-size:11px;letter-spacing:.08em;font-weight:400;
+}
+/* 目錄：標題 500、清單 400、編號等寬 */
+:root[data-shell="dsh"] .dsh-right .panel-head b{font-weight:500;letter-spacing:.01em}
+:root[data-shell="dsh"] .dsh-right .ch{font-size:13px;font-weight:400;letter-spacing:.01em}
+
+/* ── 2. 留白節奏：靠 8/12/16，不靠裝飾（Claude 的「呼吸」） ── */
+:root[data-shell="dsh"] .side-brand{padding-inline:0}
+:root[data-shell="dsh"] .side-region-head{padding:12px 2px 6px}
+:root[data-shell="dsh"] .side-actions{margin-bottom:12px}
+:root[data-shell="dsh"] .side-foot{padding:8px 0 4px}
+/* 目錄清單：列與列之間不要畫線，用高度＋hover 就夠 */
+:root[data-shell="dsh"] .dsh-right .ch{padding-block:0;min-height:var(--t-row)}
+:root[data-shell="dsh"] .dsh-right .ch.on{box-shadow:inset 2px 0 0 var(--acc);border-radius:0 var(--dsh-radius-sm) var(--dsh-radius-sm) 0}
+/* 正文段距：14px，比原本 12 鬆一點（閱讀區要能呼吸） */
+:root[data-shell="dsh"] .turn.ai .b > .p{margin-bottom:14px}
+:root[data-shell="dsh"] .turn.ai .b > .p:last-child{margin-bottom:8px}
+
+/* ── 3. 線條：全部 0.5px、只有三種粗細（髮絲／面板邊／focus） ── */
+:root[data-shell="dsh"] .topbar{border-bottom-width:var(--t-hair)}
+:root[data-shell="dsh"] .dsh-right{border-left-width:var(--t-hair)}
+:root[data-shell="dsh"] .side{border-right-width:var(--t-hair)}
+:root[data-shell="dsh"] .composer .box{box-shadow:0 6px 24px -16px rgba(0,0,0,.5), inset 0 0 0 var(--t-hair) var(--line-strong)}
+:root[data-shell="dsh"] .composer .box:focus-within{
+  box-shadow:0 8px 28px -16px rgba(0,0,0,.55), inset 0 0 0 1px color-mix(in srgb, var(--acc) 55%, transparent);
+}
+
+/* ── 4. 微互動：120ms、位移 1px 以內；只做「有感的回饋」 ──── */
+:root[data-shell="dsh"] .side-actions .sa,
+:root[data-shell="dsh"] .sr-row,
+:root[data-shell="dsh"] .dsh-right .ch,
+:root[data-shell="dsh"] .head-tab,
+:root[data-shell="dsh"] .topbar .tb-btn,
+:root[data-shell="dsh"] .composer .hint-btn{
+  transition:background-color 120ms var(--dsh-ease), color 120ms var(--dsh-ease),
+             border-color 120ms var(--dsh-ease), transform 120ms var(--dsh-ease);
+}
+:root[data-shell="dsh"] .side-actions .sa:active,
+:root[data-shell="dsh"] .dsh-right .ch:active{transform:translateY(.5px)}
+
+/* ── 5. 選取、focus：一個強調色，其餘灰階 ─────────────────── */
+:root[data-shell="dsh"] ::selection{background:color-mix(in srgb, var(--acc) 26%, transparent)}
+:root[data-shell="dsh"] .dsh-right .ch:hover .no{color:var(--fg2)}
+:root[data-shell="dsh"] .dsh-right .ch.on .no{color:color-mix(in srgb, var(--acc) 70%, var(--fg))}
+
+/* ── 6. 目錄抽屜（<1100）：標題列固定、內文可捲、貼邊不圓角 ── */
+:root[data-shell="dsh"] .app.toc-overlay .dsh-right{border-radius:var(--dsh-radius-lg) 0 0 var(--dsh-radius-lg)}
+:root[data-shell="dsh"] .app.toc-overlay .dsh-right .panel-head{height:52px}
+
+/* ── 7. 減少動態：全部關掉（只有透明度變化） ───────────────── */
+@media (prefers-reduced-motion: reduce){
+  :root[data-shell="dsh"] *{transition-duration:.001ms !important;animation-duration:.001ms !important}
+}
