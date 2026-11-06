@@ -17,21 +17,23 @@
     const list = [];
     const add = (label, hint, run, keys) => list.push({ label, hint, run, keys: keys || '' });
 
-    /* 章節與書 */
-    add('目錄', '開關左側章節列表', () => click('#tbList'), 'alt+l');
-    add('歷史', '最近讀過的書', () => click('#tbHistory'));
-    add('標記', '書籤、劃線、筆記', () => click('#tbMark'));
-    add('上一章', '回到上一章', () => { const s = D()?.state; if (s?.index > 0) D().goChapter(s.index - 1, { announce: true }); });
-    add('下一章', '前往下一章', () => { const s = D()?.state; if (s && s.index < (s.chapters?.length || 0) - 1) D().goChapter(s.index + 1, { announce: true }); });
-    add('書架', '打開自己的書架', () => { const b = D()?.openShelf; b ? b() : null; });
-    add('首頁', '回到首頁', () => click('#tbHome'));
+    /* 檔案與工作區（外殼文字照偽裝底線：不寫章／書／目錄） */
+    add('文件', '開關右側檔案清單', () => click('#tbList'), 'alt+l');
+    add('側欄', '開關左側欄', () => window.__moyuToggleSide?.());
+    add('歷史', '最近開過的工作區', () => window.__moyuShell?.toggleHistory?.());
+    add('標記', '劃線與筆記', () => click('#tbMark'));
+    add('上一個檔案', '檔案清單往上一個', () => { const s = D()?.state; if (s?.index > 0) D().goChapter(s.index - 1, { announce: true }); });
+    add('下一個檔案', '檔案清單往下一個', () => { const s = D()?.state; if (s && s.index < (s.chapters?.length || 0) - 1) D().goChapter(s.index + 1, { announce: true }); });
+    add('工作區', '列出所有工作區', () => { const b = D()?.openShelf; b ? b() : null; });
+    /* 以前點的是 #tbHome／#tbSettings，這兩顆早就不存在 → 指令選了沒反應。改呼叫真的函式 */
+    add('首頁', '回到開始畫面', () => window.__moyuShell?.openHome?.());
 
     /* 面板 */
-    add('設定', '主題、字級、同步、版本', () => click('#tbSettings'));
+    add('設定', '主題、字級、同步、版本', () => window.__moyuOpenSettings?.());
     add('說明', '指令與快捷鍵一覽', () => click('#helpBtn'));
     const stat = byText('.ov-row', /統計/);
-    add('統計', '閱讀時數與進度', () => { if (stat) stat.click(); });
-    add('檢查更新', '看有沒有新版本', () => { click('#tbSettings'); setTimeout(() => click('#updCheck'), 260); });
+    add('統計', '使用時數與進度', () => { if (stat) stat.click(); });
+    add('檢查更新', '看有沒有新版本', () => { window.__moyuOpenSettings?.(); setTimeout(() => click('#updCheck'), 260); });
 
     /* 隱身與老闆鍵 */
     add('隱身', '抓桌面顏色當底色', () => window.__moyuGhost?.toggle?.());

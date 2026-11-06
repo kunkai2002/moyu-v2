@@ -20,9 +20,9 @@
 - **不要用 PowerShell 改 UTF-8 檔**（會亂碼、引號會爛）。一律寫 `tools/patch-*.js` 用 `node` 跑。
 - 使用者真正的書：`十日终焉 7143038691944959011`。他常常邊測邊讀，**進度會自己變**，
   不要看到數字跟紀錄不一樣就以為壞了，更不要擅自改回去（要改先問）。
-- **截圖一律複製到桌面（JOJO 2026-11-04）**：對話裡貼圖他那邊看不到預覽，所以每次要給他看畫面，
-  就用中文檔名複製到**真正的桌面 `E:\onedrive\Desktop`**（JOJO 的桌面被 OneDrive 重導向，`C:\Users\Admin\Desktop` 不存在；
-  用 `[Environment]::GetFolderPath('Desktop')` 找，不要寫死），並在回覆裡寫完整路徑。
+- 🔴 **不要產出測試截圖給 JOJO、更不要放桌面（JOJO 2026-11-06，取代 11-04「截圖一律複製到桌面」）**：
+  11-06 複製了 8 張測試截圖到 `E:\onedrive\Desktop`，JOJO 當場自己刪掉並說「不需要產出測試的圖，也不要放到桌面」。
+  驗證用的截圖只留在 session 的 scratchpad 自己看；回報用文字講結果。JOJO 明講要看圖才給，放哪裡先問。
 - **測試一律無頭（JOJO 2026-11-04 明確要求）**：Electron 用 `--hidden`；網頁用 puppeteer `headless:'new'`。
   不要開可見的瀏覽器視窗（ego-browser 那種會彈窗的，測試時不用；要真人手動看才開）。
 - 改完要發佈：`node tools/pack4.js` → 複製到安裝目錄 → `node tools/publish-app.js`。
@@ -145,6 +145,19 @@
 ## 測試現況（`node tools/check-all.js`）
 13 套全綠：自檢、桌機開機+設定、設定持久化、連讀+記住進度、**一次滑動只接一章**、書架（真帳號）、
 **全按鈕**、**頂欄與更多選單**、視窗記憶、手機後端、手機 PWA、**雲端熱更新**、**對話界面驗收**。
+
+## 🔴 外殼 2026-11-06 改成自由設計（取代下面「DSH 外殼＝真值」那一節的版面部分）
+- **JOJO 11-06 拍板**：殼「不照真工具，自由設計」、兩個殼（dsh／cc）都重做。底線不變：偽裝黑名單、
+  工具語彙、Enter 翻頁與出字、資料與進度。
+- **外殼只有一支樣式 `ui/frame.css`**（最後載入）；`dsh-polish 1–3`、`a11y-normalize`、`taste.css` 已刪，
+  `theme.css` 只剩色票與元件底色（尾端的 DSH 骨架已拿掉）。`dsh-tokens.css` 還在（主題色票引用）。
+- **版面**：`ui/shell-dsh.js` 的 `layoutPass()` 是唯一判斷——側欄 ≥900 在版面裡（可收，存 `moyu.sideOff`；
+  舊鍵 `moyu.sideHidden` 是 10 月遺留，JOJO 設定檔裡還是 1，**刻意不讀**）；<900 或 cc 殼是抽屜（頂欄左上 `#tbSide`）。
+  文件欄 ≥1180 停靠 300，以下是抽屜（`#tbList`）。JOJO 平常開 613×789：側欄若固定在版面裡正文只剩 232px。
+- **正文欄＝輸入卡同一條軸**：兩者都是 `--read-w`＋同內距；對話流兩側捲軸槽寬 `--fr-sb` 由 layoutPass 量出來補給輸入卡。
+- **閘門**：`tools/layout-gate.js` 已改寫成新殼規則（SPEC 常數＝契約，G1–G13，含外殼文字偽裝掃描），
+  `--sabotage` 證明它會紅。量測時一定要關 transition（隱藏視窗裡 transition 不前進，抽屜會停在開始位置）。
+- 下面「DSH 外殼＝真值」一節：色票（dsh 主題）仍有效；**幾何、三欄寬、頂欄 76、側欄 280 已不適用**。
 
 ## DSH 外殼＝真值（2026-11-04，JOJO 定的「不准近似」）
 - **唯一真值 `docs/DSH-真值.json`**（從 `E:\DeepSeek\resources\app.asar` 的

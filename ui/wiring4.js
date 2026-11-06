@@ -93,7 +93,7 @@
       return (i < 0 ? 9999 : i) * 1000 + (m.para || 0);
     };
     const list = [...marks].sort((a, b) => order(a) - order(b));
-    if (!list.length) { listEl.innerHTML = '<div class="mk-empty">還沒有標記。點段落就能劃線。</div>'; return; }
+    if (!list.length) { listEl.innerHTML = '<div class="mk-empty">還沒有標記</div>'; return; }
     listEl.innerHTML = '';
     for (const m of list) {
       const row = document.createElement('div');

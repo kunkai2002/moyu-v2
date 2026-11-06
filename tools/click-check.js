@@ -55,7 +55,13 @@ const IN_OVERFLOW = ['註解', '老闆鍵'];
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e.message)));
   await sleep(1600);
-  await page.evaluate(() => { try { window.__moyuDebug.setShell('dsh'); window.__moyuDebug.setTheme('dsh'); } catch (e) {} });
+  await page.evaluate(() => {
+    try { window.__moyuDebug.setShell('dsh'); window.__moyuDebug.setTheme('dsh'); } catch (e) {}
+    /* 隱藏視窗裡 CSS transition 不會前進：抽屜會一直停在「關著」的位置 → 關掉動效再點 */
+    const s = document.createElement('style');
+    s.textContent = '*,*::before,*::after{transition:none!important;animation:none!important}';
+    document.head.appendChild(s);
+  });
   await sleep(500);
 
   const rows = [];
@@ -64,6 +70,12 @@ const IN_OVERFLOW = ['註解', '老闆鍵'];
     const r = await page.evaluate((s) => {
       const el = document.querySelector(s);
       if (!el) return { state: 'missing' };
+      /* 2026-11-06 新殼：窄視窗時側欄、文件欄是抽屜。按鈕在關著的抽屜裡 → 先用頂欄開關打開，跟人一樣 */
+      const app = document.querySelector('.app');
+      if (el.closest('.side') && getComputedStyle(document.querySelector('.side')).visibility === 'hidden' || el.closest('.side') && app.classList.contains('side-hidden')) document.querySelector('#tbSide')?.click();
+      // 文件欄停靠時 #tocBtn 刻意不顯示（開關只留頂欄 #tbList 一顆，不放兩個一樣的入口）；抽屜時它是「關閉」
+      if (s === '#tocBtn' && !app.classList.contains('toc-overlay')) return { state: 'n/a', note: '停靠時由頂欄 #tbList 開關' };
+      if (el.closest('#tocPanel') && app.classList.contains('toc-overlay') && !app.classList.contains('toc-open')) document.querySelector('#tbList')?.click();
       const rect = el.getBoundingClientRect();
       const vis = rect.width > 2 && rect.height > 2 && getComputedStyle(el).visibility !== 'hidden';
       try { el.click(); } catch (e) { return { state: 'throw', msg: String(e.message) }; }
@@ -85,6 +97,7 @@ const IN_OVERFLOW = ['註解', '老闆鍵'];
         if (el.classList.contains('ctx')) el.classList.remove('on'); else el.hidden = true;
       });
       document.body.classList.remove('bossing');
+      document.querySelector('.app')?.classList.remove('side-open', 'toc-open');
     });
     await sleep(150);
   }
@@ -106,7 +119,7 @@ const IN_OVERFLOW = ['註解', '老闆鍵'];
   }
 
   for (const r of rows) {
-    console.log(`${r.state === 'clicked' ? '✅' : '❌'} ${(r.where + ' ' + r.sel).padEnd(42)} ${r.state}${r.w ? ' ' + r.w + '×' + r.h : ''}${r.errors.length ? '  ERR: ' + r.errors.join(' | ') : ''}`);
+    console.log(`${r.state === 'clicked' ? '✅' : r.state === 'n/a' ? '➖' : '❌'} ${(r.where + ' ' + r.sel).padEnd(42)} ${r.state}${r.note ? '（' + r.note + '）' : ''}${r.w ? ' ' + r.w + '×' + r.h : ''}${r.errors.length ? '  ERR: ' + r.errors.join(' | ') : ''}`);
   }
   console.log(`\n${bad.length ? '❌ ' + bad.length + ' 個問題' : '✅ 全部可點、沒有 JS 錯誤'}`);
   fs.writeFileSync(path.join(ROOT, '_probe', 'click-check.json'), JSON.stringify({ rows, errors }, null, 2), 'utf8');

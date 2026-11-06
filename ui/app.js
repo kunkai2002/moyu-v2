@@ -189,7 +189,8 @@ function renderTree() {
     tree.appendChild(el('div', 'vol', '<span class="car">▾</span><span>向 Chat 開口</span>'));
     return;
   }
-  tree.appendChild(el('div', 'vol', `<span class="car">▾</span><span>第一卷 · ${state.chapters.length} 章</span>`));
+  /* 文件欄的資料夾列：外殼文字不寫「卷／章」（偽裝底線），寫成資料夾＋檔案數 */
+  tree.appendChild(el('div', 'vol', `<span class="car">▾</span><span>src</span><span class="vol-n">${state.chapters.length}</span>`));
   state.chapters.forEach((c, i) => {
     const row = el('div', 'ch' + (i === state.index ? ' on' : '') + (i < state.index ? ' read' : ''));
     row.innerHTML = `<span class="no">${c.no}</span><span class="nm">${escapeHtml(c.title.replace(/^第\s*\d+\s*[章回节節]\s*/, '') || c.title)}</span>`;
@@ -204,7 +205,8 @@ function updateCrumb() {
   if (!c || !state.book) return;
   /* 頂欄標題＝「這一則對話的標題」＝章節名（DSH 的 session title）。
      不要在頂欄重複書名——書名已經在左下品牌列（JOJO 最討厭重複入口）。 */
-  $('#crumb').innerHTML = `<b>${escapeHtml(c.title)}</b>`;
+  /* 頂欄是外殼：拿掉「第 N 章」前綴，只留標題（文件欄那邊早就這樣做） */
+  $('#crumb').innerHTML = `<b>${escapeHtml(c.title.replace(/^第\s*\d+\s*[章回节節]\s*/, '') || c.title)}</b>`;
   const pos = `${c.no} / ${state.chapters.length}`;
   $('#sbChapter').textContent = pos;
   $('#meTxt').textContent = pos;
@@ -914,11 +916,12 @@ async function handleInput(raw) {
 async function openShelf() {
   if (!bridge) return;
   clearStream();
-  addUser('打開書架');
+  /* 外殼文字不准出現「書架／第 N 章／未開始」（偽裝底線）：這一則講成「列出工作區」 */
+  addUser('列出工作區');
   const b = addAssistant();
   b.insertAdjacentHTML('beforeend',
-    `<div class="tool">${markSvg(12)} <span class="fn">read_shelf</span></div>
-     <div class="toolres"><div class="ln"><span class="bar">⎿</span><div>讀取官方書架…</div></div></div>`);
+    `<div class="tool">${markSvg(12)} <span class="fn">list_workspaces</span></div>
+     <div class="toolres"><div class="ln"><span class="bar">⎿</span><div>讀取中…</div></div></div>`);
 
   let list = [];
   let errMsg = '';
@@ -930,10 +933,10 @@ async function openShelf() {
 
   const res = b.querySelector('.toolres');
   if (!list.length) {
-    res.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${escapeHtml(errMsg || '書架是空的。先打 /login 掃碼登入。')}</div></div>`;
+    res.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${escapeHtml(errMsg || '沒有工作區。先打 /login 掃碼登入。')}</div></div>`;
     return;
   }
-  res.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${list.length} 本</div></div>`;
+  res.innerHTML = `<div class="ln"><span class="bar">⎿</span><div>${list.length} workspaces</div></div>`;
   const wrap = el('div', 'shelf');
   for (const it of list) {
     const card = el('button', 'shelf-card');
@@ -943,7 +946,7 @@ async function openShelf() {
       <span class="sc-body">
         <span class="sc-t">${escapeHtml(it.title || it.id)}</span>
         <span class="sc-a">${escapeHtml(it.author || '')}</span>
-        <span class="sc-p">${it.chapterTitle ? '讀到 ' + escapeHtml(it.chapterTitle) : (it.chapterOrder ? '第 ' + it.chapterOrder + ' 章' : '未開始')}</span>
+        <span class="sc-p">${it.chapterTitle ? escapeHtml(it.chapterTitle.replace(/^第\s*\d+\s*[章回节節]\s*/, '')) : (it.chapterOrder ? '§' + it.chapterOrder : '—')}</span>
       </span>`;
     card.addEventListener('click', () => openBook(it.id));
     wrap.appendChild(card);

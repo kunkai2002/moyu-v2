@@ -137,23 +137,16 @@
   bar.insertBefore(backBtn, bar.firstChild);
 
   /* 右側：只留「讀的時候真的會按」的四顆，其餘全收進「更多」 */
-  const markBtn = mk('tbMark', 'bookmark', '標記（書籤／劃線／筆記）');
+  const markBtn = mk('tbMark', 'bookmark', '標記');
   markBtn.addEventListener('click', () => window.__moyuMarksPanel?.toggle?.());
-  const listBtn = mk('tbList', 'list', '目錄（章節清單）');
-  listBtn.addEventListener('click', () => {
-    const app = document.querySelector('.app');
-    if (!app) return;
-    if (window.innerWidth >= 1100) {
-      // 寬螢幕：目錄是右側 dock，用 dataset.toc 收合／展開
-      app.dataset.toc = app.dataset.toc === '0' ? '1' : '0';
-      app.dispatchEvent(new Event('moyu:layout'));
-      if (window.__moyuLayoutPass) window.__moyuLayoutPass();
-    } else {
-      // 窄螢幕：目錄是右側抽屜
-      app.classList.toggle('toc-open');
-    }
+  const listBtn = mk('tbList', 'panelRight', '文件');
+  listBtn.addEventListener('click', (e) => {
+    // 停靠或抽屜由 shell-dsh.js 判斷（看 .app 現在的 class，不在這裡另寫一份寬度門檻）
+    e.stopPropagation();
+    if (window.__moyuToggleToc) { window.__moyuToggleToc(); return; }
+    document.querySelector('.app')?.classList.toggle('toc-open');
   });
-  const histBtn2 = mk('tbHistory', 'history', '歷史（最近讀過的書）');
+  const histBtn2 = mk('tbHistory', 'history', '歷史');
   const moreBtn = mk('tbMore', 'more', '更多');
 
   right.appendChild(listBtn);
@@ -292,10 +285,10 @@
       ctxTarget = ch;
       const idx = [...document.querySelectorAll('#tree .ch')].indexOf(ch);
       showCtx(e.clientX, e.clientY, [
-        { label: '跳到這一章', icon: 'forward', run: () => D.goChapter(idx) },
-        { label: '複製章節名', icon: 'note', run: () => navigator.clipboard?.writeText(ch.textContent.trim()) },
+        { label: '開啟', icon: 'forward', run: () => D.goChapter(idx) },
+        { label: '複製名稱', icon: 'note', run: () => navigator.clipboard?.writeText(ch.textContent.trim()) },
         { sep: true },
-        { label: '整本下載', icon: 'down', run: () => findLegacy('整本下載')?.click() },
+        { label: '全部匯出', icon: 'down', run: () => findLegacy('整本下載')?.click() },
       ]);
       return;
     }
@@ -314,9 +307,9 @@
       e.preventDefault();
       ctxTarget = card;
       showCtx(e.clientX, e.clientY, [
-        { label: '開啟這本書', icon: 'auto', run: () => card.click() },
-        { label: '書籍詳情', icon: 'book', run: () => window.__moyuPolish?.showDetail(card) },
-        { label: '整本下載', icon: 'download', run: () => { card.click(); setTimeout(() => findLegacy('整本下載')?.click(), 800); } },
+        { label: '開啟', icon: 'auto', run: () => card.click() },
+        { label: '詳情', icon: 'note', run: () => window.__moyuPolish?.showDetail(card) },
+        { label: '全部匯出', icon: 'download', run: () => { card.click(); setTimeout(() => findLegacy('整本下載')?.click(), 800); } },
       ]);
     }
   });

@@ -117,21 +117,22 @@
 
     var list = recentList();
     var last = list[0];
-    var html = '<div class="home-h">首頁</div><div class="home-sub">選一本書，或接著上次讀。</div>';
+    /* 外殼文字照偽裝底線：不寫書／章／書架／未開始；位置一律用 §N */
+    var html = '<div class="home-h">首頁</div>';
 
     if (last) {
-      var pct = last.chapterNo ? '第 ' + last.chapterNo + ' 章' : '上次讀到';
+      var pct = last.chapterNo ? '§' + last.chapterNo : '上次位置';
       html += '<div class="home-card" id="homeContinue"><div><div class="hc-t">' + esc(last.title) + '</div>'
         + '<div class="hc-p">' + esc(pct) + (last.chapterTitle ? ' · ' + esc(last.chapterTitle) : '') + '</div></div>'
         + '<span class="hc-go">' + (window.MOYU_ICONS ? window.MOYU_ICONS.svg('forward', 16) : '→') + '</span></div>';
     }
 
     html += '<div class="home-sec">最近</div><div class="home-recent">';
-    if (!list.length) html += '<div class="home-empty">還沒有開過的書。</div>';
+    if (!list.length) html += '<div class="home-empty">還沒有開過的工作區</div>';
     for (var i = 0; i < Math.min(list.length, 6); i++) {
       var it = list[i];
       html += '<div class="home-row" data-book="' + esc(it.id) + '"><span class="hr-t">' + esc(it.title) + '</span>'
-        + '<span class="hr-p">' + (it.chapterNo ? '第 ' + esc(it.chapterNo) + ' 章' : '') + '</span></div>';
+        + '<span class="hr-p">' + (it.chapterNo ? '§' + esc(it.chapterNo) : '') + '</span></div>';
     }
     html += '</div>';
 
@@ -139,8 +140,8 @@
       + '<button class="home-act" id="homeSite">打開官網</button>'
       + '<button class="home-act" id="homeLogin">掃碼登入</button>'
       + '</div>';
-    html += '<div class="home-sec">書架<button id="homeReload">重新載入</button></div>'
-      + '<div class="home-grid" id="homeShelf"><div class="home-empty">讀取書架…</div></div>';
+    html += '<div class="home-sec">工作區<button id="homeReload">重新載入</button></div>'
+      + '<div class="home-grid" id="homeShelf"><div class="home-empty">讀取中…</div></div>';
 
     body.innerHTML = html;
 
@@ -171,13 +172,14 @@
         grid.innerHTML = '<div class="home-empty">' + esc(e.message) + '</div>';
         return;
       }
-      if (!books.length) { grid.innerHTML = '<div class="home-empty">書架是空的，先掃碼登入。</div>'; return; }
+      if (!books.length) { grid.innerHTML = '<div class="home-empty">沒有工作區，先掃碼登入</div>'; return; }
       grid.innerHTML = '';
       books.slice(0, 24).forEach(function (b) {
         var el = document.createElement('button');
         el.className = 'home-book';
+        var where = b.chapterTitle ? String(b.chapterTitle).replace(/^第\s*\d+\s*[章回节節]\s*/, '') : (b.chapterOrder ? '§' + b.chapterOrder : '—');
         el.innerHTML = '<span class="hb-t">' + esc(b.title || b.id) + '</span>'
-          + '<span class="hb-p">' + esc(b.chapterTitle || (b.chapterOrder ? '第 ' + b.chapterOrder + ' 章' : '未開始')) + '</span>';
+          + '<span class="hb-p">' + esc(where) + '</span>';
         el.addEventListener('click', function () { D.openBook(b.id); });
         grid.appendChild(el);
       });
@@ -203,14 +205,14 @@
 
   function paintHistory() {
     var list = recentList();
-    if (!list.length) { listEl.innerHTML = '<div class="hist-empty">還沒有開過的書。</div>'; return; }
+    if (!list.length) { listEl.innerHTML = '<div class="hist-empty">還沒有開過的工作區</div>'; return; }
     listEl.innerHTML = '';
     list.forEach(function (it) {
       var row = document.createElement('div');
       row.className = 'hist-row';
       var when = it.at ? new Date(it.at).toLocaleDateString() : '';
       row.innerHTML = '<span class="hs-t">' + esc(it.title || it.id) + '</span>'
-        + '<span class="hs-p">' + (it.chapterNo ? '第 ' + esc(it.chapterNo) + ' 章 · ' : '') + esc(when) + '</span>';
+        + '<span class="hs-p">' + (it.chapterNo ? '§' + esc(it.chapterNo) + ' · ' : '') + esc(when) + '</span>';
       row.addEventListener('click', async function () {
         panel.hidden = true;
         await D.openBook(it.id);

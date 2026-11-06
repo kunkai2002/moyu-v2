@@ -12,7 +12,7 @@
    這支只做「雲端鏡像站會送出去的那一份 ui/」，量到的才是手機真的會看到的版面。
    沒有 /api/* → bridge-http.js 的請求會失敗，ui 必須接住（這點也一起驗）。
 
-   截圖：_probe/mirror-390x844.png（DSH 外殼，含 rail 收合）
+   截圖：_probe/mirror-390x844.png（DSH 外殼；2026-11-06 起窄螢幕側欄是收著的抽屜，不再是 56px 圖示軌）
         _probe/mirror-390x844-clean.png（全新訪客，沒有 localStorage）
         _probe/mirror-1280x720.png
    報告：_probe/mirror-web.json
@@ -219,6 +219,8 @@ async function verify() {
     for (const el of document.querySelectorAll('body *')) {
       const r = el.getBoundingClientRect();
       if (r.width < 1 || r.height < 1) continue;
+      /* 2026-11-06 新殼：關著的抽屜（側欄、文件欄）刻意停在畫面外且 visibility:hidden，不算溢出 */
+      if (getComputedStyle(el).visibility === 'hidden') continue;
       /* 右緣超出＝真的橫向溢出（會被切掉或拉出捲軸） */
       if (r.right > de.clientWidth + 1) {
         if (clippedBySmallAncestor(el)) continue;
@@ -248,6 +250,8 @@ async function verify() {
       appDisplay: app ? getComputedStyle(app).display : 'missing',
       appScrollWidth: app ? app.scrollWidth : 0,
       appClientWidth: app ? app.clientWidth : 0,
+      appOverflowX: app ? getComputedStyle(app).overflowX : '',
+      sideVis: side ? getComputedStyle(side).visibility : '',
       side: rect(side),
       main: rect(main),
       right: right ? Object.assign(rect(right), { display: getComputedStyle(right).display }) : null,
@@ -305,6 +309,8 @@ async function verify() {
           appHeight: ar ? +ar.height.toFixed(1) : null,
           sideWidth: r ? +r.width.toFixed(1) : null,
           sideLeft: r ? +r.left.toFixed(1) : null,
+          sideVis: side ? getComputedStyle(side).visibility : '',
+          mainWidth: document.querySelector('.main') ? +document.querySelector('.main').getBoundingClientRect().width.toFixed(1) : null,
           statusbar: statusbar ? { sw: statusbar.scrollWidth, cw: statusbar.clientWidth, bottom: sr ? +sr.bottom.toFixed(1) : null } : null,
         };
       });
@@ -341,8 +347,10 @@ async function verify() {
   check(!!String(m.title || '').trim(), '[clean 390] document.title 有內容', JSON.stringify(m.title));
   check(m.appDisplay !== 'none' && m.appDisplay !== 'missing', '[clean 390] .app 有顯示（不是 display:none）', String(m.appDisplay));
   check(m.docScrollWidth <= m.docClientWidth, '[clean 390] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
-  check(m.appScrollWidth <= m.appClientWidth, '[clean 390] .app 不橫向溢出', `${m.appScrollWidth} > ${m.appClientWidth}`);
-  check(m.side && m.side.left >= -1 && Math.abs(m.side.width - 56) <= 1, '[clean 390] 側欄 56px 且在畫面內', m.side ? `left=${m.side.left} w=${m.side.width}` : '(找不到 .side)');
+  /* 2026-11-06 新殼：窄螢幕側欄是收著的抽屜（左上角按鈕滑出），不再是 56px 圖示軌；
+     .app 用 overflow:clip，關著的抽屜停在畫面外也不會被捲進來 */
+  check(/clip|hidden/.test(m.appOverflowX), '[clean 390] .app 裁掉畫面外的抽屜（overflow clip）', m.appOverflowX);
+  check(/side-drawer/.test(m.appClass) && m.sideVis === 'hidden', '[clean 390] 側欄是收著的抽屜', `${m.appClass} / ${m.sideVis}`);
   check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[clean 390] 底部狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(找不到 .statusbar)');
   check(m.statusbarRect && m.statusbarRect.right <= m.innerWidth + 1 && m.statusbarRect.width > 100,
     '[clean 390] 狀態列整條在畫面內', m.statusbarRect ? `right=${m.statusbarRect.right} w=${m.statusbarRect.width}` : '(none)');
@@ -371,9 +379,9 @@ async function verify() {
   check(!!String(m.title || '').trim(), '[dsh 390] document.title 有內容', JSON.stringify(m.title));
   check(m.shell === 'dsh', '[dsh 390] html[data-shell=dsh]', String(m.shell));
   check(m.appDisplay !== 'none' && m.appDisplay !== 'missing', '[dsh 390] .app 有顯示（不是 display:none）', String(m.appDisplay));
-  check(/side-rail/.test(m.appClass), '[dsh 390] .app 加上 side-rail（<1024 收合）', m.appClass);
-  check(m.side && Math.abs(m.side.width - 56) <= 1, '[dsh 390] 側欄收成 56px 圖示軌', m.side ? String(m.side.width) : '(找不到 .side)');
-  check(m.side && m.side.left >= -1, '[dsh 390] 側欄在畫面內（不是被抽屜推到左邊外）', m.side ? `left=${m.side.left}` : '(找不到 .side)');
+  check(/side-drawer/.test(m.appClass), '[dsh 390] .app 是抽屜模式（<900）', m.appClass);
+  check(m.sideVis === 'hidden', '[dsh 390] 側欄平常收著（不佔正文寬度）', m.sideVis);
+  check(m.main && Math.abs(m.main.width - m.innerWidth) <= 1, '[dsh 390] 主欄拿滿整個寬度', m.main ? `${m.main.width} vs ${m.innerWidth}` : '(找不到 .main)');
   check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[dsh 390] 底部狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(找不到 .statusbar)');
   check(m.statusbarRect && m.statusbarRect.bottom <= m.innerHeight + 1,
     '[dsh 390] 狀態列底邊 ≤ 視窗高（沒被推出畫面）', m.statusbarRect ? `bottom=${m.statusbarRect.bottom} > ${m.innerHeight}` : '(none)');
@@ -382,7 +390,7 @@ async function verify() {
     '[dsh 390] .app 高度 = 視窗高 − titlebar', m.appRect ? `app=${m.appRect.height} win=${m.innerHeight} tb=${m.titlebar ? m.titlebar.height : 0}` : '(none)');
   check(m.topbar && m.topbar.sw <= m.topbar.cw + 1, '[dsh 390] 頂欄沒有被切掉', m.topbar ? `${m.topbar.sw} > ${m.topbar.cw}` : '(找不到 .topbar)');
   check(m.docScrollWidth <= m.docClientWidth, '[dsh 390] 頁面不橫向溢出', `${m.docScrollWidth} > ${m.docClientWidth}`);
-  check(m.appScrollWidth <= m.appClientWidth, '[dsh 390] .app 不橫向溢出', `${m.appScrollWidth} > ${m.appClientWidth}`);
+  check(/clip|hidden/.test(m.appOverflowX), '[dsh 390] .app 裁掉畫面外的抽屜（overflow clip）', m.appOverflowX);
   check(m.main && m.main.right <= m.innerWidth + 1, '[dsh 390] 主欄沒有超出視窗右緣', m.main ? `${m.main.right} > ${m.innerWidth}` : '(找不到 .main)');
   check(m.overflowEls.length === 0, '[dsh 390] 沒有元素超出視窗右緣', JSON.stringify(m.overflowEls.slice(0, 4)));
   check(m.composeVisible, '[dsh 390] 輸入卡片有渲染');
@@ -408,10 +416,10 @@ async function verify() {
   check(!shots.error, '截圖引擎可用（Chrome/Edge headless）', shots.error || shots.engine);
   if (shots.dsh390) {
     check(shots.dsh390.metrics.appDisplay !== 'none', '[截圖頁] .app 有顯示', String(shots.dsh390.metrics.appDisplay));
-    check(shots.dsh390.metrics.sideWidth !== null && Math.abs(shots.dsh390.metrics.sideWidth - 56) <= 1,
-      '[截圖頁] 側欄 56px', String(shots.dsh390.metrics.sideWidth));
-    check(shots.dsh390.metrics.sideLeft !== null && shots.dsh390.metrics.sideLeft >= -1,
-      '[截圖頁] 側欄在畫面內', String(shots.dsh390.metrics.sideLeft));
+    check(/side-drawer/.test(shots.dsh390.metrics.appClass) && shots.dsh390.metrics.sideVis === 'hidden',
+      '[截圖頁] 側欄是收著的抽屜', `${shots.dsh390.metrics.appClass} / ${shots.dsh390.metrics.sideVis}`);
+    check(shots.dsh390.metrics.mainWidth !== null && Math.abs(shots.dsh390.metrics.mainWidth - shots.dsh390.metrics.innerWidth) <= 1,
+      '[截圖頁] 主欄拿滿整個寬度', `${shots.dsh390.metrics.mainWidth} vs ${shots.dsh390.metrics.innerWidth}`);
     check(shots.dsh390.metrics.docScrollWidth <= shots.dsh390.metrics.docClientWidth,
       '[截圖頁] 390 頁面不橫向溢出', `${shots.dsh390.metrics.docScrollWidth} > ${shots.dsh390.metrics.docClientWidth}`);
     check(shots.dsh390.metrics.statusbar && shots.dsh390.metrics.statusbar.sw <= shots.dsh390.metrics.statusbar.cw + 1,
