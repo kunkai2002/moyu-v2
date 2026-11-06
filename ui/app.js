@@ -308,54 +308,108 @@ function fakeDiff(n) {
   return box;
 }
 
-/* 「快速出字」：不是整章打字，而是「原本底部 → 新底部」那一段在填字。
-   做法：接章時**不清空**任何段落（新章大多在畫面下方，看不到）；
-   使用者往下捲、某一段即將進入畫面時，才當場清空＋快速長出來（每段約 200ms），
-   前 3 段間隔 45ms 錯開，看起來就是一段接一段在生成。
-   · 只動 textContent，不動結構／data-pi；減少動態時全部一次畫完
-   · 每段有 600ms 保險補滿，不會留下空白段落 */
-function primeFastType(entries, stream) {
+/* ══ 翻頁式閱讀（JOJO 2026-11-06）═══════════════════════════════
+   Enter（或右下角 ⏎）＝往下翻半屏；剛露出來的那半屏文字快速逐字長出來。
+   · 只打「這次新出現、而且還沒打過」的段落（dataset.typed 記住），不會重打
+   · 打字前先把段落 min-height 鎖在原本高度，避免文字變長時版面抖動
+   · reduced-motion / 慢讀模式：直接顯示，不逐字
+   · 已經到底時再按 Enter＝接下一章（走既有的 .flow-more 哨兵） */
+function typeOne(node, text, done) {
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce || !entries || !entries.length || !stream) return;
-  const sr = stream.getBoundingClientRect();
-  const nowTop = sr.top - 120;
-  const queue = entries.filter((e) => e.node.getBoundingClientRect().bottom >= nowTop);
-  if (!queue.length) return;
-
-  function typeNode(node, text, ms, delay) {
-    setTimeout(() => {
-      node.textContent = '';
-      const t0 = Date.now();
-      const step = () => {
-        const k = Math.min(1, (Date.now() - t0) / ms);
-        const n = k >= 1 ? text.length : Math.max(1, Math.floor(text.length * k));
-        node.textContent = text.slice(0, n);
-        if (k >= 1) return;
-        setTimeout(step, 16);
-      };
-      setTimeout(step, 16);
-    }, delay || 0);
-  }
-
-  let cursor = 0;
-  const fire = (e) => {
-    typeNode(e.node, e.text, 200, (cursor++ % 3) * 45);
-    setTimeout(() => { if (!e.node.textContent) e.node.textContent = e.text; }, 600);
+  if (reduce) { node.textContent = text; if (done) done(); return; }
+  /* 一次吐「幾個字」（3–5 字，隨段落長度微調），每 28ms 一次：
+     看起來就是一行一行在長、而且一行裡面是幾個字幾個字一起出現（JOJO 2026-11-06）。 */
+  const fullH = (() => { const prev = node.textContent; node.textContent = text; const h = node.scrollHeight; node.textContent = prev; return h; })();
+  node.style.minHeight = fullH + 'px';
+  node.textContent = '';
+  const per = text.length > 600 ? 5 : (text.length > 300 ? 4 : 3);
+  let shown = 0;
+  const finish = () => { node.textContent = text; node.style.minHeight = ''; if (done) done(); };
+  const tick = () => {
+    shown = Math.min(text.length, shown + per);
+    node.textContent = text.slice(0, shown);
+    if (shown >= text.length) { finish(); return; }
+    setTimeout(tick, 28);
   };
+  setTimeout(tick, 12);
+  setTimeout(() => { if (node.textContent !== text) finish(); }, 1500);
+}
+function typeParagraphs(list) {
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const queue = (list || []).filter((e) => e && e.node && e.node.dataset.typed !== '1');
+  if (!queue.length) return;
+  queue.forEach((e) => { e.node.dataset.typed = '1'; });
+  if (reduce) { queue.forEach((e) => { e.node.textContent = e.text; }); return; }
+  /* 先把每段的高度鎖住（避免邊打字邊把下面推走），再排隊慢慢吐 */
+  queue.forEach((e) => {
+    const prev = e.node.textContent;
+    e.node.textContent = e.text;
+    const h = e.node.scrollHeight;
+    e.node.textContent = prev;
+    e.node.style.minHeight = h + 'px';
+    e.node.textContent = '';
+  });
+  const per = 4;                                       // 一次 4 個字（3–5 之間）
+  const totalTicks = queue.reduce((n, e) => n + Math.ceil(e.text.length / per), 0);
+  const DURATION = 2000;                               // JOJO：兩秒才顯示完，不然看不出來
+  const interval = Math.max(16, Math.min(160, Math.round(DURATION / Math.max(1, totalTicks))));
+  let i = 0;
+  let shown = 0;
+  const timer = setInterval(() => {
+    if (i >= queue.length) { clearInterval(timer); return; }
+    const e = queue[i];
+    shown = Math.min(e.text.length, shown + per);
+    e.node.textContent = e.text.slice(0, shown);
+    if (shown >= e.text.length) { e.node.style.minHeight = ''; i++; shown = 0; }
+  }, interval);
+  // 保險：3 秒內一定全部補滿
+  setTimeout(() => {
+    clearInterval(timer);
+    queue.forEach((e) => { if (e.node.textContent !== e.text) { e.node.textContent = e.text; e.node.style.minHeight = ''; } });
+  }, 3000);
+}
 
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver((list) => {
-      for (const it of list) {
-        if (!it.isIntersecting) continue;
-        io.unobserve(it.target);
-        const e = queue.find((x) => x.node === it.target);
-        if (e) fire(e);
-      }
-    }, { root: stream, rootMargin: '0px 0px 160px 0px' });
-    queue.forEach((e) => io.observe(e.node));
-  } else {
-    queue.filter((e) => e.node.getBoundingClientRect().top <= sr.bottom).forEach((e) => fire(e));
+function pageDownHalf() {
+  const s = document.querySelector('#stream');
+  if (!s) return;
+  const view = s.clientHeight;
+  const max = Math.max(0, s.scrollHeight - view);
+  const from = s.scrollTop;
+  if (from >= max - 2) {                        // 已經到底：接下一章
+    const sent = document.querySelector('.flow-more');
+    if (sent) sent.click();
+    return;
   }
+  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const to = Math.min(max, from + Math.round(view / 2));
+  function revealNow() {
+    const sr = s.getBoundingClientRect();
+    const fresh = [];
+    document.querySelectorAll('#stream .p').forEach((p) => {
+      if (p.dataset.typed === '1') return;
+      const r = p.getBoundingClientRect();
+      if (r.bottom > sr.top && r.top < sr.bottom) fresh.push({ node: p, text: p.textContent });
+    });
+    typeParagraphs(fresh);
+  }
+  if (reduce) { s.scrollTop = to; revealNow(); return; }
+  /* 一行一行往上滑、整趟約 2 秒（JOJO：兩秒才顯示完，不然看不出來）。
+     每一 tick 用「經過時間」重算應該在第幾行、直接寫絕對位置：
+     逐段打字會讓內容高度變動，瀏覽器的 scroll anchoring 會偷改 scrollTop，
+     用相對累加會被吃掉（實測只走了 5 行就停），所以一定要寫絕對值。 */
+  const lp = document.querySelector('#stream .p');
+  const lineH = lp ? (parseFloat(getComputedStyle(lp).lineHeight) || 24) : 24;
+  const stepPx = Math.max(12, Math.round(lineH));
+  const lines = Math.max(1, Math.round((to - from) / stepPx));
+  const DURATION = 2000;
+  const t0 = Date.now();
+  const timer = setInterval(() => {
+    const k = Math.min(1, (Date.now() - t0) / DURATION);
+    const lineNow = Math.round(k * lines);
+    s.scrollTop = Math.min(to, from + lineNow * stepPx);
+    revealNow();
+    if (k >= 1) { s.scrollTop = to; clearInterval(timer); }
+  }, 40);
 }
 
 function streamParagraphs(container, paras, onDone, piBase, opts) {
@@ -399,11 +453,7 @@ function streamParagraphs(container, paras, onDone, piBase, opts) {
       }
     });
     // 一次畫完時整章已經在 DOM 裡；在這裡 scrollBottom() 就等於「打開一章直接看到最後一句」
-    // 自動接章（往下滑）：只讓「畫面上那一段空白」快速出字，不是整章打字
-    if (typed.length) {
-      const stream = document.querySelector('#stream');
-      primeFastType(typed, stream);
-    }
+    // 自動接章：不主動打字 —— 逐字出字改由 Enter 翻頁觸發（JOJO 2026-11-06）
     onDone && onDone();
     return;
   }
@@ -1056,12 +1106,17 @@ async function boot() {
   const input = $('#input');
   if (input) {
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      /* JOJO 2026-11-06：Enter 一律「往下翻半屏 ＋ 那半屏的字逐字出現」；
+         送出指令改成 Alt+Enter（Shift+Enter 仍然換行）。 */
+      if (e.altKey || e.ctrlKey || e.metaKey) {
         const v = input.value;
         input.value = '';
         handleInput(v);
+        return;
       }
+      pageDownHalf();
     });
     input.addEventListener('input', () => {
       input.style.height = 'auto';
@@ -1069,6 +1124,9 @@ async function boot() {
     });
     input.focus();
   }
+  /* 右下角那顆 ⏎ 跟 Enter 同一個動作 */
+  const enterBtn = $('#enterBtn');
+  if (enterBtn) enterBtn.addEventListener('click', (e) => { e.preventDefault(); pageDownHalf(); });
 
   // 全域快捷
   document.addEventListener('keydown', (e) => {
@@ -1157,6 +1215,7 @@ async function searchInBook(q) {
 }
 
 window.__moyuDebug = {
+  pageDown: pageDownHalf,
   setShell: (id) => { applyShell(id === 'cc' ? 'cc' : 'dsh'); },
   shell: () => currentShell(),
   searchInBook,
