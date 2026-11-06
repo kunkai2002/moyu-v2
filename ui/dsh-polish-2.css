@@ -25,7 +25,7 @@
   display:flex;align-items:center;gap:var(--p2);
   margin:var(--p3) 0 var(--p2);padding-left:var(--p1);
   font-size:var(--p-fs-11);line-height:16px;letter-spacing:.01em;
-  color:var(--p-fg-muted);
+  color:color-mix(in srgb, var(--fg3) 55%, var(--fg2));
   transition:color var(--dsh-dur) var(--dsh-ease), opacity var(--dsh-dur) var(--dsh-ease);
 }
 :root[data-shell="dsh"] .step .st-ico{
@@ -37,7 +37,7 @@
   border-top-color:transparent;
   animation:polish-spin .9s linear infinite;
 }
-:root[data-shell="dsh"] .step.done{color:color-mix(in srgb, var(--fg3) 88%, transparent)}
+:root[data-shell="dsh"] .step.done{color:color-mix(in srgb, var(--fg3) 62%, var(--fg2))}
 :root[data-shell="dsh"] .step.done .st-ico{color:color-mix(in srgb, var(--ok) 70%, var(--fg3))}
 @keyframes polish-spin{to{transform:rotate(360deg)}}
 
@@ -87,7 +87,7 @@
   margin:0;padding:var(--p2) var(--p3);
   border:.5px solid var(--line-strong);
   border-radius:var(--dsh-radius-md);
-  background:color-mix(in srgb, var(--dsh-color-module) 72%, transparent);
+  background:color-mix(in srgb, var(--dsh-color-module) 52%, transparent);
   overflow-x:auto;
   font-family:inherit;font-size:inherit;line-height:inherit;
 }
@@ -176,3 +176,22 @@
   [data-shell="dsh"] .stream{padding:var(--p2) var(--p2) 0}
   [data-shell="dsh"] .statusbar{gap:var(--p2);padding:0 var(--p2)}
 }
+
+/* ── 工具呼叫列（⏺ Read(src/…) ＋ ⎿ 結果）
+     JOJO 2026-11-06：畫面上除了「已完成思考」與紅綠 diff，還要有更多像編碼工具的痕跡。 */
+:root[data-shell="dsh"] .toolrow{
+  margin:var(--p3) 0 var(--p2);
+  font-family:var(--dsh-font-code);font-size:11px;line-height:18px;
+  color:color-mix(in srgb, var(--fg3) 45%, var(--fg2));
+  display:flex;align-items:baseline;gap:6px;
+}
+:root[data-shell="dsh"] .toolrow .tr-bu{color:color-mix(in srgb, var(--acc) 75%, var(--fg3));flex:none}
+:root[data-shell="dsh"] .toolrow .tr-v{color:var(--fg2);flex:none}
+:root[data-shell="dsh"] .toolrow .tr-a{color:color-mix(in srgb, var(--fg3) 55%, var(--fg2));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-shell="dsh"] .toolrow-res{
+  margin:0 0 var(--p2) 12px;padding-left:14px;
+  font-family:var(--dsh-font-code);font-size:11px;line-height:18px;
+  color:color-mix(in srgb, var(--fg3) 60%, var(--fg2));
+  display:flex;align-items:baseline;gap:6px;
+}
+:root[data-shell="dsh"] .toolrow-res .tr-bar{opacity:.65;flex:none}

@@ -60,33 +60,95 @@ const bad = (n, e = '') => results.push({ pass: false, n, e });
     return 'clicked';
   });
   console.log('sentinel:', clicked);
-  // 取樣：0 / 120 / 300 / 800ms 的文字長度
+  // 接章是非同步 IPC：先等到「turns 變多」那一刻，再從那一刻開始取樣
+  const tAppend = Date.now();
+  let appended = false;
+  for (let i = 0; i < 100; i++) {
+    const t = await page.evaluate(() => document.querySelectorAll('#stream .turn.ai').length);
+    if (t > before.turns) { appended = true; break; }
+    await sleep(50);
+  }
+  console.log('append:', appended ? '偵測到新回覆' : '5 秒內沒接章', '(+' + (Date.now() - tAppend) + 'ms)');
+  /* 逐字效果只有 ~200ms，MutationObserver 會把同一幀的多次寫入合併成一次，
+     所以改成頁內每 20ms 自己取樣一次長度，捲動後再讀整條曲線。 */
+  await page.evaluate(() => {
+    window.__typeSamples = [];
+    clearInterval(window.__typeTimer);
+    window.__typeTimer = setInterval(() => {
+      const m = {};
+      document.querySelectorAll("#stream .p").forEach((p) => { m[p.dataset.pi] = p.textContent.length; });
+      window.__typeSamples.push({ t: Date.now(), m });
+    }, 20);
+  });
+  // 新章在畫面下方（看不到）。往下捲進新內容，這時才應該「快速出字」。
+  const scrolledAt = Date.now();
+  await page.evaluate(() => { const s = document.querySelector('#stream'); s.scrollTop = s.scrollHeight; });
+  // 取樣：捲動後 0 / 100 / 300 / 900 / 1600ms。重點是「捲進來那段」在出字，
+  // 而不是整章逐字（整章逐字會讓下面一大段先空白，JOJO 2026-11-06 明確排除）。
   const samples = [];
-  const t0 = Date.now();
-  for (const at of [0, 120, 300, 800, 1500]) {
+  const t0 = scrolledAt;
+  for (const at of [0, 120, 300, 900, 1600, 2600]) {
     while (Date.now() - t0 < at) await sleep(10);
-    samples.push(await page.evaluate((ms) => ({
-      ms,
-      turns: document.querySelectorAll('#stream .turn.ai').length,
-      chars: [...document.querySelectorAll('#stream .p')].reduce((n, p) => n + p.textContent.length, 0),
-      emptyParas: [...document.querySelectorAll('#stream .p')].filter((p) => p.textContent.length === 0).length,
-      pi: [...document.querySelectorAll('#stream .p')].map((p) => p.dataset.pi).slice(-6).join(','),
-    }), at));
+    samples.push(await page.evaluate((ms) => {
+      const s = document.querySelector('#stream');
+      const sr = s.getBoundingClientRect();
+      const inView = (p) => {
+        const r = p.getBoundingClientRect();
+        return r.bottom > sr.top && r.top < sr.bottom;
+      };
+      const paras = [...document.querySelectorAll('#stream .p')];
+      const vis = paras.filter(inView);
+      const lens = {};
+      vis.forEach((p) => { lens[p.dataset.pi] = p.textContent.length; });
+      return {
+        ms,
+        turns: document.querySelectorAll('#stream .turn.ai').length,
+        chars: paras.reduce((n, p) => n + p.textContent.length, 0),
+        visibleChars: vis.reduce((n, p) => n + p.textContent.length, 0),
+        emptyAll: paras.filter((p) => p.textContent.length === 0).length,
+        emptyVisible: vis.filter((p) => p.textContent.length === 0).length,
+        lens,
+        pi: paras.map((p) => p.dataset.pi).slice(-6).join(','),
+      };
+    }, at));
   }
   console.log('before', JSON.stringify(before));
-  for (const s of samples) console.log(`  +${String(s.ms).padStart(4)}ms  turns=${s.turns} chars=${s.chars} 空段=${s.emptyParas} pi=${s.pi}`);
+  for (const s of samples) {
+    console.log(`  +${String(s.ms).padStart(4)}ms  turns=${s.turns} 全文字數=${s.chars} 畫面文字=${s.visibleChars} 空白(全/畫面)=${s.emptyAll}/${s.emptyVisible}`);
+  }
 
-  const grew = samples[samples.length - 1].chars > before.chars + 100;
-  grew ? ok('往下滑會自動接章（字數變多）', `${before.chars} → ${samples[samples.length - 1].chars}`)
+  const last = samples[samples.length - 1];
+  const grew = last.chars > before.chars + 100;
+  grew ? ok('往下滑會自動接章（字數變多）', `${before.chars} → ${last.chars}`)
        : bad('往下滑沒有接到新章', JSON.stringify(samples.map((s) => s.chars)));
-  const mid = samples.find((s) => s.ms === 120) || samples[1];
+
+  // ① 逐字證據：同一段在輪詢序列裡出現「被清空（0）→ 變完整」的過渡
+  const rows = await page.evaluate(() => { clearInterval(window.__typeTimer); return window.__typeSamples || []; });
+  const per = {};
+  for (const r of rows) for (const pi of Object.keys(r.m)) (per[pi] = per[pi] || []).push(r.m[pi]);
+  let typed = 0; let sample = null;
+  for (const pi of Object.keys(per)) {
+    const arr = per[pi];
+    const finalLen = arr.length ? arr[arr.length - 1] : 0;
+    const zeroAt = arr.findIndex((L) => L === 0);
+    if (finalLen > 0 && zeroAt >= 0 && arr.slice(zeroAt + 1).some((L) => L === finalLen)) {
+      typed++; sample = sample || { pi, arr: arr.slice(0, 8), finalLen };
+    }
+  }
+  typed > 0
+    ? ok('捲進來那段是逐字長出來的', `${typed} 段出現「清空→完整」過渡（例：pi ${sample.pi} ${sample.arr.join("→")}）`)
+    : bad('捲進來那段沒有逐字效果', JSON.stringify(Object.keys(per).slice(0, 5).map((k) => [k, per[k].slice(0, 8)])));
+
+  // ② 不是整章打字：接章瞬間（0ms）大部分文字已經在 DOM 裡（只有畫面那段是空的）
   const early = samples[0];
-  const typing = mid.chars > before.chars && mid.chars < samples[samples.length - 1].chars;
-  typing ? ok('是逐字長出來（中途字數介於起點與完成之間）', `${before.chars} → ${mid.chars} → ${samples[samples.length - 1].chars}`)
-         : bad('沒有觀察到逐字效果（可能一次畫完）', JSON.stringify(samples.map((s) => s.chars)));
-  const fastDone = samples.find((s) => s.ms === 800);
-  (fastDone && (fastDone.emptyParas === 0)) ? ok('0.8 秒內跑完（沒有留下空段落）', `空段 ${fastDone.emptyParas}`)
-    : bad('0.8 秒還沒跑完', JSON.stringify(fastDone));
+  const instantRatio = early.chars / last.chars;
+  instantRatio >= 0.85 ? ok('不是整章打字（接章瞬間已有 ≥85% 文字）', `0ms ${early.chars} / 最終 ${last.chars} = ${(instantRatio * 100).toFixed(0)}%`)
+    : bad('整章都被清空重打（JOJO 要的是畫面那段）', `${(instantRatio * 100).toFixed(0)}%`);
+
+  // ③ 很快跑完、不留空白
+  const done = samples[samples.length - 1];
+  (done && done.emptyAll === 0) ? ok('2.6 秒內全部補滿（沒有空白段落）', `空白 ${done.emptyAll}`)
+    : bad('2.6 秒還有空白段落', JSON.stringify(done));
   errors.length === 0 ? ok('沒有 pageerror') : bad('有 pageerror', errors.slice(0, 2).join(' | '));
 
   const pass = results.filter((r) => r.pass).length;

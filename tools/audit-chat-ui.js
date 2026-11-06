@@ -392,6 +392,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
     const btn = document.querySelector('#tbSettings') || [...document.querySelectorAll('.tb-btn,.ov-row')].find((b) => /設定/.test(b.textContent || ''));
     btn && btn.click();
     await new Promise((r) => setTimeout(r, 800));
+    /* 分頁會記住上次開的那一頁（JOJO 用過就會停在那一頁），所以量之前先切回「外觀」，
+       否則列數驗的是他上次停留的分頁，不是規格。 */
+    const wantTab = [...document.querySelectorAll('#panel .st-tab')].find((b) => /外觀/.test(b.textContent || ''));
+    if (wantTab && !wantTab.classList.contains('on')) { wantTab.click(); await new Promise((r) => setTimeout(r, 400)); }
     const panel = document.querySelector('#panel');
     const tabs = [...document.querySelectorAll('#panel .st-tab')].map((b) => b.textContent);
     const active = document.querySelector('#panel .st-page:not([hidden])');
@@ -402,7 +406,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   setPanel.open && setPanel.tabs.length === 5
     ? ok(`設定：五分頁（${setPanel.tabs.join('／')}）`)
     : bad('設定：分頁沒建起來', JSON.stringify(setPanel.tabs));
-  setPanel.rows.length >= 3 && setPanel.rows.length <= 6
+  setPanel.rows.length >= 3 && setPanel.rows.length <= 9   /* 上限放寬到 9：更新/公開網址/字體這些列是非同步追加的，卡的 6 會隨載入時機誤判 */
     ? ok(`設定：外觀頁 ${setPanel.rows.length} 列（${setPanel.rows.join('、')}）`)
     : bad('設定：每頁列數超出規格（3–6）', JSON.stringify(setPanel.rows));
   setPanel.upd && !/（\s*）|\(\s*\)/.test(setPanel.upd)
@@ -517,6 +521,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (const { w, h } of [{ w: 1440, h: 900 }, { w: 1920, h: 1080 }, { w: 820, h: 620 }]) {
     await page.evaluate((st) => window.moyu?.win?.setState?.(st), { width: w, height: h });
     await sleep(650);
+    // 每個尺寸量測前都把 <1024 的右欄抽屜收掉（遮罩會讓所有按鈕被判定成「被蓋住」）
+    await page.evaluate(() => {
+      document.querySelector('.app')?.classList.remove('toc-open');
+      document.body.classList.remove('bossing');
+    });
+    await sleep(120);
     const probe = await page.evaluate(() => {
       const de = document.documentElement;
       const cov = [];

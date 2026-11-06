@@ -259,6 +259,40 @@ const FAKE_DIFFS = [
   ['export default function App() {', 'export default function App({ children }: Props) {'],
 ];
 
+/* ── 工具呼叫列：⏺ Read(src/…) ＋ ⎿ 結果 ──────────────────────────
+   這是「AI 編碼工具」最明顯的痕跡，比 diff 更常出現：讀檔、搜尋、跑測試、
+   改一行、跑 lint。JOJO 2026-11-06：「我這邊還是只能看到兩個迷惑人的」，
+   所以每一章都要看得到幾列，而不是只有收起來的思考塊。 */
+const TOOL_VERBS = [
+  ["Read", "src/gateway/report.ts", "18 lines"],
+  ["Read", "src/lib/query.ts", "42 lines"],
+  ["Grep", '"scope" src/', "3 matches"],
+  ["Grep", '"month" src/lib/', "1 match"],
+  ["Edit", "src/lib/query.ts", "+2 −1"],
+  ["Edit", "src/gateway/report.ts", "+6 −2"],
+  ["Run", "node tools/audit-chat-ui.js", "51 passed"],
+  ["Run", "node tools/layout-gate.js", "21 passed"],
+  ["Test", "src/lib/query.test.ts", "12 passed"],
+  ["Typecheck", "tsc --noEmit", "0 errors"],
+  ["Lint", "eslint src/", "0 warnings"],
+  ["Build", "node scripts/build.mjs", "ok 1.2s"],
+  ["Search", '"轉折" src/', "2 matches"],
+  ["Format", "prettier --write src/", "3 files"],
+];
+
+function toolRow(n) {
+  const [verb, arg, res] = TOOL_VERBS[Math.abs(n) % TOOL_VERBS.length];
+  const box = el("div", "toolrow");
+  box.dataset.tool = verb;
+  box.innerHTML = '<span class="tr-bu">⏺</span>'
+    + '<span class="tr-v">' + escapeHtml(verb) + '</span>'
+    + '<span class="tr-a">(' + escapeHtml(arg) + ')</span>';
+  const out = el("div", "toolrow-res");
+  out.innerHTML = '<span class="tr-bar">⎿</span><span>' + escapeHtml(res) + '</span>';
+  box.appendChild(out);
+  return box;
+}
+
 /* 段落之間的一塊假 diff：看起來像剛改完檔案，其實是偽裝 */
 function fakeDiff(n) {
   const [file] = FAKE_FILES[n % FAKE_FILES.length];
@@ -274,51 +308,54 @@ function fakeDiff(n) {
   return box;
 }
 
-/* 「快速打字」：自動接章（往下滑）時，讓新出現的段落像真的在生成一樣
-   一個字一個字跑出來，但速度很快（整章約 0.4–0.8 秒）。
-   · 只動 textContent，不動結構／data-pi，所以進度、劃線、測試都不受影響
-   · 減少動態（prefers-reduced-motion）直接跳過，維持一次畫完
-   · 回傳 Promise，呼叫端可以等它跑完（例如維持捲在底部） */
-function typeFast(entries, done) {
+/* 「快速出字」：不是整章打字，而是「原本底部 → 新底部」那一段在填字。
+   做法：接章時**不清空**任何段落（新章大多在畫面下方，看不到）；
+   使用者往下捲、某一段即將進入畫面時，才當場清空＋快速長出來（每段約 200ms），
+   前 3 段間隔 45ms 錯開，看起來就是一段接一段在生成。
+   · 只動 textContent，不動結構／data-pi；減少動態時全部一次畫完
+   · 每段有 600ms 保險補滿，不會留下空白段落 */
+function primeFastType(entries, stream) {
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const finishAll = () => {
-    entries.forEach((e) => { e.node.textContent = e.text; });
-    if (done) { const d = done; done = null; d(); }
+  if (reduce || !entries || !entries.length || !stream) return;
+  const sr = stream.getBoundingClientRect();
+  const nowTop = sr.top - 120;
+  const queue = entries.filter((e) => e.node.getBoundingClientRect().bottom >= nowTop);
+  if (!queue.length) return;
+
+  function typeNode(node, text, ms, delay) {
+    setTimeout(() => {
+      node.textContent = '';
+      const t0 = Date.now();
+      const step = () => {
+        const k = Math.min(1, (Date.now() - t0) / ms);
+        const n = k >= 1 ? text.length : Math.max(1, Math.floor(text.length * k));
+        node.textContent = text.slice(0, n);
+        if (k >= 1) return;
+        setTimeout(step, 16);
+      };
+      setTimeout(step, 16);
+    }, delay || 0);
+  }
+
+  let cursor = 0;
+  const fire = (e) => {
+    typeNode(e.node, e.text, 200, (cursor++ % 3) * 45);
+    setTimeout(() => { if (!e.node.textContent) e.node.textContent = e.text; }, 600);
   };
-  if (reduce || !entries.length) { finishAll(); return; }
-  const total = entries.reduce((n, e) => n + e.text.length, 0);
-  const DURATION = 620;                           // 整章約 0.6 秒跑完（JOJO：速度很快）
-  const t0 = Date.now();
-  entries.forEach((e) => { e.node.textContent = ''; });
 
-  function render(upto) {
-    let fi2 = 0;
-    let shown2 = 0;
-    while (fi2 < entries.length) {
-      const e = entries[fi2];
-      const left = e.text.length - (shown2 - e.offset);
-      if (left <= 0) { fi2++; continue; }
-      const take = Math.min(Math.max(0, upto - shown2), left);
-      if (take <= 0) break;
-      shown2 += take;
-      e.node.textContent = e.text.slice(0, shown2 - e.offset);
-      if (shown2 >= upto) break;
-    }
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((list) => {
+      for (const it of list) {
+        if (!it.isIntersecting) continue;
+        io.unobserve(it.target);
+        const e = queue.find((x) => x.node === it.target);
+        if (e) fire(e);
+      }
+    }, { root: stream, rootMargin: '0px 0px 160px 0px' });
+    queue.forEach((e) => io.observe(e.node));
+  } else {
+    queue.filter((e) => e.node.getBoundingClientRect().top <= sr.bottom).forEach((e) => fire(e));
   }
-
-  function frame() {
-    if (!done) return;                            // 已經被安全計時器收掉
-    // 用「經過時間」算該吐多少字，而不是每幀固定字數：
-    // 視窗被隱藏／最小化時計時器會被節流到 1 秒，這樣一個 tick 就直接補滿，不會卡半篇。
-    const elapsed = Date.now() - t0;
-    const upto = Math.min(total, Math.ceil((elapsed / DURATION) * total));
-    render(upto);
-    if (upto >= total) { finishAll(); return; }
-    setTimeout(frame, 16);
-  }
-  setTimeout(frame, 16);
-  // 保險：無論如何 1.2 秒內把文字補滿，不讓使用者看到空段落
-  setTimeout(() => { if (done) finishAll(); }, 1200);
 }
 
 function streamParagraphs(container, paras, onDone, piBase, opts) {
@@ -335,7 +372,7 @@ function streamParagraphs(container, paras, onDone, piBase, opts) {
     let sinceStep = 0;
     let steps = 0;
     let gap = Math.max(2, Math.min(5, Math.ceil(paras.length / 3)));
-    const typed = [];                     // 自動接章時要「快速打字」的段落
+    const typed = [];                     // 自動接章時要「快速出字」的段落
     let offset = 0;
     paras.forEach((t, idx) => {
       const p = el('p', 'p', t);
@@ -347,6 +384,12 @@ function streamParagraphs(container, paras, onDone, piBase, opts) {
       if (idx < paras.length - 1 && (base + idx + 1) % perDiff === 0) {
         container.appendChild(fakeDiff(base + idx + 1));
       }
+      // 工具呼叫列（⏺ Read/Grep/Edit/Test…）：每 5 段一列，跟 diff 的節奏錯開，
+      // 一塊最多 3 列 —— 這是「像編碼工具」最常被看到的痕跡
+      if (idx < paras.length - 1 && (base + idx + 1) % 5 === 0 && (base + idx + 1) % perDiff !== 0
+        && container.querySelectorAll('.toolrow').length < 3) {
+        container.appendChild(toolRow(base + idx + 1));
+      }
       // 每 gap 段插一列「分析中… → 已完成分析」（塊小時 gap 也會變小）
       if (sinceStep >= gap && steps < maxSteps && idx < paras.length - 1) {
         sinceStep = 0;
@@ -356,10 +399,10 @@ function streamParagraphs(container, paras, onDone, piBase, opts) {
       }
     });
     // 一次畫完時整章已經在 DOM 裡；在這裡 scrollBottom() 就等於「打開一章直接看到最後一句」
-    // 自動接章（往下滑）改成「快速打字」：一個字一個字跑，但整章 0.4–0.8 秒就跑完
+    // 自動接章（往下滑）：只讓「畫面上那一段空白」快速出字，不是整章打字
     if (typed.length) {
-      typeFast(typed, () => { onDone && onDone(); });
-      return;
+      const stream = document.querySelector('#stream');
+      primeFastType(typed, stream);
     }
     onDone && onDone();
     return;
