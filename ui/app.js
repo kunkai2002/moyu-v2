@@ -314,60 +314,54 @@ function fakeDiff(n) {
    · 打字前先把段落 min-height 鎖在原本高度，避免文字變長時版面抖動
    · reduced-motion / 慢讀模式：直接顯示，不逐字
    · 已經到底時再按 Enter＝接下一章（走既有的 .flow-more 哨兵） */
-function typeOne(node, text, done) {
+/* ── 逐段出字（最終版）───────────────────────────────────────
+   typeBatch(list, budgetMs)：把這批段落「一段打完才換下一段」吐完，整批約 budgetMs。
+   · 一次只有一段在長（JOJO：不能上一段還沒完下一段就開始）
+   · 一次吐 3–5 個字，每 tick 依「剩餘字數 ÷ 剩餘時間」動態調整，整批趕在時間內完成
+   · 每段先鎖住高度，避免邊長邊把下面推走 */
+function typeBatch(list, budgetMs) {
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduce) { node.textContent = text; if (done) done(); return; }
-  /* 一次吐「幾個字」（3–5 字，隨段落長度微調），每 28ms 一次：
-     看起來就是一行一行在長、而且一行裡面是幾個字幾個字一起出現（JOJO 2026-11-06）。 */
-  const fullH = (() => { const prev = node.textContent; node.textContent = text; const h = node.scrollHeight; node.textContent = prev; return h; })();
-  node.style.minHeight = fullH + 'px';
-  node.textContent = '';
-  const per = text.length > 600 ? 5 : (text.length > 300 ? 4 : 3);
-  let shown = 0;
-  const finish = () => { node.textContent = text; node.style.minHeight = ''; if (done) done(); };
-  const tick = () => {
-    shown = Math.min(text.length, shown + per);
-    node.textContent = text.slice(0, shown);
-    if (shown >= text.length) { finish(); return; }
-    setTimeout(tick, 28);
-  };
-  setTimeout(tick, 12);
-  setTimeout(() => { if (node.textContent !== text) finish(); }, 1500);
-}
-function typeParagraphs(list) {
-  const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const queue = (list || []).filter((e) => e && e.node && e.node.dataset.typed !== '1');
+  const queue = (list || []).filter((e) => e && e.node && e.node.isConnected && e.node.dataset.typed !== '1');
   if (!queue.length) return;
-  queue.forEach((e) => { e.node.dataset.typed = '1'; });
-  if (reduce) { queue.forEach((e) => { e.node.textContent = e.text; }); return; }
-  /* 先把每段的高度鎖住（避免邊打字邊把下面推走），再排隊慢慢吐 */
+  window.__lastTypeBatch = queue;
   queue.forEach((e) => {
+    e.node.dataset.typed = '1';
     const prev = e.node.textContent;
     e.node.textContent = e.text;
     const h = e.node.scrollHeight;
-    e.node.textContent = prev;
     e.node.style.minHeight = h + 'px';
+    e.node.textContent = prev;
     e.node.textContent = '';
   });
-  const per = 4;                                       // 一次 4 個字（3–5 之間）
-  const totalTicks = queue.reduce((n, e) => n + Math.ceil(e.text.length / per), 0);
-  const DURATION = 2000;                               // JOJO：兩秒才顯示完，不然看不出來
-  const interval = Math.max(16, Math.min(160, Math.round(DURATION / Math.max(1, totalTicks))));
+  if (reduce) { queue.forEach((e) => { e.node.textContent = e.text; e.node.style.minHeight = ''; }); return; }
+  const total = queue.reduce((n, e) => n + e.text.length, 0);
+  const per = total > 600 ? 4 : 3;                       // 一次 3–4 個字（JOJO：幾個字幾個字一起）
+  const ticks = Math.max(1, Math.ceil(total / per));
+  const budget = Math.max(400, budgetMs || 1500);
+  const TICK = Math.max(16, Math.min(160, Math.round(budget / ticks)));   // 讓整批剛好落在預算內
   let i = 0;
   let shown = 0;
-  const timer = setInterval(() => {
-    if (i >= queue.length) { clearInterval(timer); return; }
+  let timer = null;
+  const finishAll = () => {
+    if (timer) clearInterval(timer);
+    timer = null;
+    queue.forEach((e) => { if (e.node.textContent !== e.text) e.node.textContent = e.text; e.node.style.minHeight = ''; });
+  };
+  timer = setInterval(() => {
+    if (i >= queue.length) { finishAll(); return; }
     const e = queue[i];
     shown = Math.min(e.text.length, shown + per);
     e.node.textContent = e.text.slice(0, shown);
-    if (shown >= e.text.length) { e.node.style.minHeight = ''; i++; shown = 0; }
-  }, interval);
-  // 保險：3 秒內一定全部補滿
-  setTimeout(() => {
-    clearInterval(timer);
-    queue.forEach((e) => { if (e.node.textContent !== e.text) { e.node.textContent = e.text; e.node.style.minHeight = ''; } });
-  }, 3000);
+    if (shown >= e.text.length) {
+      e.node.textContent = e.text;
+      e.node.style.minHeight = '';
+      i++; shown = 0;                                     // 這一段打完才換下一段
+    }
+  }, TICK);
+  setTimeout(finishAll, Math.max(600, budgetMs || 1500) + 400);      // 保險：預算 +0.4s 一定收乾淨
 }
+
+function typeParagraphs(list) { typeBatch(list, 1500); }   // 舊介面保留
 
 function pageDownHalf() {
   const s = document.querySelector('#stream');
@@ -382,34 +376,51 @@ function pageDownHalf() {
   }
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const to = Math.min(max, from + Math.round(view / 2));
-  function revealNow() {
+
+  const collect = () => {
     const sr = s.getBoundingClientRect();
     const fresh = [];
     document.querySelectorAll('#stream .p').forEach((p) => {
       if (p.dataset.typed === '1') return;
       const r = p.getBoundingClientRect();
+      // 取「這一頁新露出來」的段落（畫面上緣往下、到視窗底）
       if (r.bottom > sr.top && r.top < sr.bottom) fresh.push({ node: p, text: p.textContent });
     });
-    typeParagraphs(fresh);
-  }
-  if (reduce) { s.scrollTop = to; revealNow(); return; }
-  /* 一行一行往上滑、整趟約 2 秒（JOJO：兩秒才顯示完，不然看不出來）。
-     每一 tick 用「經過時間」重算應該在第幾行、直接寫絕對位置：
-     逐段打字會讓內容高度變動，瀏覽器的 scroll anchoring 會偷改 scrollTop，
-     用相對累加會被吃掉（實測只走了 5 行就停），所以一定要寫絕對值。 */
+    return fresh;
+  };
+
+  if (reduce) { s.scrollTop = to; typeBatch(collect(), 1500); return; }
+
+  /* ① 一行一行往上滑（每步一個行高，總長約 0.5 秒） */
   const lp = document.querySelector('#stream .p');
   const lineH = lp ? (parseFloat(getComputedStyle(lp).lineHeight) || 24) : 24;
   const stepPx = Math.max(12, Math.round(lineH));
   const lines = Math.max(1, Math.round((to - from) / stepPx));
-  const DURATION = 2000;
+  const SCROLL_MS = 500;
   const t0 = Date.now();
   const timer = setInterval(() => {
-    const k = Math.min(1, (Date.now() - t0) / DURATION);
-    const lineNow = Math.round(k * lines);
-    s.scrollTop = Math.min(to, from + lineNow * stepPx);
-    revealNow();
-    if (k >= 1) { s.scrollTop = to; clearInterval(timer); }
-  }, 40);
+    const k = Math.min(1, (Date.now() - t0) / SCROLL_MS);
+    s.scrollTop = Math.min(to, from + Math.round(k * lines) * stepPx);
+    if (k >= 1) {
+      s.scrollTop = to;
+      clearInterval(timer);
+      typeBatch(collect(), 1500);               // ② 滑完才出字：整批約 1.5 秒
+      /* 清掃：2.5 秒後把「畫面上還空著、而且是我方才清空過的」段落直接填滿，
+         避免計時器被節流時留下永遠空白的段落（JOJO 看的是畫面，不是 DOM）。 */
+      setTimeout(() => {
+        const sr = s.getBoundingClientRect();
+        (window.__lastTypeBatch || []).forEach((e) => {
+          if (!e.node || !e.node.isConnected) return;
+          if (e.node.textContent) return;
+          const r = e.node.getBoundingClientRect();
+          if (r.bottom > sr.top - 40 && r.top < sr.bottom + 40) {
+            e.node.textContent = e.text;
+            e.node.style.minHeight = '';
+          }
+        });
+      }, 2500);
+    }
+  }, 24);
 }
 
 function streamParagraphs(container, paras, onDone, piBase, opts) {

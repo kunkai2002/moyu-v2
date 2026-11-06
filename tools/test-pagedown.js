@@ -67,9 +67,10 @@ const bad = (n, e = '') => results.push({ pass: false, n, e });
   });
   await page.keyboard.press('Enter');
   await sleep(2600);
-  const after = await page.evaluate(() => ({ top: Math.round(document.querySelector('#stream').scrollTop) }));
+  const after = await page.evaluate(() => { const s = document.querySelector('#stream'); return { top: Math.round(s.scrollTop), view: s.clientHeight, sh: s.scrollHeight }; });
   const delta = after.top - before.top;
-  const want = Math.round(before.view / 2);
+  const maxScroll = Math.max(0, after.sh - after.view);   // 用翻頁後的高度算上限（打字會把段落高度鎖住）
+  const want = Math.min(Math.round(after.view / 2), Math.max(0, maxScroll - before.top));
   (delta > 0 && Math.abs(delta - want) <= 60)
     ? ok('按一次 Enter 往下翻約半屏', `+${delta}px（目標 ${want}px）`)
     : bad('Enter 沒有翻半屏', `+${delta}px（目標 ${want}px）`);
