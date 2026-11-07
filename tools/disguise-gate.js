@@ -8,11 +8,15 @@
 const fs = require('fs');
 const path = require('path');
 
+/* 2026-11-07 起 DSH 殼的介面字是簡體、cc 殼是英文（照真工具）——黑名單三種寫法都要擋，
+   不然「书架／目录」「Bookshelf／Chapter」會直接溜過去 */
 const BAD = [
   /示例書/, /小說/, /閱讀器/, /閱讀中/, /未開始/, /讀到第/, /第\s*\d+\s*章/,
   /書架/, /藏書/, /字體大小/, /書名/, /目錄/,
+  /示例书/, /小说/, /阅读器/, /阅读中/, /未开始/, /读到第/, /书架/, /藏书/, /字体大小/, /书名/, /目录/,
+  /\bnovels?\b/i, /\bchapters?\b/i, /\bbookshel(f|ves)\b/i, /\bebook\b/i, /\breading progress\b/i,
 ];
-const GOOD = [/工作區|workspace/i, /檔案|file|src\//i, /assistant|user/i, /tok|token|diff|commit/i];
+const GOOD = [/工作區|工作区|workspace/i, /檔案|文件|file|src\//i, /assistant|user|会话|session/i, /tok|token|diff|commit/i];
 
 function scan(html) {
   const text = String(html)

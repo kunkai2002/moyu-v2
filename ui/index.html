@@ -8,109 +8,173 @@
 <link rel="stylesheet" href="reasoning.css">
 <link rel="stylesheet" href="theme.css">
 <link rel="stylesheet" href="a11y-tokens.css">
-<link rel="stylesheet" href="frame.css">
+<link rel="stylesheet" href="shell-base.css">
+<link rel="stylesheet" href="shell-dsh.css">
+<link rel="stylesheet" href="shell-cc.css">
 </head>
 <body>
-
-<!-- VS Code 主題才會顯示的活動列 -->
-<div class="rail" aria-hidden="true">
-  <div class="rail-item on"><svg viewBox="0 0 24 24"><path d="M6 3h9l5 5v13H6z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M15 3v5h5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></div>
-  <div class="rail-item"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.6"/></svg></div>
-  <div class="rail-item"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10" stroke="currentColor" stroke-width="1.6"/></svg></div>
-  <div class="rail-item"><svg viewBox="0 0 24 24"><path d="M12 4v16M4 12h16" stroke="currentColor" stroke-width="1.6"/></svg></div>
-  <div class="rail-spacer"></div>
-  <div class="rail-item"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M6 6l1.5 1.5M16.5 16.5 18 18M18 6l-1.5 1.5M7.5 16.5 6 18" stroke="currentColor" stroke-width="1.6"/></svg></div>
-</div>
+<!-- 2026-11-07 重做：兩個殼照真工具做（九成像）
+     data-shell="dsh" ＝ DeepSeek Harness 桌面版（簡體介面字）
+     data-shell="cc"  ＝ Claude 桌面程式的 Code 分頁（英文介面字）
+     兩邊都有的元素只放一份（id 不變，其他程式照常綁）；只屬於一邊的用 .only-dsh／.only-cc。
+     位置不同的那幾顆（前後鍵、權限、模型、文件清單）由 shell-dsh.js 依殼搬到對的容器。 -->
 
 <div class="app">
-  <!-- ══ 側欄：工作區列 → 新對話 → 插件／自動化任務／更多 → 最近 → 帳號列 ══
-       ≥900 在版面裡（可收起）；<900 或 cc 殼是抽屜（shell-dsh.js 的 layoutPass 決定） -->
+  <!-- ══ 左欄 ══ -->
   <aside class="side">
-    <div class="side-brand">
-      <span class="brand-mark"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4.6l2 2H19a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>
-      <button class="brand-name" id="bookName" title="切換工作區">api-server</button>
-      <span class="side-count" id="sideCount" hidden></span>
-      <button class="ghost icon" id="brandToggle" title="收起側欄">
+    <div class="s-head">
+      <button class="ic only-cc" id="ccMenuBtn" title="Menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4.5 7h15M4.5 12h15M4.5 17h15"/></svg>
+      </button>
+      <button class="ic" id="brandToggle" title="Toggle sidebar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M9.5 5v14"/></svg>
+      </button>
+      <span class="side-nav" id="sideNav"></span>
+    </div>
+
+    <!-- app.js 開書時直接寫這兩格（沒有防空），畫面上不顯示：工作區名由左欄清單自己畫 -->
+    <span hidden><button id="bookName" tabindex="-1">api-server</button><span id="sideCount"></span></span>
+
+    <div class="side-brand only-dsh">
+      <svg class="ds-glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 12.5c0-4.4 3.6-7.5 8-7.5 3.2 0 5.6 1.4 6.9 3.6.5-.6 1.3-1 2.1-1-.3 1.2-.7 2.1-1.3 2.7.3.7.4 1.4.4 2.2 0 4.1-3.5 7.5-8.1 7.5-4.4 0-8-3.2-8-7.5z" fill="currentColor"/><circle cx="14.6" cy="10.4" r="1" fill="var(--ds-glyph-eye,#fff)"/></svg>
+      <span class="ds-word">deepseek</span><span class="ds-badge">HARNESS</span>
+    </div>
+
+    <div class="cc-mode only-cc" role="tablist">
+      <button id="ccHome" role="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4.5 11 12 4.8l7.5 6.2"/><path d="M6.5 9.6v9.6h11V9.6"/></svg><span>Home</span>
+      </button>
+      <button id="ccCode" role="tab" class="on">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="m8.5 7.5-4.5 4.5 4.5 4.5M15.5 7.5l4.5 4.5-4.5 4.5"/></svg><span>Code</span>
       </button>
     </div>
 
     <button class="sa sa-new" id="saNew">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 5v14M5 12h14"/></svg>
-      <span>新對話</span>
+      <svg class="only-dsh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8.5v7M8.5 12h7"/></svg>
+      <svg class="only-cc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span class="only-dsh">新会话</span><span class="only-cc">New</span>
     </button>
 
     <div class="side-actions" id="sideActions">
-      <button class="sa" id="saPlug"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3v6M15 3v6"/><rect x="6" y="9" width="12" height="8" rx="2"/><path d="M12 17v4"/></svg><span>插件</span></button>
-      <button class="sa" id="saAuto"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 12a8 8 0 0 1 14-5M20 12a8 8 0 0 1-14 5"/><path d="M18 3v4h-4M6 21v-4h4"/></svg><span>自動化任務</span></button>
-      <button class="sa" id="saMore"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="5" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.4" fill="currentColor" stroke="none"/></svg><span>更多</span></button>
+      <button class="sa only-cc" id="saSearch">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4 4"/></svg><span>Search</span>
+      </button>
+      <button class="sa" id="saPlug">
+        <svg class="only-dsh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M9 4.5h6v3.2a1.8 1.8 0 1 0 3.3 1h2.2V15h-3.2a1.8 1.8 0 1 0-1 3.3v2.2H9.6v-3.2a1.8 1.8 0 1 0-3.3-1H4.5V9.6h3.2A1.8 1.8 0 1 0 9 6.3z"/></svg>
+        <svg class="only-cc" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4.5" y="4.5" width="15" height="15" rx="3"/><path d="M9 4.5v15M4.5 10h4.5"/></svg>
+        <span class="only-dsh">插件</span><span class="only-cc">Artifacts</span>
+      </button>
+      <button class="sa only-dsh" id="saAuto">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="7.5"/><path d="M12 8v4.2l2.8 1.8"/></svg><span>自动化任务</span>
+      </button>
+      <button class="sa only-cc" id="saCustom">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4.5 7.5h9M17.5 7.5h2M4.5 16.5h2M10.5 16.5h9"/><circle cx="15.5" cy="7.5" r="2"/><circle cx="8.5" cy="16.5" r="2"/></svg><span>Customize</span>
+      </button>
+      <button class="sa" id="saMore">
+        <svg class="only-dsh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="4.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="13.5" y="4.5" width="6" height="6" rx="1.5"/><rect x="4.5" y="13.5" width="6" height="6" rx="1.5"/><circle cx="16.5" cy="16.5" r="3"/></svg>
+        <svg class="only-cc" viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/></svg>
+        <span class="only-dsh">更多</span><span class="only-cc">More</span>
+      </button>
     </div>
 
     <div class="side-region">
-      <div class="side-region-head"><span id="sideTitle">最近</span></div>
-      <div class="side-recent" id="sideRecent"><!-- 最近讀過的書：shell-dsh.js 灌入 --></div>
+      <div class="side-region-head only-dsh">
+        <span id="sideTitle">工作区</span>
+        <span class="ws-tools">
+          <button class="ic" id="wsSearch" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="m15.5 15.5 4 4"/></svg></button>
+          <button class="ic" id="wsFilter" title="筛选"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M5 7.5h14M7.5 12h9M10 16.5h4"/></svg></button>
+          <button class="ic" id="wsNew" title="新建"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 7a1.5 1.5 0 0 1 1.5-1.5h4l1.8 2h7.2A1.5 1.5 0 0 1 20 9v8.5a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><path d="M12 10.5v5M9.5 13h5"/></svg></button>
+        </span>
+      </div>
+      <!-- dsh：資料夾（＝最近開過的工作區）＋底下的會話（＝這個工作區最近看過的檔案）
+           cc ：專案標題＋底下的 session 清單（＝#tree 整份檔案清單，由 shell-dsh.js 搬進來） -->
+      <div class="side-recent" id="sideRecent"></div>
     </div>
 
     <div class="side-foot">
-      <button class="me" id="meRow" title="設置">
-        <span class="av" id="av">姜</span>
-        <span class="me-txt" id="meTxt">614 / 1359</span>
-        <span class="me-pct" id="mePct">1.2%</span>
+      <button class="me" id="meRow" title="设置">
+        <span class="only-dsh me-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8.5" r="3.5"/><path d="M5 19.5c1-3.6 3.7-5.4 7-5.4s6 1.8 7 5.4"/></svg></span>
+        <span class="only-dsh me-label">已登录 DeepSeek</span>
+        <span class="only-cc me-gear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2.8"/><path d="M12 3.8v2.4M12 17.8v2.4M3.8 12h2.4M17.8 12h2.4M6.2 6.2l1.7 1.7M16.1 16.1l1.7 1.7M17.8 6.2l-1.7 1.7M7.9 16.1l-1.7 1.7"/></svg></span>
+        <span class="av" id="av" hidden></span><span class="me-txt" id="meTxt" hidden></span><span class="me-pct" id="mePct" hidden></span>
       </button>
-      <button class="ghost icon" id="themeBtn" title="切換主題">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>
+      <button class="me-account only-cc" id="themeBtn" title="Account">
+        <span class="acct-av">J</span><span class="acct-name">jojo</span><span class="acct-plan">· Max</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m8 10 4 4 4-4"/></svg>
       </button>
     </div>
   </aside>
 
-  <!-- ══ 主欄 ══ -->
+  <!-- ══ 中欄 ══ -->
   <main class="main">
     <div class="tabs" id="tabs"></div>
 
     <div class="topbar">
-      <button class="tb-btn" id="tbSide" title="打開側欄">
+      <button class="tb-btn" id="tbSide" title="Toggle sidebar">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M9.5 5v14"/></svg>
       </button>
-      <span class="crumb" id="crumb">~/work/api-server / <b>src/gateway/report.ts</b></span>
+      <span class="crumb" id="crumb"></span>
+      <button class="tb-btn crumb-caret only-cc" id="crumbMenu" title="Session">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m8 10 4 4 4-4"/></svg>
+      </button>
+      <span class="ds-chips only-dsh">
+        <button class="chip" id="chipTeam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="9" cy="9" r="3"/><path d="M3.5 18.5c.8-3 2.9-4.5 5.5-4.5s4.7 1.5 5.5 4.5"/><path d="M15.5 6.3a3 3 0 0 1 0 5.4M17.5 14.3c1.5.6 2.5 2 3 4.2"/></svg>智能体团队</button>
+        <button class="chip" id="chipMode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 4.5 14 9l4.5 2-4.5 2-2 4.5-2-4.5-4.5-2L10 9z"/></svg>创造模式</button>
+        <button class="chip" id="chipAgents"><span id="chipAgentsN">6</span>&nbsp;个子智能体<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m8 10 4 4 4-4"/></svg></button>
+      </span>
       <span class="topbar-r">
         <button class="pill" id="pillReviews" title="註解">註解</button>
         <button class="ghost icon" id="bossBtn" title="老闆鍵 Alt+Q">
           <svg viewBox="0 0 24 24"><path d="M12 3 4 7v5c0 5 3.4 8.4 8 9 4.6-.6 8-4 8-9V7z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
       </span>
-      <div class="head-tabs" id="headTabs">
-        <button class="head-tab on" data-view="chat">對話</button>
-        <button class="head-tab" data-view="src">原文</button>
+      <div class="head-tabs only-dsh" id="headTabs">
+        <button class="head-tab on" data-view="chat">对话</button>
+        <button class="head-tab" data-view="src">轨迹</button>
+        <button class="head-act" id="tabStats">统计</button>
+        <button class="head-act" id="tabMore" title="更多"><svg viewBox="0 0 24 24"><circle cx="6" cy="12" r="1.4" fill="currentColor"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/><circle cx="18" cy="12" r="1.4" fill="currentColor"/></svg></button>
       </div>
     </div>
 
     <div class="stream" id="stream"><!-- 對話由 app.js 灌入 --></div>
+    <nav class="ds-minimap only-dsh" id="dsMinimap" aria-hidden="true"></nav>
 
     <div class="composer">
-      <!-- 單列輸入：空白時 Enter／⏎ 往下翻半屏並逐字出字；有字時 Enter 送出（JOJO 2026-11-06） -->
       <div class="box">
         <div class="box-line">
           <span class="prompt">&gt;</span>
-          <textarea id="input" rows="1" spellcheck="false" placeholder="回覆…"></textarea>
-          <button class="hint-btn" id="helpBtn" title="說明">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4"/><path d="M9.7 9.7a2.4 2.4 0 1 1 3.3 2.2c-.7.3-1 .9-1 1.7"/><circle cx="12" cy="16.4" r=".95" fill="currentColor" stroke="none"/></svg>
+          <textarea id="input" rows="1" spellcheck="false"></textarea>
+        </div>
+        <div class="box-tools">
+          <button class="hint-btn plus-btn" id="helpBtn" title="指令">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 6v12M6 12h12"/></svg>
           </button>
-          <button class="hint-btn" id="modeTag" title="自動模式" data-mode="off">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8.2 6.2 17 12l-8.8 5.8z"/></svg>
+          <button class="perm" id="permTag">
+            <svg class="only-dsh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 4 6 6.4v4.9c0 4 2.7 6.8 6 7.5 3.3-.7 6-3.5 6-7.5V6.4z"/></svg>
+            <span class="only-dsh">完全权限</span><span class="only-cc">Bypass permissions</span>
+            <svg class="only-dsh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m8 10 4 4 4-4"/></svg>
           </button>
-          <span class="box-foot-r" id="modelTag">opus 4.5 · 中</span>
-          <button class="hint-btn enter-btn" id="enterBtn" title="往下翻半屏（同 Enter）">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 5v7a3 3 0 0 1-3 3H5"/><path d="m9 11-4 4 4 4"/></svg>
+          <button class="hint-btn" id="modeTag" data-mode="off" title="自動模式"></button>
+          <span class="tools-spacer"></span>
+          <button class="vision only-dsh" id="visionTag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m6 12.5 4 4 8-9"/></svg>识图</button>
+          <button class="model" id="modelPick">
+            <span class="only-dsh">DeepSeek-V4.1-Flash <i>High</i></span><span class="only-cc">Opus 5.5 <i>Extra</i></span>
+            <svg class="only-dsh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="m8 10 4 4 4-4"/></svg>
+          </button>
+          <span class="box-foot-r" id="modelTag" hidden>opus 4.5 · 中</span>
+          <button class="hint-btn enter-btn" id="enterBtn" title="Enter">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 18.5v-13M6.5 11 12 5.5l5.5 5.5"/></svg>
           </button>
         </div>
       </div>
+      <div class="composer-meta" id="composerMeta"></div>
     </div>
 
     <div class="panel" id="panel" hidden>
       <div class="panel-head">
         <b>設定</b>
         <button class="ghost icon" id="panelClose" title="關閉">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
       </div>
       <div class="panel-body">
@@ -142,12 +206,14 @@
       <div class="panel-head">
         <b>指令</b>
         <button class="ghost icon" id="helpClose" title="關閉">
-          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="2"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.6"/></svg>
         </button>
       </div>
       <div class="panel-body" id="helpList"></div>
     </div>
 
+    <!-- 狀態資料（app.js／各 wiring 會寫進來）：兩個殼都不直接顯示這一列，
+         dsh 由 shell-dsh.js 讀它組成輸入卡下面那一行；cc 放進右欄 Context。 -->
     <div class="statusbar">
       <span class="sb-item branch">main*</span>
       <span class="sb-item"><span class="add">+1683</span> <span class="del">−0</span></span>
@@ -162,8 +228,8 @@
     </div>
   </main>
 
-  <!-- ══ 右側面板：目錄（DSH 的右欄，點章跳章）══ -->
-  <section class="dsh-right" id="tocPanel">
+  <!-- ══ 右欄 ══ dsh：檔案清單；cc：Environment／Context／Connectors／Outputs -->
+  <section class="dsh-right only-dsh" id="tocPanel">
     <div class="panel-head">
       <b>文件</b>
       <span class="toc-count" id="tocCount"></span>
@@ -172,15 +238,15 @@
       </button>
     </div>
     <div class="find">
-      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8"/></svg>
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.6"/></svg>
       <input id="chFilter" placeholder="篩選檔案…" spellcheck="false" autocomplete="off">
       <kbd>Ctrl+K</kbd>
     </div>
-    <div class="tree" id="tree"><!-- 章節由 app.js 灌入 --></div>
+    <div class="tree" id="tree"><!-- 檔案由 app.js 灌入 --></div>
   </section>
+  <section class="dsh-right only-cc cc-panel" id="ccPanel"><!-- shell-dsh.js 畫 --></section>
 </div>
 
-<!-- 主題選單 -->
 <div class="theme-menu" id="themeMenu">
   <div class="tm-title">主題</div>
   <div class="tm-list" id="tmList"></div>

@@ -14,9 +14,10 @@ const FILES = [
   'ui/index.html', 'ui/prefs.js', 'ui/icons.js', 'ui/chrome.js', 'ui/motion.js',
   'ui/polish.js', 'ui/flow.js', 'ui/layout.js', 'ui/shell.js', 'ui/phone.js',
   'ui/remember.js', 'ui/theme.css', 'ui/app.js', 'ui/bridge-http.js', 'ui/ghost.js', 'ui/settings-tabs.js', 'ui/palette.js',
-  /* 外殼（2026-11-06 重新設計）：frame.css 取代 dsh-polish 1–3／a11y-normalize／taste 五層，
-     index.html 直接引用，漏掉就是白屏。dsh-tokens.css 仍被主題色票引用，不能拿掉。 */
-  'ui/dsh-tokens.css', 'ui/a11y-tokens.css', 'ui/frame.css',
+  /* 外殼（2026-11-07 重做，照真工具九成像）：shell-base 共用骨架＋shell-dsh（DeepSeek Harness）
+     ＋shell-cc（Claude 桌面版 Code 分頁），取代 frame.css。index.html 直接引用，漏掉就是白屏。
+     dsh-tokens.css 仍被主題色票與 DSH 字型引用，不能拿掉。 */
+  'ui/dsh-tokens.css', 'ui/a11y-tokens.css', 'ui/shell-base.css', 'ui/shell-dsh.css', 'ui/shell-cc.css',
   'ui/reasoning.css', 'ui/reasoning.js', 'ui/shell-dsh.js',
   '開機自動啟動.cmd', 'tools/autostart.vbs', 'tools/start.vbs', 'tools/launch.vbs',
   'tools/update.cmd',

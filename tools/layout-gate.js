@@ -1,16 +1,16 @@
-/* 版面閘門（layout gate）· 2026-11-06 新殼版
+/* 版面閘門（layout gate）· 2026-11-07 照真工具重做版
    ─────────────────────────────────────────────────────────────
-   2026-11-06 JOJO 拍板：殼不再照 DeepSeek Harness 復刻，改成自由設計（ui/frame.css）。
-   舊閘門量的是 DSH 真值（側欄 280、頂欄 76…），已退役；這一支量「新殼的規則」：
+   2026-11-07 JOJO 拍板：兩個殼照真工具重做、九成像——dsh＝DeepSeek Harness、cc＝Claude 桌面版 Code 分頁
+   （ui/shell-base.css＋shell-dsh.css＋shell-cc.css）。這一支量「兩個殼的規則」：
 
-     S  SPEC（下方常數）＝新殼的契約。改 frame.css 的尺寸，要同時改這裡，否則紅燈。
-     G1 不准橫向捲動                          G8  輸入卡在狀態列上方、不重疊
-     G2 頂欄高度＝SPEC，單列不換行             G9  對話流夾在頂欄與輸入卡之間
-     G3 正文欄左右緣＝輸入卡左右緣（±1）        G10 窄視窗（側欄抽屜時）正文欄拿滿整個寬度
-     G4 側欄：寬視窗在版面裡、窄視窗／cc 是抽屜  G11 抽屜真的打得開、遮罩點一下真的關
-     G5 文件欄：≥斷點停靠 300、以下是抽屜      G12 頂欄每顆看得到的按鈕都點得到（中心點命中自己）
-     G6 狀態列貼底、高度＝SPEC                 G13 外殼文字不准有偽裝黑名單（頂欄、側欄、狀態列、
-     G7 頂欄圖示 16px                              輸入卡、文件欄標題、更多選單、命令面板）
+     S  SPEC（下方常數）＝殼的契約。改殼的尺寸，要同時改這裡，否則紅燈。
+     G0 另一個殼的元素看不見（.only-dsh／.only-cc）     G8  輸入卡在視窗底之上
+     G1 不准橫向捲動                                   G9  對話流夾在頂部與輸入卡之間
+     G2 頂部高度＝SPEC（cc 頂列單列不換行）              G10 窄視窗（側欄抽屜時）正文欄拿滿整個寬度
+     G3 正文欄＝輸入卡同軸；dsh 卡片兩側外擴 16、卡裡的字對齊正文   G11 抽屜真的打得開、遮罩點一下真的關
+     G4 側欄：≥斷點在版面裡（dsh 280／cc 240）、以下是抽屜 G12 頂部每顆看得到的按鈕都點得到（中心點命中自己）
+     G5 右欄：≥斷點停靠（dsh 300／cc 320）、以下是抽屜     G13 兩個殼的外殼文字都沒有偽裝黑名單（繁／簡／英）
+     G6 輸入卡下一行（dsh 統計／cc 模型＋權限）在畫面內   G7 只有圖示的頂部按鈕 16px
 
    斷點不在這裡另寫一份：從畫面的 window.__moyuLayoutBreakpoints 讀（shell-dsh.js 唯一來源）。
    --selftest：先在合成頁量已知尺寸（誤差必須 0），量測引擎可信才報真結果。
@@ -40,22 +40,28 @@ const opt = (n, d) => { const h = ARGV.find((a) => a.startsWith('--' + n + '='))
 const PORT = Number(opt('port', 9357));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* ── S：新殼契約（與 ui/frame.css 的 --fr-* 同步）── */
+/* ── S：殼的契約（2026-11-07 重做：照真工具九成像；與 ui/shell-dsh.css、shell-cc.css 同步）──
+   dsh＝DeepSeek Harness：側欄 280、右欄 300、頂部 76（標題列＋分頁列）、輸入卡比正文兩側各寬 16
+   cc ＝Claude 桌面版 Code：側欄 240、右欄 320、頂列 40、輸入框與正文同寬 */
 const SPEC = {
-  sideW: 264,
-  tocW: 300,
-  topH: { dsh: 52, cc: 40, compact: 48 },     // compact＝視窗 ≤520
-  statusH: { dsh: 24, cc: 24 },
+  sideW: { dsh: 280, cc: 240 },
+  rightW: { dsh: 300, cc: 320 },
+  topH: { dsh: 76, cc: 40 },
+  cardOverhang: { dsh: 16, cc: 0 },
   icon: 16,
-  compactMax: 520,
 };
-const BAD = [/示例書/, /小說/, /閱讀器/, /閱讀中/, /未開始/, /讀到第/, /第\s*\d+\s*章/, /書架/, /藏書/, /字體大小/, /書名/, /目錄/];
+const BAD = [
+  /示例書/, /小說/, /閱讀器/, /閱讀中/, /未開始/, /讀到第/, /第\s*\d+\s*章/, /書架/, /藏書/, /字體大小/, /書名/, /目錄/,
+  /示例书/, /小说/, /阅读器/, /阅读中/, /未开始/, /读到第/, /书架/, /藏书/, /字体大小/, /书名/, /目录/,
+  /\bnovels?\b/i, /\bchapters?\b/i, /\bbookshel(f|ves)\b/i, /\bebook\b/i, /\breading progress\b/i,
+];
 
 const SIZES = [[1440, 900], [1180, 800], [1024, 768], [900, 700], [613, 789], [420, 844]];
 const RUNS = [];
-for (const s of SIZES) RUNS.push({ shell: 'dsh', theme: 'dsh', size: s });
-for (const s of [[1440, 900], [1024, 768], [613, 789]]) RUNS.push({ shell: 'cc', theme: 'claude-code', size: s });
-RUNS.push({ shell: 'dsh', theme: 'claude', size: [613, 789] });   // JOJO 平常的視窗與主題
+for (const s of SIZES) RUNS.push({ shell: 'dsh', theme: 'dsh-light', size: s });
+for (const s of [[1440, 900], [1180, 800], [1024, 768], [613, 789], [420, 844]]) RUNS.push({ shell: 'cc', theme: 'claude', size: s });
+RUNS.push({ shell: 'dsh', theme: 'dsh', size: [1280, 820] });
+RUNS.push({ shell: 'cc', theme: 'claude-code', size: [613, 789] });
 
 const results = [];
 function check(id, run, ok, detail) {
@@ -132,8 +138,8 @@ async function setup(page, run) {
         + ':root .topbar::after{content:"";position:absolute;right:0;top:0;width:120px;height:100%;z-index:99}'
         + ':root .topbar{position:relative}';
       document.head.appendChild(s);
-      // 不能寫進 #sbTok：tok/s 每秒重寫那一格，種下去的字會被洗掉
-      document.querySelector('.statusbar')?.insertAdjacentHTML('beforeend', '<span class="sb-item gate-sab">目錄</span>');
+      // 種在兩個殼都看得到、而且不會被定時重寫的地方（狀態列已不顯示；#sbTok 每秒重寫）
+      document.querySelector('.side-actions')?.insertAdjacentHTML('beforeend', '<span class="gate-sab">目录</span>');
     }
     const D = window.__moyuDebug;
     D.setShell(cfg.shell); D.setTheme(cfg.theme);
@@ -166,16 +172,26 @@ function measure() {
     const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
     const svg = el.querySelector('svg');
     const sr = svg ? svg.getBoundingClientRect() : null;
-    return { id: el.id || el.className, hitOk: !!hit && (hit === el || el.contains(hit)), hit: hit ? (hit.id || hit.className || hit.tagName) : null, icon: sr ? [Math.round(sr.width), Math.round(sr.height)] : null };
+    /* 圖示尺寸只管「只有圖示」的按鈕；字旁邊的小圖（dsh 小標籤、cc 標題旁的 ⌄）照真工具是 14 */
+    const iconOnly = !el.textContent.trim() && !el.classList.contains('crumb-caret');
+    return { id: el.id || el.className, hitOk: !!hit && (hit === el || el.contains(hit)), hit: hit ? (hit.id || hit.className || hit.tagName) : null, icon: sr && iconOnly ? [Math.round(sr.width), Math.round(sr.height)] : null };
   });
+  const shellNow = document.documentElement.getAttribute('data-shell');
+  const right = [...document.querySelectorAll('.dsh-right')].find(vis) || null;
+  // 另一個殼的元素必須真的看不見（只算 .only-* 自己，不算它的子孫）
+  const leak = [...document.querySelectorAll(shellNow === 'cc' ? '.only-dsh' : '.only-cc')].filter(vis).map((e) => e.id || e.className).slice(0, 5);
+  const meta = $('#composerMeta');
+  const metaBox = meta && vis(meta) && meta.children.length ? box(meta) : null;
+  const inp = $('#input'); const ics = getComputedStyle(inp); const ib = box(inp);
   return {
-    iw: innerWidth, ih: innerHeight, cls: app.className,
+    iw: innerWidth, ih: innerHeight, cls: app.className, shell: shellNow, leak,
     overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     topbar, kids, btns,
     textL: tb.x + parseFloat(tcs.paddingLeft), textR: tb.r - parseFloat(tcs.paddingRight),
     boxL: cb.x + parseFloat(ccs.paddingLeft), boxR: cb.r - parseFloat(ccs.paddingRight),
-    box: box($('.composer .box')), status: box($('.statusbar')), stream: box($('#stream')),
-    side: vis($('.side')) ? box($('.side')) : null, toc: vis($('.dsh-right')) ? box($('.dsh-right')) : null,
+    inputL: ib.x + parseFloat(ics.paddingLeft),
+    box: box($('.composer .box')), meta: metaBox, stream: box($('#stream')),
+    side: vis($('.side')) ? box($('.side')) : null, toc: right ? box(right) : null,
     bp: window.__moyuLayoutBreakpoints || null,
   };
 }
@@ -186,32 +202,39 @@ async function runOne(page, run) {
   const m = await page.evaluate(measure);
   const w = m.iw;
   const bp = m.bp || { side: 900, toc: 1180 };
-  const compact = w <= SPEC.compactMax;
-  const topH = compact ? SPEC.topH.compact : SPEC.topH[run.shell];
+  const sh = run.shell;
 
   check('G1 不橫向捲動', tag, m.overflowX === 0, { overflowX: m.overflowX });
-  check('G2 頂欄高度', tag, Math.abs(m.topbar.h - topH) <= 1, { got: m.topbar.h, want: topH });
-  const spread = Math.max(...m.kids.map((k) => k.cy)) - Math.min(...m.kids.map((k) => k.cy));
-  check('G2 頂欄單列', tag, spread <= 2, { spread, kids: m.kids });
-  check('G3 正文與輸入卡同軸', tag, Math.abs(m.textL - m.boxL) <= 1 && Math.abs(m.textR - m.boxR) <= 1,
-    { text: [m.textL, m.textR], box: [m.boxL, m.boxR] });
+  check('G0 另一個殼的元素看不見', tag, m.leak.length === 0, m.leak);
+  check('G2 頂部高度', tag, Math.abs(m.topbar.h - SPEC.topH[sh]) <= 1, { got: m.topbar.h, want: SPEC.topH[sh] });
+  if (sh === 'cc') {
+    const spread = Math.max(...m.kids.map((k) => k.cy)) - Math.min(...m.kids.map((k) => k.cy));
+    check('G2 頂列單列', tag, spread <= 2, { spread, kids: m.kids });
+  }
+  /* G3 同軸：輸入卡的內緣＝正文欄內緣；dsh 的卡片兩側各外擴 16，卡裡的字跟正文左緣對齊 */
+  const oh = SPEC.cardOverhang[sh];
+  check('G3 正文與輸入卡同軸', tag,
+    Math.abs(m.textL - m.boxL) <= 1 && Math.abs(m.textR - m.boxR) <= 1
+    && Math.abs(m.box.x - (m.textL - oh)) <= 1 && Math.abs(m.box.r - (m.textR + oh)) <= 1,
+    { text: [m.textL, m.textR], composer: [m.boxL, m.boxR], card: [m.box.x, m.box.r], overhang: oh });
+  if (sh === 'dsh') check('G3 卡片裡的字跟正文左緣對齊', tag, Math.abs(m.inputL - m.textL) <= 2, { input: m.inputL, text: m.textL });
 
-  const drawer = run.shell === 'cc' || w < bp.side;
+  const drawer = w < bp.side;
   if (drawer) {
     check('G4 側欄是抽屜（收著）', tag, /side-drawer/.test(m.cls) && !m.side, { cls: m.cls, side: m.side });
   } else {
-    check('G4 側欄在版面裡', tag, !!m.side && Math.abs(m.side.x) <= 1 && Math.abs(m.side.w - SPEC.sideW) <= 1, { side: m.side });
+    check('G4 側欄在版面裡', tag, !!m.side && Math.abs(m.side.x) <= 1 && Math.abs(m.side.w - SPEC.sideW[sh]) <= 1, { side: m.side, want: SPEC.sideW[sh] });
   }
   if (w >= bp.toc) {
-    check('G5 文件欄停靠', tag, !!m.toc && Math.abs(m.toc.w - SPEC.tocW) <= 1 && Math.abs(m.toc.r - w) <= 1, { toc: m.toc });
+    check('G5 右欄停靠', tag, !!m.toc && Math.abs(m.toc.w - SPEC.rightW[sh]) <= 1 && Math.abs(m.toc.r - w) <= 1, { toc: m.toc, want: SPEC.rightW[sh] });
   } else {
-    check('G5 文件欄是抽屜（收著）', tag, /toc-overlay/.test(m.cls) && !m.toc, { cls: m.cls, toc: m.toc });
+    check('G5 右欄是抽屜（收著）', tag, /toc-overlay/.test(m.cls) && !m.toc, { cls: m.cls, toc: m.toc });
   }
-  check('G6 狀態列貼底', tag, Math.abs(m.status.b - m.ih) <= 1 && Math.abs(m.status.h - SPEC.statusH[run.shell]) <= 1,
-    { status: m.status, want: SPEC.statusH[run.shell] });
+  /* G6 輸入卡下面那一行（dsh＝統計、cc＝模型與權限）在畫面內 */
+  check('G6 卡片下一行在畫面內', tag, !!m.meta && m.meta.b <= m.ih + 1 && m.meta.y >= m.box.b - 1, { meta: m.meta, boxB: m.box.b, ih: m.ih });
   const badIcon = m.btns.filter((b) => b.icon && (b.icon[0] !== SPEC.icon || b.icon[1] !== SPEC.icon));
-  check('G7 頂欄圖示 16px', tag, badIcon.length === 0, badIcon);
-  check('G8 輸入卡在狀態列上方', tag, m.box.b <= m.status.y, { box: m.box.b, status: m.status.y });
+  check('G7 頂部圖示 16px', tag, badIcon.length === 0, badIcon);
+  check('G8 輸入卡在視窗底之上', tag, m.box.b <= m.ih, { box: m.box.b, ih: m.ih });
   check('G9 對話流在頂欄與輸入卡之間', tag, Math.abs(m.stream.y - m.topbar.b) <= 1 && m.stream.b <= m.box.y + 1,
     { stream: [m.stream.y, m.stream.b], topbarB: m.topbar.b, boxY: m.box.y });
   if (drawer && w < bp.toc) {
@@ -238,43 +261,51 @@ async function runOne(page, run) {
   if (w < bp.toc) {
     await page.click('#tbList');
     await sleep(380);
-    const o = await page.evaluate(() => {
-      const s = document.querySelector('.dsh-right').getBoundingClientRect();
-      return { open: document.querySelector('.app').classList.contains('toc-open'), r: s.right, w: s.width, iw: innerWidth };
-    });
-    check('G11 文件抽屜打得開', tag, o.open && Math.abs(o.r - o.iw) <= 1 && o.w > 200, o);
+    const o = await page.evaluate((s) => {
+      const el = document.querySelector(s === 'cc' ? '#ccPanel' : '#tocPanel');
+      const r = el.getBoundingClientRect();
+      return { open: document.querySelector('.app').classList.contains('toc-open'), r: r.right, w: r.width, iw: innerWidth, vis: getComputedStyle(el).visibility };
+    }, sh);
+    check('G11 右欄抽屜打得開', tag, o.open && Math.abs(o.r - o.iw) <= 1 && o.w > 200 && o.vis === 'visible', o);
     await page.mouse.click(20, Math.round(m.ih / 2));
     await sleep(380);
     const c = await page.evaluate(() => document.querySelector('.app').classList.contains('toc-open'));
-    check('G11 點遮罩關文件欄', tag, !c, { stillOpen: c });
+    check('G11 點遮罩關右欄', tag, !c, { stillOpen: c });
   }
   return m;
 }
 
 /* G13 外殼文字：只看「殼」，不看正文、書名、檔名（那些是內容，可以出現第 N 章） */
 async function disguise(page) {
-  await setup(page, { shell: 'dsh', theme: 'dsh', size: [1440, 900] });
-  const shellText = await page.evaluate(() => {
-    const parts = [];
-    const take = (el) => {
-      if (!el) return;
-      const c = el.cloneNode(true);
-      c.querySelectorAll('#crumb, #bookName, .sr-t, .nm, .p, .bubble, .hr-t, .hb-t, .hc-t, .hs-t').forEach((n) => n.remove());
-      // 最近列的 title＝書名（內容），不算外殼文字
-      c.querySelectorAll('.sr-row').forEach((n) => n.removeAttribute('title'));
-      parts.push(c.textContent);
-      [c, ...c.querySelectorAll('[title],[placeholder],[aria-label]')].forEach((n) => parts.push(n.getAttribute('title') || '', n.getAttribute('placeholder') || '', n.getAttribute('aria-label') || ''));
-    };
-    ['.topbar', '.side', '.statusbar', '.composer', '#tocPanel .panel-head', '#tocPanel .find', '.vol', '.overflow'].forEach((s) => document.querySelectorAll(s).forEach(take));
-    return parts.join(' ');
-  });
-  await page.keyboard.down('Control'); await page.keyboard.press('k'); await page.keyboard.up('Control');
-  await sleep(400);
-  const pal = await page.evaluate(() => [...document.querySelectorAll('.cmdk-row')].map((r) => r.textContent).join(' '));
-  await page.keyboard.press('Escape');
-  const all = shellText + ' ' + pal;
-  const hits = BAD.map((re) => (all.match(re) || [])[0]).filter(Boolean);
-  check('G13 外殼文字無偽裝黑名單', 'dsh@1440', hits.length === 0 && pal.length > 0, { hits, paletteRows: pal.length > 0 });
+  for (const sh of ['dsh', 'cc']) {
+    await setup(page, { shell: sh, theme: sh === 'cc' ? 'claude' : 'dsh-light', size: [1440, 900] });
+    await page.evaluate(() => window.__moyuShellPlace && window.__moyuShellPlace());
+    await sleep(200);
+    const shellText = await page.evaluate(() => {
+      const parts = [];
+      const take = (el) => {
+        if (!el) return;
+        const c = el.cloneNode(true);
+        /* 內容不算外殼：正文、章名、書名（工作區名／專案名／Outputs 檔名）——書名本身可能就叫「第7章…」 */
+        c.querySelectorAll('#crumb, #bookName, .sr-t, .nm, .p, .bubble, .hr-t, .hb-t, .hc-t, .hs-t, .ws-name, .cc-proj-name, .ccp-l, .ccp-file span, #tree').forEach((n) => n.remove());
+        c.querySelectorAll('.sr-row, .ws-folder, [data-book]').forEach((n) => n.removeAttribute('title'));
+        parts.push(c.textContent);
+        [c, ...c.querySelectorAll('[title],[placeholder],[aria-label]')].forEach((n) => parts.push(n.getAttribute('title') || '', n.getAttribute('placeholder') || '', n.getAttribute('aria-label') || ''));
+      };
+      ['.titlebar', '.topbar', '.side', '.composer', '#tocPanel .panel-head', '#tocPanel .find', '.vol', '.overflow', '#ccPanel']
+        .forEach((s) => document.querySelectorAll(s).forEach(take));
+      // ::before 畫出來的字（例如 dsh 的「工作区」）也算
+      document.querySelectorAll('.side-region-head').forEach((n) => parts.push(getComputedStyle(n, '::before').content || ''));
+      return parts.join(' ');
+    });
+    await page.keyboard.down('Control'); await page.keyboard.press('k'); await page.keyboard.up('Control');
+    await sleep(400);
+    const pal = await page.evaluate(() => [...document.querySelectorAll('.cmdk-row')].map((r) => r.textContent).join(' '));
+    await page.keyboard.press('Escape');
+    const all = shellText + ' ' + pal;
+    const hits = BAD.map((re) => (all.match(re) || [])[0]).filter(Boolean);
+    check('G13 外殼文字無偽裝黑名單', sh + '@1440', hits.length === 0 && pal.length > 0, { hits, paletteRows: pal.length > 0 });
+  }
 }
 
 (async () => {

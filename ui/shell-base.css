@@ -1,0 +1,234 @@
+/* ══════════════════════════════════════════════════════════════
+   魔芋一夏 · 外殼共用骨架（2026-11-07 重做）
+   ──────────────────────────────────────────────────────────────
+   只放兩個殼都一樣的東西：三欄怎麼排、抽屜、輸入卡與正文同軸、只屬於一邊的元素怎麼藏。
+   長相在 shell-dsh.css（DeepSeek Harness）與 shell-cc.css（Claude 桌面版 Code 分頁）。
+   斷點與「在版面裡還是抽屜」的判斷只在 shell-dsh.js 的 layoutPass。
+
+   特異性約定：JS 會在 <head> 尾端塞自己的 <style>（同分時它們贏），所以每條規則都用
+   :root[data-shell…][data-theme] 開頭（0,3,0 起跳），比主題檔與 JS 的單 class 規則高。
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── 只屬於一邊的元素 ── */
+:root[data-shell="cc"] .only-dsh{display:none !important}
+:root[data-shell="dsh"] .only-cc{display:none !important}
+
+/* ── 代幣（各殼覆寫）── */
+:root[data-shell][data-theme]{
+  --s-side-w:280px;
+  --s-rp-w:300px;
+  --s-top-h:52px;
+  --s-pad:24px;
+  --s-hover:color-mix(in srgb, var(--fg) 6%, transparent);
+  --s-press:color-mix(in srgb, var(--fg) 10%, transparent);
+  --s-sel:color-mix(in srgb, var(--fg) 7%, transparent);
+  --s-hair:color-mix(in srgb, var(--line-strong) 75%, transparent);
+  --s-ring:color-mix(in srgb, var(--acc) 55%, transparent);
+  --s-del:color-mix(in srgb, #e5484d 78%, var(--fg));
+  --s-add:color-mix(in srgb, var(--ok) 82%, var(--fg));
+  --s-del-bg:color-mix(in srgb, #e5484d 10%, transparent);
+  --s-add-bg:color-mix(in srgb, var(--ok) 11%, transparent);
+  --s-pop:0 4px 12px rgb(0 0 0 / .08), 0 16px 40px rgb(0 0 0 / .14);
+  --s-scrim:rgb(0 0 0 / .24);
+  --s-ease:cubic-bezier(.4,0,.2,1);
+  --s-fast:120ms;
+  --s-mid:200ms;
+  /* 舊檔（palette.js、settings-tabs）引用但從沒定義過的代幣 */
+  --r-sm:8px; --r-md:12px; --shadow-pop:var(--s-pop);
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px;
+  --fs-11:11px; --fs-12:12px; --fs-13:13px; --fs-14:14px;
+}
+
+/* ── 整頁 ── */
+:root[data-shell][data-theme] body{background:var(--bg)}
+:root[data-shell][data-theme] .rail,
+:root[data-shell][data-theme] .tabs,
+:root[data-shell][data-theme] .statusbar,
+:root[data-shell][data-theme] #modeTag,
+:root[data-shell][data-theme] #modelTag,
+:root[data-shell][data-theme] #tbHistory,
+:root[data-shell][data-theme] #tbMark,
+:root[data-shell][data-theme] .who,
+:root[data-shell][data-theme] .side .rz{display:none !important}
+:root[data-shell][data-theme] .crumb::before{content:none}
+:root[data-shell][data-theme] *{scrollbar-width:thin;scrollbar-color:color-mix(in srgb, var(--fg) 18%, transparent) transparent}
+:root[data-shell][data-theme] :focus-visible{outline:2px solid var(--s-ring);outline-offset:1px}
+:root[data-shell][data-theme] #input:focus-visible,
+:root[data-shell][data-theme] .find input:focus-visible{outline:0}
+
+/* 視窗標題列（只有 Electron 有，wiring3.js 建的）：可拖曳；按鈕不可拖 */
+:root[data-shell][data-theme] .titlebar button{-webkit-app-region:no-drag}
+
+/* ── 三欄 ── */
+:root[data-shell][data-theme] .app{
+  position:relative;display:flex;align-items:stretch;flex:1 1 auto;min-height:0;
+  overflow:hidden;overflow:clip;background:var(--bg);
+}
+:root[data-shell][data-theme] .side{
+  position:relative;z-index:3;flex:none;width:var(--s-side-w);min-width:0;
+  display:flex;flex-direction:column;min-height:0;
+}
+:root[data-shell][data-theme] .main{
+  position:relative;z-index:1;flex:1 1 0;min-width:0;min-height:0;
+  display:flex;flex-direction:column;background:var(--bg);
+}
+:root[data-shell][data-theme] .dsh-right{
+  position:relative;z-index:2;flex:none;width:var(--s-rp-w);min-width:0;
+  display:flex;flex-direction:column;min-height:0;
+}
+:root[data-shell][data-theme] .app.side-hidden:not(.side-drawer) .side{display:none}
+:root[data-shell][data-theme] .app.toc-collapsed .dsh-right{display:none}
+:root[data-shell][data-theme] .side-region{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+:root[data-shell][data-theme] .side-recent{flex:none;overflow:visible}
+:root[data-shell][data-theme] .topbar{flex:none;display:flex;align-items:center;min-width:0}
+:root[data-shell][data-theme] .topbar .crumb{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:root[data-shell][data-theme] .topbar-r{display:flex;align-items:center;flex:none;margin-left:auto}
+:root[data-shell][data-theme] #tbSide{display:none}
+:root[data-shell][data-theme] .app.side-hidden #tbSide,
+:root[data-shell][data-theme] .app.side-drawer #tbSide{display:grid}
+
+/* ── 對話流與輸入卡：同一條軸 ──
+   對話流兩側留捲軸槽（both-edges），輸入卡左右補同樣寬（--fr-sb 由 layoutPass 量），
+   兩者都是 max-width:var(--read-w)（使用者的「欄寬」設定）＋同樣的內距。 */
+:root[data-shell][data-theme] .stream{
+  flex:1 1 auto;min-height:0;padding:0;overflow-y:auto;overflow-x:hidden;
+  scrollbar-gutter:stable both-edges;background:var(--bg);
+}
+:root[data-shell][data-theme] .thread{
+  width:100%;margin:0 auto;padding:24px var(--s-pad) 24px;background:none;border:0;box-shadow:none;
+}
+:root[data-shell][data-theme] .composer{
+  flex:none;width:100%;max-width:calc(var(--read-w, 780px) + 2 * var(--fr-sb, 0px));margin:0 auto;
+  padding:0 calc(var(--s-pad) + var(--fr-sb, 0px)) 12px;background:none;
+}
+:root[data-shell][data-theme] .composer .box{position:relative}
+:root[data-shell][data-theme] #input{
+  flex:1 1 auto;min-width:0;max-height:40vh;margin:0;border:0;outline:0;background:none;resize:none;color:var(--fg);
+}
+:root[data-shell][data-theme] #input::placeholder{color:var(--fg3)}
+:root[data-shell][data-theme] .box-line .prompt{display:none}
+:root[data-shell][data-theme] .tools-spacer{flex:1 1 auto}
+/* 拖高把手：看不見的邊，滑過才出現細線 */
+:root[data-shell][data-theme] .composer .input-rz{
+  position:absolute;left:50%;top:-4px;width:64px;height:8px;margin:0 0 0 -32px;background:none;cursor:row-resize;z-index:2;
+}
+:root[data-shell][data-theme] .composer .input-rz:hover{background:none}
+:root[data-shell][data-theme] .composer .input-rz::after{
+  content:"";position:absolute;left:16px;right:16px;top:3px;height:2px;border-radius:2px;background:var(--fg3);opacity:0;
+  transition:opacity var(--s-fast) var(--s-ease);
+}
+:root[data-shell][data-theme] .composer .input-rz:hover::after{opacity:.6}
+
+/* 行高落在 2px 網格（14×1.9＝26.6 → 26）；不支援 round() 的瀏覽器會丟掉第二行 */
+:root[data-shell][data-theme] .p{font-family:var(--text-font);font-size:var(--fs);line-height:var(--lh);color:var(--fg);text-align:left}
+:root[data-shell][data-theme] .p{line-height:round(nearest, calc(var(--fs) * var(--lh)), 2px)}
+:root[data-shell][data-theme] .p code{line-height:inherit}
+:root[data-shell][data-theme] .p.marked,
+:root[data-shell][data-theme] .p.mark{background:var(--hl);box-shadow:0 0 0 3px var(--hl);border-radius:2px}
+:root[data-shell][data-theme] .turn{display:flex;gap:12px;margin:0}
+:root[data-shell][data-theme] .turn.ai{align-items:flex-start}
+:root[data-shell][data-theme] .turn.ai .gutter{display:none}
+:root[data-shell][data-theme] .turn.ai .b{flex:1 1 0;min-width:0;padding:0}
+:root[data-shell][data-theme] .chap::before{content:none}
+:root[data-shell][data-theme] .cc-db{white-space:normal;max-height:none;overflow-x:auto;overflow-y:hidden}
+:root[data-shell][data-theme] .cc-db > span{display:block;white-space:pre}
+:root[data-shell][data-theme] .sc-cover{display:none}
+
+/* 原文（dsh「轨迹」） */
+:root[data-shell][data-theme] .src-view{
+  flex:1 1 auto;min-height:0;margin:0;padding:24px max(var(--s-pad), calc((100% - var(--read-w, 780px)) / 2 + var(--s-pad)));
+  overflow:auto;white-space:pre-wrap;word-break:break-word;background:var(--bg);
+  font-family:var(--dsh-font-code, monospace);font-size:13px;line-height:22px;color:var(--fg2);
+}
+:root[data-shell][data-theme] .src-view[hidden]{display:none}
+
+/* ── 抽屜（側欄從左、右欄從右）＋遮罩 ── */
+:root[data-shell][data-theme] .app.side-drawer .side{
+  position:absolute;left:0;top:0;bottom:0;z-index:70;width:min(var(--s-side-w), 86vw);
+  transform:translateX(-102%);visibility:hidden;box-shadow:none;
+  transition:transform var(--s-mid) var(--s-ease),visibility 0s linear var(--s-mid),box-shadow var(--s-mid) var(--s-ease);
+}
+:root[data-shell][data-theme] .app.side-drawer.side-open .side{
+  transform:none;visibility:visible;box-shadow:var(--s-pop);
+  transition:transform var(--s-mid) var(--s-ease),visibility 0s,box-shadow var(--s-mid) var(--s-ease);
+}
+:root[data-shell][data-theme] .app.toc-overlay .dsh-right{
+  position:absolute;right:0;top:0;bottom:0;z-index:70;width:min(var(--s-rp-w), 88vw);
+  transform:translateX(102%);visibility:hidden;box-shadow:none;
+  transition:transform var(--s-mid) var(--s-ease),visibility 0s linear var(--s-mid),box-shadow var(--s-mid) var(--s-ease);
+}
+:root[data-shell="dsh"][data-theme] .app.toc-overlay #tocPanel,
+:root[data-shell="cc"][data-theme] .app.toc-overlay #ccPanel{display:flex}
+:root[data-shell][data-theme] .app.toc-overlay.toc-open .dsh-right{
+  transform:none;visibility:visible;box-shadow:var(--s-pop);
+  transition:transform var(--s-mid) var(--s-ease),visibility 0s,box-shadow var(--s-mid) var(--s-ease);
+}
+:root[data-shell][data-theme] .app::after{
+  content:"";position:absolute;inset:0;z-index:65;background:var(--s-scrim);
+  opacity:0;pointer-events:none;transition:opacity var(--s-mid) var(--s-ease);
+}
+:root[data-shell][data-theme] .app.side-drawer.side-open::after,
+:root[data-shell][data-theme] .app.toc-overlay.toc-open::after{opacity:1;pointer-events:auto}
+/* 文件欄停靠時，關閉鈕不顯示（開關只留頂欄那一顆）*/
+:root[data-shell][data-theme] .app:not(.toc-overlay) #tocBtn{display:none}
+
+/* ── 浮層的位置（長相各殼自己畫）── */
+:root[data-shell][data-theme] .panel,
+:root[data-shell][data-theme] .marks-panel,
+:root[data-shell][data-theme] .stats-panel,
+:root[data-shell][data-theme] .hist-panel,
+:root[data-shell][data-theme] .phone-panel,
+:root[data-shell][data-theme] .detail{
+  position:absolute;right:12px;top:calc(var(--s-top-h) + 8px);bottom:auto;
+  max-height:calc(100% - var(--s-top-h) - 96px);width:360px;max-width:calc(100% - 24px);z-index:46;
+  display:flex;flex-direction:column;overflow:hidden;
+  animation:s-pop var(--s-mid) var(--s-ease) both;
+}
+:root[data-shell][data-theme] .panel[hidden],
+:root[data-shell][data-theme] .marks-panel[hidden],
+:root[data-shell][data-theme] .stats-panel[hidden],
+:root[data-shell][data-theme] .hist-panel[hidden],
+:root[data-shell][data-theme] .phone-panel[hidden],
+:root[data-shell][data-theme] .detail[hidden]{display:none}
+:root[data-shell][data-theme] .panel-body{flex:1 1 auto;min-height:0;overflow:auto}
+:root[data-shell][data-theme] .hist-list{flex:1 1 auto;min-height:0}
+:root[data-shell][data-theme] .overflow{position:absolute;right:12px;top:calc(var(--s-top-h) - 4px);width:220px;z-index:60;animation:s-pop var(--s-fast) var(--s-ease) both}
+:root[data-shell][data-theme] .overflow[hidden]{display:none}
+:root[data-shell][data-theme] .theme-menu{z-index:80}
+@keyframes s-pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* ── 窄視窗 ── */
+@media (max-width: 720px){
+  :root[data-shell][data-theme]{--s-pad:16px}
+  :root[data-shell][data-theme] .panel,
+  :root[data-shell][data-theme] .marks-panel,
+  :root[data-shell][data-theme] .stats-panel,
+  :root[data-shell][data-theme] .hist-panel,
+  :root[data-shell][data-theme] .phone-panel,
+  :root[data-shell][data-theme] .detail{left:8px;right:8px;width:auto !important;max-width:none}
+  :root[data-shell][data-theme] .overflow{right:8px}
+}
+@media (max-width: 520px){
+  :root[data-shell][data-theme]{--s-pad:14px}
+}
+
+/* ── 減少動態 ── */
+@media (prefers-reduced-motion: reduce){
+  :root[data-shell][data-theme] .app.side-drawer .side,
+  :root[data-shell][data-theme] .app.toc-overlay .dsh-right,
+  :root[data-shell][data-theme] .app::after{transition:none}
+  :root[data-shell][data-theme] .panel,
+  :root[data-shell][data-theme] .marks-panel,
+  :root[data-shell][data-theme] .stats-panel,
+  :root[data-shell][data-theme] .hist-panel,
+  :root[data-shell][data-theme] .phone-panel,
+  :root[data-shell][data-theme] .detail,
+  :root[data-shell][data-theme] .overflow{animation:none}
+}
+
+/* ── 修正（11-07 第一次截圖對照後）── */
+/* hidden 屬性一定要藏：theme.css 的 .av{display:grid} 之類會蓋掉 hidden（「十」看起來像「＋」） */
+:root[data-shell][data-theme] .side [hidden],
+:root[data-shell][data-theme] .composer [hidden]{display:none !important}
+/* theme.css 的 .side-foot 是直排，兩個殼的底部都是一列 */
+:root[data-shell][data-theme] .side-foot{flex-direction:row}

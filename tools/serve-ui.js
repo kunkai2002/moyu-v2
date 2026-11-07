@@ -246,6 +246,7 @@ async function verify() {
       appRect: rect(app),
       titlebar: rect(titlebar),
       statusbarRect: rect(statusbar),
+      metaRect: rect(document.querySelector('#composerMeta')),
       appClass: app ? String(app.className) : '',
       appDisplay: app ? getComputedStyle(app).display : 'missing',
       appScrollWidth: app ? app.scrollWidth : 0,
@@ -352,8 +353,9 @@ async function verify() {
   check(/clip|hidden/.test(m.appOverflowX), '[clean 390] .app 裁掉畫面外的抽屜（overflow clip）', m.appOverflowX);
   check(/side-drawer/.test(m.appClass) && m.sideVis === 'hidden', '[clean 390] 側欄是收著的抽屜', `${m.appClass} / ${m.sideVis}`);
   check(m.statusbar && m.statusbar.sw <= m.statusbar.cw + 1, '[clean 390] 底部狀態列沒有被切掉', m.statusbar ? `${m.statusbar.sw} > ${m.statusbar.cw}` : '(找不到 .statusbar)');
-  check(m.statusbarRect && m.statusbarRect.right <= m.innerWidth + 1 && m.statusbarRect.width > 100,
-    '[clean 390] 狀態列整條在畫面內', m.statusbarRect ? `right=${m.statusbarRect.right} w=${m.statusbarRect.width}` : '(none)');
+  /* 2026-11-07 重做：兩個真工具都沒有底部狀態列——位置資訊在輸入卡下面那一行（dsh）／右欄（cc） */
+  check(m.metaRect && m.metaRect.right <= m.innerWidth + 1 && m.metaRect.width > 100 && m.metaRect.bottom <= m.innerHeight + 1,
+    '[clean 390] 輸入卡下一行整條在畫面內', m.metaRect ? `right=${m.metaRect.right} w=${m.metaRect.width} bottom=${m.metaRect.bottom}` : '(none)');
   check(m.statusbarRect && m.statusbarRect.bottom <= m.innerHeight + 1,
     '[clean 390] 狀態列底邊 ≤ 視窗高（沒被推出畫面）', m.statusbarRect ? `bottom=${m.statusbarRect.bottom} > ${m.innerHeight}` : '(none)');
   check(m.titlebar === null, '[clean 390] 瀏覽器模式沒有 .titlebar（不會多佔 30px）', m.titlebar ? `h=${m.titlebar.height}` : '');

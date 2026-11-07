@@ -13,12 +13,22 @@ const DATA = path.join(ROOT, '_probe', 'click-data');
 const PORT = 9369;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* 2026-11-07 起兩個殼的按鈕不一樣（照真工具）：每個殼點它自己看得到的那一組。
+   #visionTag（识图）＝隱身模式，會在測試 app 裡抓整個螢幕 → 不點（隱私；它的接線由 shell-dsh.js 直接呼叫 __moyuGhost）。
+   #modeTag 已藏起來，由「完全权限／Bypass permissions」(#permTag) 代按。 */
 const TARGETS = [
-  ['#saNew', 'side'], ['#saPlug', 'side'], ['#saAuto', 'side'], ['#saMore', 'side'],
-  ['#bookName', 'side'], ['#themeBtn', 'side'], ['#brandToggle', 'side'], ['#meRow', 'side'],
-  ['#tocBtn', 'toc'], ['#headTabs .head-tab[data-view=src]', 'tabs'],
-  ['#headTabs .head-tab[data-view=chat]', 'tabs'],
-  ['#helpBtn', 'composer'], ['#modeTag', 'composer'],
+  ['#saNew', 'side', 'dsh'], ['#saPlug', 'side', 'dsh'], ['#saAuto', 'side', 'dsh'], ['#saMore', 'side', 'dsh'],
+  ['#wsSearch', 'side', 'dsh'], ['#wsFilter', 'side', 'dsh'], ['#wsNew', 'side', 'dsh'], ['#meRow', 'side', 'dsh'],
+  ['#chipTeam', 'top', 'dsh'], ['#chipMode', 'top', 'dsh'], ['#chipAgents', 'top', 'dsh'],
+  ['#headTabs .head-tab[data-view=src]', 'tabs', 'dsh'], ['#headTabs .head-tab[data-view=chat]', 'tabs', 'dsh'],
+  ['#tabStats', 'tabs', 'dsh'], ['#tabMore', 'tabs', 'dsh'], ['#tocBtn', 'toc', 'dsh'],
+  ['#helpBtn', 'composer', 'dsh'], ['#permTag', 'composer', 'dsh'], ['#modelPick', 'composer', 'dsh'],
+  ['#ccHome', 'side', 'cc'], ['#ccCode', 'side', 'cc'], ['#saNew', 'side', 'cc'], ['#saSearch', 'side', 'cc'],
+  ['#saPlug', 'side', 'cc'], ['#saCustom', 'side', 'cc'], ['#saMore', 'side', 'cc'], ['#ccMenuBtn', 'side', 'cc'],
+  ['#themeBtn', 'side', 'cc'], ['#meRow', 'side', 'cc'], ['#brandToggle', 'side', 'cc'],
+  ['#crumbMenu', 'top', 'cc'], ['#ccTerm', 'top', 'cc'], ['#ccExport', 'top', 'cc'], ['#ccGlobe', 'top', 'cc'],
+  ['#ccFolder', 'top', 'cc'], ['#tbList', 'top', 'cc'],
+  ['#helpBtn', 'composer', 'cc'], ['#permTag', 'composer', 'cc'], ['#modelPick', 'composer', 'cc'],
 ];
 
 // 這兩顆開機時會被 chrome.js 的 sweep() 收進「更多」溢出選單（JOJO 要頂欄只留四顆），
@@ -65,7 +75,14 @@ const IN_OVERFLOW = ['註解', '老闆鍵'];
   await sleep(500);
 
   const rows = [];
-  for (const [sel, where] of TARGETS) {
+  let curShell = 'dsh';
+  for (const [sel, where0, sh] of TARGETS) {
+    const where = sh + ':' + where0;
+    if (sh !== curShell) {
+      await page.evaluate((s) => { window.__moyuDebug.setShell(s); window.__moyuShellPlace && window.__moyuShellPlace(); window.__moyuLayoutPass && window.__moyuLayoutPass(); }, sh);
+      curShell = sh;
+      await sleep(400);
+    }
     const before = errors.length;
     const r = await page.evaluate((s) => {
       const el = document.querySelector(s);
